@@ -9,7 +9,7 @@ class Invoice(SQLModel, table=True):
     invoice_number: str = Field(index=True)
     invoice_type: str
     bill_category: str = "cash"
-    party_id: int = Field(foreign_key="parties.id")
+    party_id: Optional[int] = Field(default=None, foreign_key="parties.id")
     financial_year_id: Optional[int] = Field(default=None, foreign_key="financial_years.id")
     invoice_date: date = Field(index=True)
     due_date: Optional[date] = None

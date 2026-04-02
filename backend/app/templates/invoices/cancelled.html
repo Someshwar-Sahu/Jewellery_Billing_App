@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Cancelled Bills{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Cancelled Bills</h1>
+    <a href="/invoices" class="btn-secondary">← Back to Bills</a>
+</div>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Invoice No.</th>
+            <th>Customer</th>
+            <th>Total</th>
+            <th>Cancelled On</th>
+            <th>Reason</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for inv in invoices %}
+        <tr>
+            <td>{{ inv.invoice_number }}</td>
+            <td>{{ parties[inv.party_id].name if inv.party_id in parties else "—" }}</td>
+            <td>₹{{ "%.2f" | format(inv.grand_total) }}</td>
+            <td>{{ inv.cancelled_at.strftime("%d %b %Y") if inv.cancelled_at else "—" }}</td>
+            <td>{{ inv.cancelled_reason or "—" }}</td>
+            <td>
+                <button onclick="recoverBill({{ inv.id }})" class="btn-secondary btn-sm">Recover</button>
+                <a href="/invoices/{{ inv.id }}" class="btn-ghost btn-sm">View</a>
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6">No cancelled bills.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
+{% block scripts %}
+<script>
+async function recoverBill(id) {
+    if (!confirm("Recover this bill?")) return;
+    const res = await fetch(`/invoices/${id}/recover`, {method: "POST"});
+    const data = await res.json();
+    if (data.success) { location.reload(); }
+    else { alert("Error: " + data.error); }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,97 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; font-size: 14px; background: #f5f5f5; color: #333; }
+
+nav { background: #1a1a2e; padding: 12px 24px; display: flex; gap: 20px; }
+nav a { color: #fff; text-decoration: none; font-weight: 500; }
+nav a:hover { color: #e0b84e; }
+
+main { max-width: 1200px; margin: 24px auto; padding: 0 16px; }
+
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+h1 { font-size: 22px; }
+h2 { font-size: 16px; margin: 16px 0 8px; }
+
+.btn-primary  { background: #1a1a2e; color: #fff; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; font-size: 14px; }
+.btn-secondary{ background: #fff; color: #333; padding: 8px 16px; border: 1px solid #ccc; border-radius: 6px; cursor: pointer; text-decoration: none; font-size: 14px; }
+.btn-danger   { background: #dc3545; color: #fff; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; }
+.btn-ghost    { background: transparent; color: #666; padding: 8px 16px; text-decoration: none; }
+.btn-large    { padding: 12px 32px; font-size: 16px; }
+.btn-sm       { padding: 4px 10px; font-size: 12px; }
+
+.table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.table th { background: #f0f0f0; padding: 10px 12px; text-align: left; font-weight: 600; font-size: 12px; }
+.table td { padding: 10px 12px; border-top: 1px solid #eee; }
+.table tr:hover td { background: #fafafa; }
+
+.form-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+.form-group { display: flex; flex-direction: column; gap: 4px; min-width: 160px; }
+.form-group label { font-size: 12px; font-weight: 600; color: #555; }
+.form-group input, .form-group select, .form-group textarea {
+    padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;
+}
+.form-group input:focus, .form-group select:focus {
+    outline: none; border-color: #1a1a2e;
+}
+
+.section-header { display: flex; justify-content: space-between; align-items: center; margin: 20px 0 10px; }
+.items-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; margin-bottom: 16px; }
+.items-table th { background: #f0f0f0; padding: 8px 10px; text-align: left; font-size: 12px; }
+.items-table td { padding: 6px 4px; border-top: 1px solid #eee; }
+.items-table input, .items-table select { padding: 5px; border: 1px solid #ddd; border-radius: 4px; }
+
+.totals-section { background: #fff; border-radius: 8px; padding: 16px; margin: 16px 0; }
+.totals-box { max-width: 360px; margin-left: auto; margin-top: 16px; }
+.total-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #eee; font-size: 13px; }
+.total-grand { font-weight: bold; font-size: 15px; border-top: 2px solid #333; border-bottom: 2px solid #333; }
+.total-due { font-weight: bold; color: #dc3545; }
+
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.detail-card { background: #fff; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.detail-card h3 { font-size: 13px; color: #888; margin-bottom: 8px; text-transform: uppercase; }
+.detail-card p { margin-bottom: 4px; }
+
+.badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.badge-paid     { background: #d4edda; color: #155724; }
+.badge-unpaid   { background: #fff3cd; color: #856404; }
+.badge-partial  { background: #cce5ff; color: #004085; }
+.badge-overdue  { background: #f8d7da; color: #721c24; }
+.badge-gst-pending_review { background: #fff3cd; color: #856404; }
+.badge-gst-gst_ready      { background: #d4edda; color: #155724; }
+.badge-gst-locked         { background: #cce5ff; color: #004085; }
+
+.alert { padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; }
+.alert-warning { background: #fff3cd; border: 1px solid #ffc107; color: #856404; }
+
+.form-actions { display: flex; gap: 12px; align-items: center; margin-top: 20px; }
+.notes { background: #fff; padding: 12px; border-radius: 6px; margin-top: 12px; color: #555; }
+.row-overdue td { background: #fff5f5; }
+.row-overdue:hover td { background: #ffe8e8; }
+
+/* ── Tabs ── */
+.tab-bar { display: flex; gap: 0; border-bottom: 2px solid var(--color-border, #e0e0e0); margin-bottom: 20px; }
+.tab-btn { background: none; border: none; padding: 10px 20px; font-size: 13px; font-weight: 500; color: #666; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; display: flex; align-items: center; gap: 6px; }
+.tab-btn:hover { color: #1a1a2e; }
+.tab-btn.active { color: #1a1a2e; border-bottom-color: #1a1a2e; }
+.tab-count { background: #1a1a2e; color: #fff; border-radius: 10px; font-size: 10px; padding: 1px 6px; font-weight: 600; }
+.empty-state { text-align: center; padding: 40px; color: #888; font-size: 14px; }
+
+/* ── Missing button display fix ── */
+.btn-primary, .btn-secondary, .btn-danger, .btn-ghost {
+    display: inline-block;
+    text-align: center;
+    line-height: 1.4;
+}
+
+/* ── Missing badge variants ── */
+.badge-sale     { background: #cce5ff; color: #004085; }
+.badge-purchase { background: #e2d9f3; color: #432874; }
+.badge-success  { background: #d4edda; color: #155724; }
+.badge-danger   { background: #f8d7da; color: #721c24; }
+.badge-cancelled { background: #f8d7da; color: #721c24; }
+
+/* ── Detail page totals box needs margin fix ── */
+.totals-box { max-width: 380px; margin-left: auto; }
+
+/* ── Alert variants ── */
+.alert-danger  { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+.alert-success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }

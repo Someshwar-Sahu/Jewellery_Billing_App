@@ -1,9 +1,21 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from app.database import create_db_and_tables
 from app.models import *
+from app.routers import invoices
+import os
 
-app = FastAPI(title="Jewellery Billing App", description="Complete billing system for jewellery shop",
-              version="1.0.0")
+app = FastAPI(
+    title="Jewellery Billing App",
+    description="Complete billing system for jewellery shop",
+    version="1.0.0"
+)
+
+# Static files
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+# Routers
+app.include_router(invoices.router)
 
 @app.on_event("startup")
 def on_startup():
@@ -12,8 +24,5 @@ def on_startup():
 
 @app.get("/")
 def root():
-    return {"message": "Jewellery Billing API is running"}
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/invoices")

@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Credit / Debit Note</h1>
+    <a href="/invoices/{{ original.id }}" class="btn-secondary">← Back to Bill</a>
+</div>
+
+<div class="alert alert-warning">
+    Against: <strong>{{ original.invoice_number }}</strong> &nbsp;|&nbsp;
+    Party: <strong>{{ party.name if party else "Walk-in" }}</strong> &nbsp;|&nbsp;
+    Original Total: <strong>₹{{ original.grand_total }}</strong>
+</div>
+
+<form id="cnForm">
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Note Type</label>
+            <select name="note_type">
+                <option value="credit_note">Credit Note (return / refund)</option>
+                <option value="debit_note">Debit Note (additional charge)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Date</label>
+            <input type="date" name="invoice_date" value="{{ today }}">
+        </div>
+    </div>
+
+    <div class="form-group" style="margin-bottom:16px">
+        <label>Notes / Reason</label>
+        <textarea name="notes" rows="2" placeholder="e.g. Customer returned ring — wrong size"></textarea>
+    </div>
+
+    <div class="section-header">
+        <h2>Items being returned / adjusted</h2>
+    </div>
+
+    <table class="items-table" id="itemsTable">
+        <thead>
+            <tr>
+                <th>Item Name</th>
+                <th>Purity</th>
+                <th>Weight (g)</th>
+                <th>Rate/g (₹)</th>
+                <th>Making (₹)</th>
+                <th>GST%</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td><input type="text" name="item_name" value="{{ item.item_name }}" style="width:150px"></td>
+                <td><input type="text" name="purity" value="{{ item.purity or '' }}" style="width:55px"></td>
+                <td><input type="number" name="weight_grams" step="0.001" value="{{ item.weight_grams or '' }}"
+                        style="width:85px"></td>
+                <td><input type="number" name="rate_per_gram" step="0.01" value="{{ item.rate_per_gram or '' }}"
+                        style="width:90px"></td>
+                <td><input type="number" name="making_charges" step="0.01" value="{{ item.making_charges or '' }}"
+                        style="width:90px"></td>
+                <td>
+                    <select name="gst_rate">
+                        {% for rate in [3.0, 18.0, 0.0, 5.0, 12.0] %}
+                        <option value="{{ rate }}" {% if item.gst_rate==rate %}selected{% endif %}>
+                            {{ rate }}%
+                        </option>
+                        {% endfor %}
+                    </select>
+                </td>
+                <td>
+                    <button type="button" onclick="this.closest('tr').remove()"
+                        style="color:red;background:none;border:none;cursor:pointer;font-size:16px">✕</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="form-actions">
+        <button type="button" onclick="submitNote()" class="btn-primary btn-large">Create Note</button>
+        <a href="/invoices/{{ original.id }}" class="btn-ghost">Cancel</a>
+    </div>
+
+</form>
+
+<script>
+    async function submitNote() {
+        const form = document.getElementById('cnForm');
+        const rows = form.querySelectorAll('#itemsTable tbody tr');
+        // REPLACE the items collection map with:
+        const items = Array.from(rows).map(row => ({
+            item_name: row.querySelector('[name="item_name"]').value.trim(),
+            purity: row.querySelector('[name="purity"]').value || null,
+            weight_grams: row.querySelector('[name="weight_grams"]').value || null,
+            rate_per_gram: row.querySelector('[name="rate_per_gram"]').value || null,
+            making_charges: row.querySelector('[name="making_charges"]').value || null,
+            gst_rate: parseFloat(row.querySelector('[name="gst_rate"]').value),
+        })).filter(item => item.item_name.length > 0);  // ADD this filter
+
+        if (items.length === 0) { alert('Add at least one item.'); return; }
+
+        const payload = {
+            note_type: form.querySelector('[name="note_type"]').value,
+            invoice_date: form.querySelector('[name="invoice_date"]').value,
+            notes: form.querySelector('[name="notes"]').value || null,
+            items,
+        };
+
+        const res = await fetch(window.location.pathname, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        const result = await res.json();
+        if (result.success) {
+            window.location.href = `/invoices/${result.invoice_id}`;
+        } else {
+            alert('Error: ' + result.error);
+        }
+    }
+</script>
+{% endblock %}

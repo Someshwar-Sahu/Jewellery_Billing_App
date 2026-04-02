@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>{{ invoice.invoice_number }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            margin: 20px;
+        }
+
+        .shop-header {
+            text-align: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+        }
+
+        .shop-name {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .bill-meta {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+
+        th,
+        td {
+            border: 1px solid #ccc;
+            padding: 5px 8px;
+            text-align: left;
+        }
+
+        th {
+            background: #f5f5f5;
+            font-weight: bold;
+        }
+
+        .totals {
+            float: right;
+            width: 300px;
+            margin-top: 10px;
+        }
+
+        .totals table td {
+            border: none;
+        }
+
+        .grand-total {
+            font-weight: bold;
+            font-size: 14px;
+            border-top: 2px solid #000;
+        }
+
+        .footer {
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        @media print {
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <button class="no-print" onclick="window.print()" style="margin-bottom:10px">🖨 Print</button>
+
+    <div class="shop-header">
+        {% if shop %}
+        <div class="shop-name">{{ shop.shop_name }}</div>
+        <div>{{ shop.address }}{% if shop.city %}, {{ shop.city }}{% endif %}</div>
+        {% if shop.gstin %}<div>GSTIN: {{ shop.gstin }}</div>{% endif %}
+        {% if shop.phone %}<div>📞 {{ shop.phone }}</div>{% endif %}
+        {% endif %}
+    </div>
+
+    <div style="text-align:center; font-weight:bold; margin: 8px 0;">
+        {{ "TAX INVOICE" if invoice.invoice_type == "sale" else "PURCHASE BILL" }}
+    </div>
+
+    <div class="bill-meta">
+        <!-- REPLACE the "Bill To" div with: -->
+        <div>
+            <strong>Bill To:</strong><br>
+            {% if party %}
+            {{ party.name }}<br>
+            {% if party.address %}{{ party.address }}<br>{% endif %}
+            {% if party.phone %}📞 {{ party.phone }}<br>{% endif %}
+            {% if party.gstin %}GSTIN: {{ party.gstin }}{% endif %}
+            {% else %}
+            Walk-in Customer
+            {% endif %}
+        </div>
+        <div style="text-align:right">
+            <strong>Invoice No:</strong> {{ invoice.invoice_number }}<br>
+            <strong>Date:</strong> {{ invoice.invoice_date }}<br>
+            {% if invoice.credit_due_date %}
+            <strong>Due Date:</strong> {{ invoice.credit_due_date }}<br>
+            {% endif %}
+            <strong>Payment:</strong> {{ invoice.payment_mode or "—" | upper }}
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Description</th>
+                <th>Purity</th>
+                <th>HSN</th>
+                <th>Wt (g)</th>
+                <th>Rate/g</th>
+                <th>Amount</th>
+                <th>Making</th>
+                <th>CGST 1.5%</th>
+                <th>SGST 1.5%</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ item.item_name }}{% if item.huid %}<br><small>HUID: {{ item.huid }}</small>{% endif %}</td>
+                <td>{{ item.purity or "" }}</td>
+                <td>{{ item.hsn_code }}</td>
+                <td>{{ item.weight_grams or "" }}</td>
+                <td>{{ item.rate_per_gram or "" }}</td>
+                <td>{{ "%.2f" | format(item.amount) }}</td>
+                <td>{{ "%.2f" | format(item.making_charges or 0) }}</td>
+                <td>{{ "%.2f" | format(item.cgst_amount) }}</td>
+                <td>{{ "%.2f" | format(item.sgst_amount) }}</td>
+                <td>{{ "%.2f" | format(item.line_total) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="totals">
+        <table>
+            <tr>
+                <td>Subtotal</td>
+                <td>₹{{ "%.2f" | format(invoice.subtotal) }}</td>
+            </tr>
+            <tr>
+                <td>CGST (1.5%)</td>
+                <td>₹{{ "%.2f" | format(invoice.total_cgst) }}</td>
+            </tr>
+            <tr>
+                <td>SGST (1.5%)</td>
+                <td>₹{{ "%.2f" | format(invoice.total_sgst) }}</td>
+            </tr>
+            {% if invoice.total_making_charges %}
+            <tr>
+                <td>Making Charges</td>
+                <td>₹{{ "%.2f" | format(invoice.total_making_charges) }}</td>
+            </tr>
+            <tr>
+                <td>Making GST</td>
+                <td>₹{{ "%.2f" | format(invoice.making_cgst + invoice.making_sgst) }}</td>
+            </tr>
+            {% endif %}
+            {% if invoice.old_gold_value %}<tr>
+                <td>Old Gold</td>
+                <td>-₹{{ "%.2f" | format(invoice.old_gold_value) }}</td>
+            </tr>{% endif %}
+            {% if invoice.discount %}<tr>
+                <td>Discount</td>
+                <td>-₹{{ "%.2f" | format(invoice.discount) }}</td>
+            </tr>{% endif %}
+            {% if invoice.round_off %}<tr>
+                <td>Round Off</td>
+                <td>₹{{ "%.2f" | format(invoice.round_off) }}</td>
+            </tr>{% endif %}
+            <tr class="grand-total">
+                <td>Grand Total</td>
+                <td>₹{{ "%.2f" | format(invoice.grand_total) }}</td>
+            </tr>
+            <tr>
+                <td>Amount Paid</td>
+                <td>₹{{ "%.2f" | format(invoice.amount_paid) }}</td>
+            </tr>
+            <tr>
+                <td><strong>Balance Due</strong></td>
+                <td><strong>₹{{ "%.2f" | format(invoice.amount_due) }}</strong></td>
+            </tr>
+        </table>
+    </div>
+
+    <div style="clear:both"></div>
+
+    <div class="footer">
+        <div>
+            <strong>Payment Status:</strong>
+            {{ invoice.payment_status | upper }}
+        </div>
+        <div style="text-align:right">
+            <br><br>
+            Authorised Signatory
+        </div>
+    </div>
+
+</body>
+
+</html>

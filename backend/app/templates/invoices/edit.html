@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ invoice.invoice_number }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Edit — {{ invoice.invoice_number }}</h1>
+    {% if invoice.gst_status == 'gst_ready' %}
+    <div class="alert alert-warning" style="margin:0;padding:6px 14px;font-size:12px">
+        ⚠️ This bill was marked GST ready. Saving will reset it to pending review.
+    </div>
+    {% endif %}
+</div>
+
+<form id="editForm">
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Bill Date</label>
+            <input type="date" name="invoice_date" value="{{ invoice.invoice_date }}">
+        </div>
+        {% if invoice.bill_category == 'credit' %}
+        <div class="form-group">
+            <label>Due Date</label>
+            <input type="date" name="credit_due_date" value="{{ invoice.credit_due_date or '' }}">
+        </div>
+        {% endif %}
+        <div class="form-group">
+            <label>Payment Mode</label>
+            <select name="payment_mode">
+                <option value="">-- Select --</option>
+                {% for m in ['cash','upi','card','cheque','neft','rtgs','mixed'] %}
+                <option value="{{ m }}" {{ 'selected' if invoice.payment_mode==m else '' }}>
+                    {{ m | upper }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Party</label>
+            <input type="text" value="{{ party.name if party else 'Walk-in' }}" disabled
+                style="background:#f5f5f5;color:#888">
+        </div>
+    </div>
+
+    <!-- Items — same table as create, pre-filled via JS -->
+    <div class="section-header">
+        <h2>Items</h2>
+        <button type="button" onclick="addItem()" class="btn-secondary">+ Add Item</button>
+    </div>
+
+    <table class="items-table" id="itemsTable">
+        <thead>
+            <tr>
+                <th>Item Name *</th>
+                <th>Purity</th>
+                <th>Weight (g)</th>
+                <th>Rate/gram (₹)</th>
+                <th>Amount (₹)</th>
+                <th>Making Charges</th>
+                <th>GST %</th>
+                <th>Line Total</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="itemsBody"></tbody>
+    </table>
+
+    <!-- Totals — same live calculation engine as create -->
+    <div class="totals-section">
+        <div class="form-row">
+            <div class="form-group">
+                <label>Old Gold / Silver Value (₹)</label>
+                <input type="number" name="old_gold_value" id="oldGoldValue" value="{{ invoice.old_gold_value }}"
+                    min="0" step="0.01" oninput="recalcTotals()">
+            </div>
+            <div class="form-group">
+                <label>Discount (₹)</label>
+                <input type="number" name="discount" id="discount" value="{{ invoice.discount }}" min="0" step="0.01"
+                    oninput="recalcTotals()">
+            </div>
+            <div class="form-group">
+                <label>Amount Paid (locked)</label>
+                <input type="number" id="amountPaid" value="{{ invoice.amount_paid }}" disabled style="background:#f5f5f5;color:#888">
+                <small style="color:#888;font-size:11px">Use Record Payment to change</small>
+            </div>
+        </div>
+        <div class="totals-box">
+            <div class="total-row"><span>Subtotal</span><span id="tSubtotal">₹0.00</span></div>
+            <div class="total-row"><span>CGST</span><span id="tCgst">₹0.00</span></div>
+            <div class="total-row"><span>SGST</span><span id="tSgst">₹0.00</span></div>
+            <div class="total-row"><span>Making Charges</span><span id="tMaking">₹0.00</span></div>
+            <div class="total-row"><span>Making GST</span><span id="tMakingGst">₹0.00</span></div>
+            <div class="total-row"><span>Old Gold Deduction</span><span id="tOldGold">₹0.00</span></div>
+            <div class="total-row"><span>Discount</span><span id="tDiscount">₹0.00</span></div>
+            <div class="total-row total-grand"><span>New Grand Total</span><span id="tGrandTotal">₹0.00</span></div>
+            <div class="total-row"><span>Amount Paid (locked)</span><span id="tAmountPaid">₹{{ invoice.amount_paid}}</span></div>
+            <div class="total-row"><span>Amount Due</span><span id="tAmountDue">₹0.00</span></div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>Notes</label>
+        <textarea name="notes" rows="2">{{ invoice.notes or '' }}</textarea>
+    </div>
+    <div class="form-group">
+        <label>Reason for edit (optional but recommended)</label>
+        <input type="text" name="edit_reason" placeholder="e.g. Weight corrected, customer requested change">
+    </div>
+
+    <div class="form-actions">
+        <button type="button" onclick="saveEdit({{ invoice.id }})" class="btn-primary btn-large">
+            Save Changes
+        </button>
+        <a href="/invoices/{{ invoice.id }}" class="btn-ghost">Cancel</a>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── ALL FUNCTIONS INLINED — no dependency on invoice.js loading correctly ──
+
+let itemCount = 0;
+
+function addItem(prefill) {
+    itemCount++;
+    const n     = itemCount;
+    const tbody = document.getElementById("itemsBody");
+    const row   = document.createElement("tr");
+    row.id = "item-row-" + n;
+    row.innerHTML =
+        '<td><input type="text" name="item_name" placeholder="Gold Ornament" style="width:140px"></td>' +
+        '<td><input type="text" name="purity" placeholder="22K" style="width:55px"></td>' +
+        '<td><input type="number" name="weight_grams" placeholder="0.000" step="0.001" min="0" style="width:85px" oninput="calcRow(' + n + ')"></td>' +
+        '<td><input type="number" name="rate_per_gram" placeholder="0.00" step="0.01" min="0" style="width:90px" oninput="calcRow(' + n + ')"></td>' +
+        '<td><span id="amount-' + n + '">0.00</span></td>' +
+        '<td><input type="number" name="making_charges" placeholder="0.00" step="0.01" min="0" style="width:90px" oninput="calcRow(' + n + ')"></td>' +
+        '<td><select name="gst_rate" onchange="calcRow(' + n + ')">' +
+            '<option value="3.0">3%</option>' +
+            '<option value="1.5">1.5%</option>' +
+            '<option value="0">0%</option>' +
+            '<option value="18.0">18%</option>' +
+        '</select></td>' +
+        '<td><strong><span id="line-total-' + n + '">0.00</span></strong></td>' +
+        '<td><button type="button" onclick="removeItem(' + n + ')" style="color:red;background:none;border:none;cursor:pointer;font-size:16px">✕</button></td>';
+    tbody.appendChild(row);
+
+    // Pre-fill values if provided
+    if (prefill) {
+        row.querySelector('[name="item_name"]').value      = prefill.item_name      || "";
+        row.querySelector('[name="purity"]').value         = prefill.purity         || "";
+        row.querySelector('[name="weight_grams"]').value   = prefill.weight_grams   != null ? prefill.weight_grams   : "";
+        row.querySelector('[name="rate_per_gram"]').value  = prefill.rate_per_gram  != null ? prefill.rate_per_gram  : "";
+        row.querySelector('[name="making_charges"]').value = prefill.making_charges != null ? prefill.making_charges : "";
+        // Select correct GST rate
+        const gstSel = row.querySelector('[name="gst_rate"]');
+        const target = parseFloat(prefill.gst_rate || 3.0);
+        for (let opt of gstSel.options) {
+            if (parseFloat(opt.value) === target) { opt.selected = true; break; }
+        }
+        calcRow(n);
+    }
+}
+
+function removeItem(n) {
+    const row = document.getElementById("item-row-" + n);
+    if (row) row.remove();
+    recalcTotals();
+}
+
+function calcRow(n) {
+    const row = document.getElementById("item-row-" + n);
+    if (!row) return;
+    const weight  = parseFloat(row.querySelector('[name="weight_grams"]').value)  || 0;
+    const rate    = parseFloat(row.querySelector('[name="rate_per_gram"]').value)  || 0;
+    const making  = parseFloat(row.querySelector('[name="making_charges"]').value) || 0;
+    const gstRate = parseFloat(row.querySelector('[name="gst_rate"]').value)       || 3.0;
+    const amount    = weight * rate;
+    const cgst      = amount * (gstRate / 2) / 100;
+    const sgst      = cgst;
+    const makingGst = making * 0.18;
+    const lineTotal = amount + cgst + sgst + making + makingGst;
+    document.getElementById("amount-" + n).textContent     = amount.toFixed(2);
+    document.getElementById("line-total-" + n).textContent = lineTotal.toFixed(2);
+    recalcTotals();
+}
+
+function recalcTotals() {
+    let subtotal = 0, totalCgst = 0, totalSgst = 0, totalMaking = 0, totalMakingGst = 0;
+    document.querySelectorAll("#itemsBody tr").forEach(function(row) {
+        const weight  = parseFloat(row.querySelector('[name="weight_grams"]')?.value)  || 0;
+        const rate    = parseFloat(row.querySelector('[name="rate_per_gram"]')?.value)  || 0;
+        const making  = parseFloat(row.querySelector('[name="making_charges"]')?.value) || 0;
+        const gstRate = parseFloat(row.querySelector('[name="gst_rate"]')?.value)       || 3.0;
+        const amount  = weight * rate;
+        const cgst    = amount * (gstRate / 2) / 100;
+        subtotal       += amount;
+        totalCgst      += cgst;
+        totalSgst      += cgst;
+        totalMaking    += making;
+        totalMakingGst += making * 0.18;
+    });
+    const oldGold    = parseFloat(document.getElementById("oldGoldValue")?.value) || 0;
+    const discount   = parseFloat(document.getElementById("discount")?.value)     || 0;
+    const gross      = subtotal + totalCgst + totalSgst + totalMaking + totalMakingGst;
+    const grandTotal = Math.round((gross - oldGold - discount) * 100) / 100;
+
+    document.getElementById("tSubtotal").textContent   = "₹" + subtotal.toFixed(2);
+    document.getElementById("tCgst").textContent       = "₹" + totalCgst.toFixed(2);
+    document.getElementById("tSgst").textContent       = "₹" + totalSgst.toFixed(2);
+    document.getElementById("tMaking").textContent     = "₹" + totalMaking.toFixed(2);
+    document.getElementById("tMakingGst").textContent  = "₹" + totalMakingGst.toFixed(2);
+    document.getElementById("tOldGold").textContent    = "₹" + oldGold.toFixed(2);
+    document.getElementById("tDiscount").textContent   = "₹" + discount.toFixed(2);
+    document.getElementById("tGrandTotal").textContent = "₹" + grandTotal.toFixed(2);
+    const paid = parseFloat(document.getElementById("amountPaid")?.value) || 0;
+    document.getElementById("tAmountDue").textContent  = "₹" + Math.max(0, grandTotal - paid).toFixed(2);
+}
+
+// ── Pre-fill items from server data ──
+// Data is passed directly as a JS array literal — no JSON.parse needed
+// Using JSON_ITEMS placeholder replaced by Jinja2
+const existingItems = {{ items | tojson }};
+
+document.addEventListener("DOMContentLoaded", function() {
+    if (existingItems && existingItems.length > 0) {
+        existingItems.forEach(function(item) {
+            addItem(item);  // addItem now accepts prefill object directly
+        });
+    } else {
+        addItem(null);  // empty row if no items
+    }
+    recalcTotals();
+});
+
+// ── Save edit ──
+async function saveEdit(invoiceId) {
+    const form  = document.getElementById("editForm");
+    const items = [];
+
+    document.querySelectorAll("#itemsBody tr").forEach(function(row) {
+        const name = row.querySelector('[name="item_name"]')?.value?.trim();
+        if (!name) return;
+        items.push({
+            item_name:      name,
+            purity:         row.querySelector('[name="purity"]')?.value         || null,
+            weight_grams:   row.querySelector('[name="weight_grams"]')?.value   || null,
+            rate_per_gram:  row.querySelector('[name="rate_per_gram"]')?.value  || null,
+            making_charges: row.querySelector('[name="making_charges"]')?.value || null,
+            gst_rate:       row.querySelector('[name="gst_rate"]')?.value       || "3.0",
+        });
+    });
+
+    if (items.length === 0) {
+        alert("Bill must have at least one item.");
+        return;
+    }
+
+    const payload = {
+        invoice_date:    form.querySelector('[name="invoice_date"]').value,
+        credit_due_date: form.querySelector('[name="credit_due_date"]')?.value || null,
+        payment_mode:    form.querySelector('[name="payment_mode"]')?.value    || null,
+        old_gold_value:  parseFloat(form.querySelector('[name="old_gold_value"]').value) || 0,
+        discount:        parseFloat(form.querySelector('[name="discount"]').value)        || 0,
+        notes:           form.querySelector('[name="notes"]').value || null,
+        edit_reason:     form.querySelector('[name="edit_reason"]').value || null,
+        items,
+    };
+
+    // Disable button to prevent double submit
+    const btn = document.querySelector('[onclick^="saveEdit"]');
+    if (btn) { btn.disabled = true; btn.textContent = "Saving..."; }
+
+    try {
+        const res  = await fetch("/invoices/" + invoiceId + "/edit", {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify(payload),
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            window.location.href = "/invoices/" + data.invoice_id;
+        } else {
+            alert("Error saving changes:\n" + data.error);
+            if (btn) { btn.disabled = false; btn.textContent = "Save Changes"; }
+        }
+    } catch (err) {
+        alert("Network error: " + err.message);
+        if (btn) { btn.disabled = false; btn.textContent = "Save Changes"; }
+    }
+}
+</script>
+{% endblock %}

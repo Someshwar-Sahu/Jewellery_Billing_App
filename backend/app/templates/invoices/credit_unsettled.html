@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block title %}Pending Payments{% endblock %}
+{% block content %}
+
+<!-- Macro for rendering a bills table — reused across all 3 tabs -->
+{% macro render_table(bills, parties, today, show_due_date) %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>Invoice No.</th>
+            <th>Party</th>
+            <th>Bill Date</th>
+            {% if show_due_date is not none %}<th>Due Date</th><th>Days</th>{% endif %}
+            <th>Total</th>
+            <th>Paid</th>
+            <th>Balance Due</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for inv in bills %}
+        {% if show_due_date %}
+            {% set overdue_days = (today - inv.credit_due_date).days if inv.credit_due_date else 0 %}
+        {% endif %}
+        <tr class="{{ 'row-overdue' if show_due_date and overdue_days > 0 else '' }}">
+            <td><a href="/invoices/{{ inv.id }}">{{ inv.invoice_number }}</a></td>
+            <td>{{ parties[inv.party_id].name if inv.party_id in parties else "Walk-in" }}</td>
+            <td>{{ inv.invoice_date }}</td>
+            {% if show_due_date is not none %}
+            <td>{{ inv.credit_due_date or "—" }}</td>
+            <td>
+                {% if show_due_date %}
+                    {% if overdue_days > 0 %}
+                        <span style="color:#dc3545;font-weight:600">{{ overdue_days }}d overdue</span>
+                    {% elif inv.credit_due_date %}
+                        <span style="color:#28a745">{{ overdue_days * -1 }}d left</span>
+                    {% else %}—{% endif %}
+                {% else %}—{% endif %}
+            </td>
+            {% endif %}
+            <td>₹{{ "%.2f"|format(inv.grand_total) }}</td>
+            <td>₹{{ "%.2f"|format(inv.amount_paid) }}</td>
+            <td><strong>₹{{ "%.2f"|format(inv.amount_due) }}</strong></td>
+            <td>
+                <span class="badge badge-{{ inv.payment_status }}">
+                    {{ inv.payment_status | upper }}
+                </span>
+            </td>
+            <td>
+                <button onclick="recordPayment({{ inv.id }}, {{ inv.amount_due }})"
+                        class="btn-primary btn-sm">Record Payment</button>
+                <a href="/invoices/{{ inv.id }}" class="btn-ghost btn-sm">View</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endmacro %}
+
+<div class="page-header">
+    <h1>Pending Payments</h1>
+    <span style="font-size:13px;color:#666">Bills auto-removed when fully paid</span>
+</div>
+
+<!-- Tab bar: Credit Sales | Credit Purchases | Partial Cash -->
+<div class="tab-bar">
+    <button class="tab-btn active" id="tab-credit-sale"
+            onclick="switchTab('credit-sale')">
+        Credit Sales
+        {% if credit_sale_count %}<span class="tab-count">{{ credit_sale_count }}</span>{% endif %}
+    </button>
+    <button class="tab-btn" id="tab-credit-purchase"
+            onclick="switchTab('credit-purchase')">
+        Credit Purchases
+        {% if credit_purchase_count %}<span class="tab-count">{{ credit_purchase_count }}</span>{% endif %}
+    </button>
+    <button class="tab-btn" id="tab-partial"
+            onclick="switchTab('partial')">
+        Partial / Unpaid Cash
+        {% if partial_count %}<span class="tab-count">{{ partial_count }}</span>{% endif %}
+    </button>
+</div>
+
+<!-- Credit Sales tab -->
+<div id="panel-credit-sale" class="tab-panel">
+    {% if not credit_sales %}
+    <div class="empty-state">✅ No pending credit sales.</div>
+    {% else %}
+    {{ render_table(credit_sales, parties, today, True) }}
+    {% endif %}
+</div>
+
+<!-- Credit Purchases tab -->
+<div id="panel-credit-purchase" class="tab-panel" style="display:none">
+    {% if not credit_purchases %}
+    <div class="empty-state">✅ No pending credit purchases.</div>
+    {% else %}
+    {{ render_table(credit_purchases, parties, today, False) }}
+    {% endif %}
+</div>
+
+<!-- Partial / unpaid cash bills tab -->
+<div id="panel-partial" class="tab-panel" style="display:none">
+    {% if not partial_bills %}
+    <div class="empty-state">✅ No partially paid or unpaid cash bills.</div>
+    {% else %}
+    {{ render_table(partial_bills, parties, today, None) }}
+    {% endif %}
+</div>
+
+<!-- Record Payment Modal -->
+<div id="paymentModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+     background:rgba(0,0,0,0.5);z-index:100;align-items:center;justify-content:center;">
+    <div style="background:var(--bg, #fff);border-radius:12px;padding:24px;width:380px;max-width:90%;box-shadow:0 4px 24px rgba(0,0,0,0.15);">
+        <h3 style="margin-bottom:16px;font-size:16px;font-weight:500">Record Payment</h3>
+        <input type="hidden" id="modalInvoiceId">
+        <div class="form-group" style="margin-bottom:12px">
+            <label>Amount (₹)</label>
+            <input type="number" id="payAmount" step="0.01" min="0"
+                   style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:14px">
+        </div>
+        <div class="form-group" style="margin-bottom:12px">
+            <label>Payment Mode</label>
+            <select id="payMode" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:14px">
+                <option value="cash">Cash</option>
+                <option value="upi">UPI</option>
+                <option value="neft">NEFT</option>
+                <option value="rtgs">RTGS</option>
+                <option value="cheque">Cheque</option>
+                <option value="card">Card</option>
+            </select>
+        </div>
+        <div class="form-group" style="margin-bottom:16px">
+            <label>Reference No. (optional)</label>
+            <input type="text" id="payRef" placeholder="UPI txn ID / cheque no."
+                   style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:14px">
+        </div>
+        <div style="display:flex;gap:10px">
+            <button onclick="submitPayment()" class="btn-primary">Save Payment</button>
+            <button onclick="closeModal()" class="btn-ghost">Cancel</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function switchTab(tab) {
+    // Hide all panels, deactivate all buttons
+    document.querySelectorAll(".tab-panel").forEach(p => p.style.display = "none");
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    // Show selected
+    document.getElementById("panel-" + tab).style.display = "block";
+    document.getElementById("tab-" + tab).classList.add("active");
+}
+
+function recordPayment(invoiceId, amountDue) {
+    document.getElementById("modalInvoiceId").value  = invoiceId;
+    document.getElementById("payAmount").value        = amountDue.toFixed(2);
+    document.getElementById("payRef").value           = "";
+    document.getElementById("paymentModal").style.display = "flex";
+}
+
+function closeModal() {
+    document.getElementById("paymentModal").style.display = "none";
+}
+
+async function submitPayment() {
+    const id     = document.getElementById("modalInvoiceId").value;
+    const amount = parseFloat(document.getElementById("payAmount").value);
+    const mode   = document.getElementById("payMode").value;
+    const ref    = document.getElementById("payRef").value;
+
+    if (!amount || amount <= 0) {
+        alert("Please enter a valid amount.");
+        return;
+    }
+
+    const res  = await fetch(`/invoices/${id}/record-payment`, {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ amount, mode, reference_no: ref }),
+    });
+    const data = await res.json();
+
+    if (data.success) {
+        closeModal();
+        location.reload();
+    } else {
+        alert("Error: " + (data.error || "Something went wrong"));
+    }
+}
+</script>
+{% endblock %}

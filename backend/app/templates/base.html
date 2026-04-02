@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Billing App{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav>
+        <a href="/invoices">All Bills</a>
+        <a href="/invoices/create">+ New Bill</a>
+        <a href="/invoices/credit/unsettled">Pending Payments</a>
+        <a href="/invoices/gst/review">GST Review</a>
+        <a href="/invoices/cancelled">Cancelled</a>
+    </nav>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
