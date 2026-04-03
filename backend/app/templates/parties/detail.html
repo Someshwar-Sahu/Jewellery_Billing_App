@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}{{ party.name }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <h1>{{ party.name }}</h1>
+        <small style="color:#888">
+            {% if party.type == 'customer' %}Customer
+            {% elif party.type == 'supplier' %}Supplier
+            {% else %}Customer &amp; Supplier{% endif %}
+            {% if party.city %} · {{ party.city }}{% endif %}
+            {% if party.gstin %} · GSTIN: {{ party.gstin }}{% endif %}
+        </small>
+    </div>
+    <div style="display:flex;gap:8px">
+        <a href="/parties/{{ party.id }}/edit" class="btn-secondary">✏ Edit</a>
+        <a href="/invoices/create" class="btn-primary">+ New Bill</a>
+    </div>
+</div>
+
+<!-- Summary cards -->
+<div class="detail-grid" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:20px">
+    <div class="detail-card">
+        <h3>Contact</h3>
+        {% if party.phone %}<p>📞 {{ party.phone }}</p>{% endif %}
+        {% if party.email %}<p>✉ {{ party.email }}</p>{% endif %}
+        {% if party.address %}<p>{{ party.address }}{% if party.city %}, {{ party.city }}{% endif %}</p>{% endif %}
+        {% if not party.phone and not party.email and not party.address %}
+        <p style="color:#aaa">No contact info</p>
+        {% endif %}
+    </div>
+
+    <div class="detail-card">
+        <h3>Account Summary</h3>
+        <p>Total Bills: <strong>{{ total_bills }}</strong>
+            <small style="color:#888">({{ sale_count }} sales, {{ purchase_count }} purchases)</small></p>
+        <p>Total Billed: <strong>₹{{ "%.2f"|format(total_billed) }}</strong></p>
+        <p>Amount Paid: <strong>₹{{ "%.2f"|format(total_paid) }}</strong></p>
+        <p>Balance Due:
+            <strong style="color:{% if total_due > 0 %}#dc3545{% else %}#28a745{% endif %}">
+                ₹{{ "%.2f"|format(total_due) }}
+            </strong>
+        </p>
+    </div>
+
+    <div class="detail-card">
+        <h3>Credit Settings</h3>
+        {% if party.credit_limit %}
+        <p>Credit Limit: <strong>₹{{ "%.0f"|format(party.credit_limit) }}</strong></p>
+        {% else %}
+        <p style="color:#aaa">No credit limit set</p>
+        {% endif %}
+        {% if party.credit_days %}
+        <p>Credit Days: <strong>{{ party.credit_days }} days</strong></p>
+        {% endif %}
+        {% if party.notes %}
+        <p style="margin-top:8px;font-size:12px;color:#666">📝 {{ party.notes }}</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Pending credit bills for this party -->
+{% if credit_bills %}
+<div style="background:#fff8e1;border:1px solid #ffc107;border-radius:8px;padding:14px;margin-bottom:20px">
+    <strong style="color:#856404">⚠ {{ credit_bills|length }} pending credit bill{{ 's' if credit_bills|length != 1 else '' }}</strong>
+    — Total due: <strong>₹{{ "%.2f"|format(credit_bills|sum(attribute='amount_due')) }}</strong>
+    <a href="/invoices/credit/unsettled" style="margin-left:12px;font-size:12px">View all pending →</a>
+</div>
+{% endif %}
+
+<!-- All bills table -->
+<h2 style="margin-bottom:12px">All Bills</h2>
+{% if not bills %}
+<div class="empty-state">No bills yet for this party.</div>
+{% else %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>Invoice No.</th>
+            <th>Date</th>
+            <th>Type</th>
+            <th>Total</th>
+            <th>Paid</th>
+            <th>Due</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for inv in bills %}
+        <tr class="{{ 'row-overdue' if inv.is_cancelled else '' }}">
+            <td>
+                <a href="/invoices/{{ inv.id }}">{{ inv.invoice_number }}</a>
+                {% if inv.is_cancelled %}
+                <span class="badge badge-overdue" style="margin-left:4px">CANCELLED</span>
+                {% endif %}
+            </td>
+            <td>{{ inv.invoice_date }}</td>
+            <td>{{ inv.invoice_type | upper }}</td>
+            <td>₹{{ "%.2f"|format(inv.grand_total) }}</td>
+            <td>₹{{ "%.2f"|format(inv.amount_paid) }}</td>
+            <td>
+                <strong style="color:{% if inv.amount_due > 0 %}#dc3545{% else %}#28a745{% endif %}">
+                    ₹{{ "%.2f"|format(inv.amount_due) }}
+                </strong>
+            </td>
+            <td>
+                <span class="badge badge-{{ inv.payment_status }}">{{ inv.payment_status | upper }}</span>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+{% endblock %}

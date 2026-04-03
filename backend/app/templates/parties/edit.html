@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ party.name }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Edit — {{ party.name }}</h1>
+    <a href="/parties/{{ party.id }}" class="btn-ghost">← Cancel</a>
+</div>
+
+<form id="editForm" style="background:#fff;padding:24px;border-radius:8px;max-width:700px">
+
+    <!-- Party type is not editable — changing type after bills exist would break ledger logic -->
+    <div class="form-row">
+        <div class="form-group">
+            <label>Party Type (cannot change)</label>
+            <input type="text" value="{{ party.type | upper }}" disabled style="background:#f5f5f5;color:#888">
+        </div>
+        <div class="form-group" style="flex:2">
+            <label>Full Name *</label>
+            <input type="text" name="name" value="{{ party.name }}" required>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Phone</label>
+            <input type="text" name="phone" value="{{ party.phone or '' }}">
+        </div>
+        <div class="form-group">
+            <label>Email</label>
+            <input type="email" name="email" value="{{ party.email or '' }}">
+        </div>
+        <div class="form-group">
+            <label>City</label>
+            <input type="text" name="city" value="{{ party.city or '' }}">
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group" style="flex:2">
+            <label>Address</label>
+            <input type="text" name="address" value="{{ party.address or '' }}">
+        </div>
+        <div class="form-group">
+            <label>State</label>
+            <input type="text" name="state" value="{{ party.state or 'Uttar Pradesh' }}">
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group" style="flex:2">
+            <label>GSTIN</label>
+            <input type="text" name="gstin" id="gstinInput" value="{{ party.gstin or '' }}"
+                   maxlength="15" style="text-transform:uppercase"
+                   oninput="this.value=this.value.toUpperCase();validateGSTIN(this.value)">
+            <small id="gstinMsg" style="font-size:11px;color:#888">
+                {% if party.gstin %}{{ party.gstin }}{% else %}Leave blank if no GST{% endif %}
+            </small>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Credit Limit (₹)</label>
+            <input type="number" name="credit_limit" value="{{ party.credit_limit or '' }}" min="0" step="100">
+        </div>
+        <div class="form-group">
+            <label>Credit Days</label>
+            <input type="number" name="credit_days" value="{{ party.credit_days or '' }}" min="0">
+        </div>
+    </div>
+
+    <div class="form-group" style="margin-bottom:20px">
+        <label>Notes</label>
+        <textarea name="notes" rows="2">{{ party.notes or '' }}</textarea>
+    </div>
+
+    <div class="form-actions">
+        <button type="button" onclick="saveEdit({{ party.id }})" class="btn-primary btn-large">Save Changes</button>
+        <a href="/parties/{{ party.id }}" class="btn-ghost">Cancel</a>
+    </div>
+</form>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function validateGSTIN(val) {
+    const msg = document.getElementById("gstinMsg");
+    if (!val) { msg.textContent = "Leave blank if no GST"; msg.style.color = "#888"; return; }
+    const re = /^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$/;
+    if (val.length === 15 && re.test(val)) {
+        msg.textContent = "✓ Valid GSTIN format"; msg.style.color = "#28a745";
+    } else {
+        msg.textContent = val.length < 15 ? val.length + "/15 characters" : "✗ Invalid format";
+        msg.style.color = val.length < 15 ? "#888" : "#dc3545";
+    }
+}
+
+async function saveEdit(partyId) {
+    const form = document.getElementById("editForm");
+    const name = form.querySelector('[name="name"]').value.trim();
+    if (!name) { alert("Name is required."); return; }
+
+    const payload = {
+        name,
+        phone:        form.querySelector('[name="phone"]').value.trim()   || null,
+        email:        form.querySelector('[name="email"]').value.trim()   || null,
+        address:      form.querySelector('[name="address"]').value.trim() || null,
+        city:         form.querySelector('[name="city"]').value.trim()    || null,
+        state:        form.querySelector('[name="state"]').value.trim()   || null,
+        gstin:        form.querySelector('[name="gstin"]').value.trim()   || null,
+        credit_limit: form.querySelector('[name="credit_limit"]').value   || null,
+        credit_days:  form.querySelector('[name="credit_days"]').value    || null,
+        notes:        form.querySelector('[name="notes"]').value          || null,
+    };
+
+    const res  = await fetch("/parties/" + partyId + "/edit", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.success) {
+        window.location.href = "/parties/" + data.party_id;
+    } else {
+        alert("Error: " + data.error);
+    }
+}
+</script>
+{% endblock %}
