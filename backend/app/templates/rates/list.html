@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Gold Rates{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Gold &amp; Silver Rates</h1>
+    <a href="/rates/create" class="btn-primary">+ Enter Today's Rate</a>
+</div>
+
+{% if not today_rate %}
+<div class="alert alert-warning">
+    ⚠️ Today's rate is not entered yet.
+    <a href="/rates/create">Enter now</a> — bill form will auto-suggest rates once entered.
+</div>
+{% else %}
+<div style="background:#d4edda;border:1px solid #5dca8a;border-radius:8px;padding:14px;margin-bottom:20px;display:flex;gap:32px;flex-wrap:wrap">
+    <div><small style="color:#555">Today — Gold 22K</small><br>
+        <strong style="font-size:18px">₹{{ "%.2f"|format(today_rate.gold_22k_per_gram) }}/g</strong></div>
+    {% if today_rate.gold_18k_per_gram %}
+    <div><small style="color:#555">Gold 18K</small><br>
+        <strong style="font-size:18px">₹{{ "%.2f"|format(today_rate.gold_18k_per_gram) }}/g</strong></div>
+    {% endif %}
+    {% if today_rate.silver_per_gram %}
+    <div><small style="color:#555">Silver</small><br>
+        <strong style="font-size:18px">₹{{ "%.2f"|format(today_rate.silver_per_gram) }}/g</strong></div>
+    {% endif %}
+    <div style="margin-left:auto;align-self:center">
+        <a href="/rates/create" class="btn-secondary btn-sm">Edit Today's Rate</a>
+    </div>
+</div>
+{% endif %}
+
+<!-- Rate history table -->
+<h2 style="margin-bottom:12px">Rate History (Last 30 days)</h2>
+{% if not rates %}
+<div class="empty-state">No rates entered yet.</div>
+{% else %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Gold 22K (₹/g)</th>
+            <th>Gold 18K (₹/g)</th>
+            <th>Silver (₹/g)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for r in rates %}
+        <tr {% if r.rate_date.isoformat() == today %}style="background:#f0fff4"{% endif %}>
+            <td>
+                {{ r.rate_date }}
+                {% if r.rate_date.isoformat() == today %}
+                <span class="badge badge-paid" style="margin-left:6px">TODAY</span>
+                {% endif %}
+            </td>
+            <td>{{ "₹%.2f"|format(r.gold_22k_per_gram) if r.gold_22k_per_gram else "—" }}</td>
+            <td>{{ "₹%.2f"|format(r.gold_18k_per_gram) if r.gold_18k_per_gram else "—" }}</td>
+            <td>{{ "₹%.2f"|format(r.silver_per_gram)   if r.silver_per_gram   else "—" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+{% endblock %}

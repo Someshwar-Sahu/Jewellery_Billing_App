@@ -101,7 +101,10 @@
     <!-- Items section -->
     <div class="section-header">
         <h2>Items</h2>
-        <button type="button" onclick="addItem()" class="btn-secondary">+ Add Item</button>
+        <div style="display:flex;gap:10px;align-items:center">
+            <span id="todayRateHint" style="font-size:12px;color:#888"></span>
+            <button type="button" onclick="addItem()" class="btn-secondary">+ Add Item</button>
+        </div>
     </div>
 
     <table class="items-table" id="itemsTable">
@@ -126,13 +129,13 @@
         <div class="form-row">
             <div class="form-group">
                 <label>Old Gold / Silver Value (₹)</label>
-                <input type="number" name="old_gold_value" id="oldGoldValue"
-                       value="0" min="0" step="0.01" oninput="recalcTotals()">
+                <input type="number" name="old_gold_value" id="oldGoldValue" value="0" min="0" step="0.01"
+                    oninput="recalcTotals()">
             </div>
             <div class="form-group">
                 <label>Discount (₹)</label>
-                <input type="number" name="discount" id="discount"
-                       value="0" min="0" step="0.01" oninput="recalcTotals()">
+                <input type="number" name="discount" id="discount" value="0" min="0" step="0.01"
+                    oninput="recalcTotals()">
             </div>
             <div class="form-group">
                 <label>Payment Mode</label>
@@ -149,9 +152,8 @@
             </div>
             <div class="form-group">
                 <label>Amount Paid (₹)</label>
-                <input type="number" id="amountPaid" value="0" min="0" step="0.01"
-                       oninput="onAmountPaidInput()"
-                       placeholder="Cannot exceed grand total">
+                <input type="number" id="amountPaid" value="0" min="0" step="0.01" oninput="onAmountPaidInput()"
+                    placeholder="Cannot exceed grand total">
                 <small style="color:#888;font-size:11px">Max = grand total</small>
             </div>
         </div>
@@ -186,5 +188,19 @@
 <script src="/static/js/invoice.js"></script>
 <script>
     window.onload = () => addItem();
+    
+    fetch("/rates/today")
+        .then(r => r.json())
+        .then(data => {
+            if (data.found){
+                const hint = document.getElementById("todayRateHint");
+                hint.textContent = `Today: 22K ₹${data.gold_22k}/g` +
+                    (data.gold_18k ? `, 18K ₹${data.gold_18k}/g` : "") +
+                    (data.silver ? `, Silver ₹${data.silver}/g` : "");
+                
+                // Store for auto-fill
+                window.todayRate = data;
+            }
+        });
 </script>
 {% endblock %}

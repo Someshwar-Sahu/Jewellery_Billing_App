@@ -2,3 +2,4 @@ backend/.env
 backend/.env.example
 /backend/app/__pycache__
 /backend/app/models/__pycache__
+*.db

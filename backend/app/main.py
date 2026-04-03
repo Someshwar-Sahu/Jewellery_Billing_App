@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from app.database import create_db_and_tables
 from app.models import *
-from app.routers import invoices, parties
+from app.routers import invoices, parties, rates, old_gold
 import os
 
 app = FastAPI(
@@ -17,6 +17,8 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 # Routers
 app.include_router(invoices.router)
 app.include_router(parties.router)
+app.include_router(rates.router)
+app.include_router(old_gold.router)
 
 @app.on_event("startup")
 def on_startup():
