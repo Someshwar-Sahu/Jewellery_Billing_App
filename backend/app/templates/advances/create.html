@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Record Advance{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Record Advance Payment</h1>
+    <a href="/advances" class="btn-ghost">← Back</a>
+</div>
+
+<div class="alert alert-warning">
+    An advance is money received from a customer <strong>before</strong> the sale bill is created.
+    When you later create a bill for this customer, the available advance will be shown
+    and you can apply it to reduce the amount due.
+</div>
+
+<form id="advanceForm" style="background:#fff;padding:24px;border-radius:8px;max-width:500px">
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Date *</label>
+            <input type="date" name="advance_date" value="{{ today }}" required>
+        </div>
+        <div class="form-group" style="flex:2">
+            <label>Customer *</label>
+            <select name="party_id" required>
+                <option value="">-- Select Customer --</option>
+                {% for p in parties %}
+                <option value="{{ p.id }}">
+                    {{ p.name }}{% if p.phone %} ({{ p.phone }}){% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Amount (₹) *</label>
+            <input type="number" name="amount" step="0.01" min="0"
+                   placeholder="0.00" required>
+        </div>
+        <div class="form-group">
+            <label>Payment Mode *</label>
+            <select name="mode">
+                {% for m in ["cash","upi","cheque","neft","rtgs","card"] %}
+                <option value="{{ m }}">{{ m | upper }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="form-group" style="margin-bottom:20px">
+        <label>Notes</label>
+        <input type="text" name="notes"
+               placeholder="e.g. Advance for gold necklace order">
+    </div>
+
+    <div class="form-actions">
+        <button type="button" onclick="saveAdvance()"
+                class="btn-primary btn-large">Save Advance</button>
+        <a href="/advances" class="btn-ghost">Cancel</a>
+    </div>
+</form>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function saveAdvance() {
+    const form   = document.getElementById("advanceForm");
+    const party  = form.querySelector('[name="party_id"]').value;
+    const amount = form.querySelector('[name="amount"]').value;
+    if (!party)  { alert("Please select a customer."); return; }
+    if (!amount) { alert("Please enter an amount."); return; }
+
+    const payload = {
+        party_id:     party,
+        advance_date: form.querySelector('[name="advance_date"]').value,
+        amount,
+        mode:         form.querySelector('[name="mode"]').value,
+        notes:        form.querySelector('[name="notes"]').value || null,
+    };
+
+    const res  = await fetch("/advances/create", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.success) {
+        window.location.href = "/advances";
+    } else {
+        alert("Error: " + data.error);
+    }
+}
+</script>
+{% endblock %}

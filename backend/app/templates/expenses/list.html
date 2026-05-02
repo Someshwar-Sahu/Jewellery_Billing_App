@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Expenses{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Expenses</h1>
+    <a href="/expenses/create" class="btn-primary">+ Add Expense</a>
+</div>
+
+<!-- Summary strip -->
+<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px">
+    <div class="detail-card" style="flex:1;min-width:160px">
+        <h3>Total Spent</h3>
+        <p style="font-size:20px;font-weight:600">₹{{ "%.2f"|format(total_amount) }}</p>
+    </div>
+    <div class="detail-card" style="flex:1;min-width:160px">
+        <h3>GST Paid</h3>
+        <p style="font-size:20px;font-weight:600">₹{{ "%.2f"|format(total_gst) }}</p>
+    </div>
+    <div class="detail-card" style="flex:1;min-width:160px">
+        <h3>ITC Claimable</h3>
+        <p style="font-size:20px;font-weight:600;color:#28a745">₹{{ "%.2f"|format(total_itc) }}</p>
+        <small style="color:#888;font-size:11px">Input Tax Credit for GST filing</small>
+    </div>
+</div>
+
+<!-- Month filter -->
+<form method="get" action="/expenses"
+      style="display:flex;gap:10px;margin-bottom:20px;align-items:flex-end;flex-wrap:wrap">
+    <div class="form-group">
+        <label>Filter by Month</label>
+        <input type="month" name="month" value="{{ month }}"
+               style="padding:8px 10px;border:1px solid #ccc;border-radius:6px">
+    </div>
+    <button type="submit" class="btn-secondary">Filter</button>
+    {% if month %}
+    <a href="/expenses" class="btn-ghost">Clear</a>
+    {% endif %}
+</form>
+
+{% if not expenses %}
+<div class="empty-state">No expenses found.</div>
+{% else %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Category</th>
+            <th>Description</th>
+            <th>Party</th>
+            <th>Amount (₹)</th>
+            <th>GST (₹)</th>
+            <th>ITC (₹)</th>
+            <th>Mode</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for e in expenses %}
+        <tr>
+            <td>{{ e.expense_date }}</td>
+            <td>
+                {{ categories[e.category_id].name if e.category_id in categories else "—" }}
+                {% if e.category_id in categories and categories[e.category_id].is_itc_eligible %}
+                <span class="badge badge-paid" style="margin-left:4px;font-size:9px">ITC</span>
+                {% endif %}
+            </td>
+            <td>{{ e.description or "—" }}</td>
+            <td>
+                {% if e.party_id and e.party_id in parties %}
+                <a href="/parties/{{ e.party_id }}">{{ parties[e.party_id].name }}</a>
+                {% else %}—{% endif %}
+            </td>
+            <td>₹{{ "%.2f"|format(e.amount) }}</td>
+            <td>{{ "₹%.2f"|format(e.gst_amount) if e.gst_amount else "—" }}</td>
+            <td style="color:#28a745">
+                {{ "₹%.2f"|format(e.itc_claimable) if e.itc_claimable else "—" }}
+            </td>
+            <td>{{ e.payment_mode | upper if e.payment_mode else "—" }}</td>
+            <td>
+                <button onclick="deleteExpense({{ e.id }})"
+                        class="btn-danger btn-sm">Delete</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<p style="color:#888;font-size:12px;margin-top:8px">{{ expenses|length }} expenses</p>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function deleteExpense(id) {
+    if (!confirm("Delete this expense? This cannot be undone.")) return;
+    const res  = await fetch(`/expenses/${id}/delete`, { method: "POST" });
+    const data = await res.json();
+    if (data.success) location.reload();
+    else alert("Error: " + data.error);
+}
+</script>
+{% endblock %}

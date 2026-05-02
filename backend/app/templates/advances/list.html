@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Advances{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Advance Payments</h1>
+    <a href="/advances/create" class="btn-primary">+ Record Advance</a>
+</div>
+
+<div style="display:flex;gap:16px;margin-bottom:20px">
+    <div class="detail-card" style="flex:1;min-width:180px">
+        <h3>Total Open Balance</h3>
+        <p style="font-size:20px;font-weight:600;color:#185FA5">
+            ₹{{ "%.2f"|format(total_open) }}
+        </p>
+        <small style="color:#888;font-size:11px">Across all customers</small>
+    </div>
+</div>
+
+{% if not advances %}
+<div class="empty-state">No advances recorded yet.</div>
+{% else %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Customer</th>
+            <th>Amount (₹)</th>
+            <th>Used (₹)</th>
+            <th>Balance (₹)</th>
+            <th>Mode</th>
+            <th>Status</th>
+            <th>Notes</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for a in advances %}
+        {% set balance = a.amount - a.adjusted_amount %}
+        <tr>
+            <td>{{ a.advance_date }}</td>
+            <td>
+                {% if a.party_id in parties %}
+                <a href="/parties/{{ a.party_id }}">{{ parties[a.party_id].name }}</a>
+                {% else %}—{% endif %}
+            </td>
+            <td>₹{{ "%.2f"|format(a.amount) }}</td>
+            <td>₹{{ "%.2f"|format(a.adjusted_amount) }}</td>
+            <td>
+                <strong style="color:{% if balance > 0 %}#185FA5{% else %}#888{% endif %}">
+                    ₹{{ "%.2f"|format(balance) }}
+                </strong>
+            </td>
+            <td>{{ a.mode | upper }}</td>
+            <td>
+                {% if a.status == "open" %}
+                <span class="badge badge-partial">OPEN</span>
+                {% else %}
+                <span class="badge badge-paid">USED</span>
+                {% endif %}
+            </td>
+            <td style="font-size:12px;color:#888">{{ a.notes or "—" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<p style="color:#888;font-size:12px;margin-top:8px">{{ advances|length }} records</p>
+{% endif %}
+
+{% endblock %}

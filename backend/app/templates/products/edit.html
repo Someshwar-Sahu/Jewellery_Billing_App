@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ product.name }}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Edit — {{ product.name }}</h1>
+    <a href="/products" class="btn-ghost">← Back</a>
+</div>
+
+<form id="editForm" style="background:#fff;padding:24px;border-radius:8px;max-width:600px">
+
+    <div class="form-row">
+        <div class="form-group" style="flex:2">
+            <label>Product Name *</label>
+            <input type="text" name="name" value="{{ product.name }}" required>
+        </div>
+        <div class="form-group">
+            <label>Metal Type</label>
+            <select name="metal_type">
+                {% for m in ["gold","silver","other"] %}
+                <option value="{{ m }}" {{ 'selected' if product.metal_type==m else '' }}>
+                    {{ m | capitalize }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Purity</label>
+            <input type="text" name="purity" value="{{ product.purity or '' }}">
+        </div>
+        <div class="form-group">
+            <label>HSN Code</label>
+            <input type="text" name="hsn_code" value="{{ product.hsn_code }}">
+        </div>
+        <div class="form-group">
+            <label>GST Rate (%)</label>
+            <select name="gst_rate">
+                {% for r in ["3.0","1.5","0","18.0"] %}
+                <option value="{{ r }}"
+                    {{ 'selected' if product.gst_rate|string == r else '' }}>
+                    {{ r }}%
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Making Charge Rate (₹/g)</label>
+            <input type="number" name="making_charge_rate" step="0.01" min="0"
+                   value="{{ product.making_charge_rate or '' }}">
+        </div>
+        <div class="form-group">
+            <label>HUID</label>
+            <input type="text" name="huid" value="{{ product.huid or '' }}">
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group" style="flex:2">
+            <label>Group / Category</label>
+            <select name="group_id">
+                <option value="">-- No Group --</option>
+                {% for g in groups %}
+                <option value="{{ g.id }}"
+                    {{ 'selected' if product.group_id == g.id else '' }}>
+                    {{ g.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Status</label>
+            <select name="is_active">
+                <option value="true"  {{ 'selected' if product.is_active else '' }}>Active</option>
+                <option value="false" {{ 'selected' if not product.is_active else '' }}>Inactive</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="form-group" style="margin-bottom:20px">
+        <label>Description</label>
+        <textarea name="description" rows="2">{{ product.description or '' }}</textarea>
+    </div>
+
+    <div class="form-actions">
+        <button type="button" onclick="saveEdit({{ product.id }})"
+                class="btn-primary btn-large">Save Changes</button>
+        <a href="/products" class="btn-ghost">Cancel</a>
+    </div>
+</form>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function saveEdit(productId) {
+    const form = document.getElementById("editForm");
+    const name = form.querySelector('[name="name"]').value.trim();
+    if (!name) { alert("Name is required."); return; }
+
+    const payload = {
+        name,
+        metal_type:         form.querySelector('[name="metal_type"]').value,
+        purity:             form.querySelector('[name="purity"]').value             || null,
+        hsn_code:           form.querySelector('[name="hsn_code"]').value           || "7113",
+        gst_rate:           form.querySelector('[name="gst_rate"]').value,
+        making_charge_rate: form.querySelector('[name="making_charge_rate"]').value || null,
+        huid:               form.querySelector('[name="huid"]').value               || null,
+        group_id:           form.querySelector('[name="group_id"]').value           || null,
+        description:        form.querySelector('[name="description"]').value        || null,
+        is_active:          form.querySelector('[name="is_active"]').value === "true",
+    };
+
+    const res  = await fetch("/products/" + productId + "/edit", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.success) {
+        window.location.href = "/products";
+    } else {
+        alert("Error: " + data.error);
+    }
+}
+</script>
+{% endblock %}

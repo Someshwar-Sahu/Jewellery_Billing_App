@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Products{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Product Catalogue</h1>
+    <a href="/products/create" class="btn-primary">+ Add Product</a>
+</div>
+
+<p style="color:#888;font-size:13px;margin-bottom:16px">
+    Products added here appear as autocomplete suggestions in the bill form.
+    Selecting a product auto-fills purity, GST rate, and making charges.
+</p>
+
+{% if not products %}
+<div class="empty-state">
+    No products yet. <a href="/products/create">Add your first product.</a>
+</div>
+{% else %}
+
+<!-- Group by metal type -->
+{% set gold_products = products | selectattr("metal_type","equalto","gold") | list %}
+{% set silver_products = products | selectattr("metal_type","equalto","silver") | list %}
+{% set other_products = products | rejectattr("metal_type","equalto","gold")
+| rejectattr("metal_type","equalto","silver") | list %}
+
+{% for group_name, group_products in [("Gold Items", gold_products),
+("Silver Items", silver_products),
+("Other Items", other_products)] %}
+{% if group_products %}
+<h2 style="margin:20px 0 10px">{{ group_name }}</h2>
+<table class="table" style="margin-bottom:16px">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Purity</th>
+            <th>HSN</th>
+            <th>GST %</th>
+            <th>Making Rate (₹/g)</th>
+            <th>HUID</th>
+            <th>Stock (g)</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for p in group_products %}
+        <tr style="{{ 'opacity:0.5' if not p.is_active else '' }}">
+            <td><strong>{{ p.name }}</strong>
+                {% if p.description %}
+                <br><small style="color:#888">{{ p.description }}</small>
+                {% endif %}
+            </td>
+            <td>{{ p.purity or "—" }}</td>
+            <td>{{ p.hsn_code }}</td>
+            <td>{{ p.gst_rate }}%</td>
+            <td>{{ "₹%.2f"|format(p.making_charge_rate) if p.making_charge_rate else "—" }}</td>
+            <td style="font-size:11px">{{ p.huid or "—" }}</td>
+            <td>
+                {% if p.current_stock is not none %}
+                <span
+                    style="color:{% if p.low_stock_alert and p.current_stock <= p.low_stock_alert %}#dc3545{% else %}#333{% endif %}">
+                    {{ p.current_stock }}g
+                </span>
+                {% else %}—{% endif %}
+            </td>
+            <td>
+                {% if p.is_active %}
+                <span class="badge badge-paid">ACTIVE</span>
+                {% else %}
+                <span class="badge badge-overdue">INACTIVE</span>
+                {% endif %}
+            </td>
+            <td>
+                <a href="/stock/{{ p.id }}" class="btn-ghost btn-sm">Stock</a>
+                <a href="/products/{{ p.id }}/edit" class="btn-ghost btn-sm">Edit</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+{% endfor %}
+
+<p style="color:#888;font-size:12px">{{ products|length }} products total</p>
+{% endif %}
+
+{% endblock %}

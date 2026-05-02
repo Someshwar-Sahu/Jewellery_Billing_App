@@ -232,6 +232,12 @@
         const mode = document.getElementById('payMode').value;
         const ref = document.getElementById('payRef').value;
         if (!amount || amount <= 0) { alert('Enter a valid amount'); return; }
+        const maxPayable = parseFloat(document.getElementById('payAmount').max) || 0;
+        if (maxPayable > 0 && amount > maxPayable) {
+            alert('Amount cannot exceed balance due (₹' + maxPayable.toFixed(2) + ')');
+            document.getElementById('payAmount').value = maxPayable.toFixed(2);
+            return;
+        }
         const res = await fetch(`/invoices/${id}/record-payment`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

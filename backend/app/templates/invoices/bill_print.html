@@ -1,82 +1,25 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <meta charset="UTF-8">
     <title>{{ invoice.invoice_number }}</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 12px;
-            margin: 20px;
-        }
-
-        .shop-header {
-            text-align: center;
-            border-bottom: 2px solid #000;
-            padding-bottom: 8px;
-            margin-bottom: 10px;
-        }
-
-        .shop-name {
-            font-size: 20px;
-            font-weight: bold;
-        }
-
-        .bill-meta {
-            display: flex;
-            justify-content: space-between;
-            margin: 10px 0;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 10px 0;
-        }
-
-        th,
-        td {
-            border: 1px solid #ccc;
-            padding: 5px 8px;
-            text-align: left;
-        }
-
-        th {
-            background: #f5f5f5;
-            font-weight: bold;
-        }
-
-        .totals {
-            float: right;
-            width: 300px;
-            margin-top: 10px;
-        }
-
-        .totals table td {
-            border: none;
-        }
-
-        .grand-total {
-            font-weight: bold;
-            font-size: 14px;
-            border-top: 2px solid #000;
-        }
-
-        .footer {
-            margin-top: 30px;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        @media print {
-            .no-print {
-                display: none;
-            }
-        }
+        body { font-family: Arial, sans-serif; font-size: 12px; margin: 20px; }
+        .shop-header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px; }
+        .shop-name   { font-size: 20px; font-weight: bold; }
+        .bill-meta   { display: flex; justify-content: space-between; margin: 10px 0; }
+        table        { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        th, td       { border: 1px solid #ccc; padding: 5px 8px; text-align: left; }
+        th           { background: #f5f5f5; font-weight: bold; }
+        .totals      { float: right; width: 300px; margin-top: 10px; }
+        .totals table td   { border: none; }
+        .grand-total { font-weight: bold; font-size: 14px; border-top: 2px solid #000 !important; }
+        .footer      { margin-top: 30px; display: flex; justify-content: space-between; }
+        .old-gold-section { margin: 8px 0; padding: 8px; background: #fffbe6; border: 1px solid #ffe082; border-radius: 4px; }
+        .old-gold-section h4 { margin: 0 0 6px 0; font-size: 12px; color: #555; }
+        @media print { .no-print { display: none; } }
     </style>
 </head>
-
 <body>
 
     <button class="no-print" onclick="window.print()" style="margin-bottom:10px">🖨 Print</button>
@@ -95,7 +38,6 @@
     </div>
 
     <div class="bill-meta">
-        <!-- REPLACE the "Bill To" div with: -->
         <div>
             <strong>Bill To:</strong><br>
             {% if party %}
@@ -117,6 +59,7 @@
         </div>
     </div>
 
+    <!-- Items table -->
     <table>
         <thead>
             <tr>
@@ -128,8 +71,9 @@
                 <th>Rate/g</th>
                 <th>Amount</th>
                 <th>Making</th>
-                <th>CGST 1.5%</th>
-                <th>SGST 1.5%</th>
+                <!-- FIX 14: removed hardcoded "1.5%" — rate varies per item -->
+                <th>CGST</th>
+                <th>SGST</th>
                 <th>Total</th>
             </tr>
         </thead>
@@ -152,54 +96,61 @@
         </tbody>
     </table>
 
+    <!-- FIX 13: Old Gold Received section — shown when bill had old gold exchange
+         Always shows the deduction value. Shows weight/purity/rate when detailed (Mode B). -->
+    {% if invoice.old_gold_value > 0 %}
+    <div class="old-gold-section">
+        <h4>Old Gold / Silver Received (Deducted from Bill)</h4>
+        {% if old_gold and old_gold.weight_grams and old_gold.weight_grams > 0 %}
+        <table style="margin:0">
+            <thead>
+                <tr>
+                    <th>Metal</th>
+                    <th>Purity</th>
+                    <th>Weight (g)</th>
+                    <th>Rate/g (₹)</th>
+                    <th>Value (₹)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>{{ old_gold.metal_type | upper }}</td>
+                    <td>{{ old_gold.purity or "—" }}</td>
+                    <td>{{ old_gold.weight_grams }}</td>
+                    <td>{{ "%.2f" | format(old_gold.rate_per_gram) }}</td>
+                    <td><strong>{{ "%.2f" | format(old_gold.total_value) }}</strong></td>
+                </tr>
+            </tbody>
+        </table>
+        {% else %}
+        {# Mode A — value only, no weight/rate details #}
+        <p style="margin:0">Value deducted: <strong>₹{{ "%.2f" | format(invoice.old_gold_value) }}</strong></p>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Totals -->
     <div class="totals">
         <table>
-            <tr>
-                <td>Subtotal</td>
-                <td>₹{{ "%.2f" | format(invoice.subtotal) }}</td>
-            </tr>
-            <tr>
-                <td>CGST (1.5%)</td>
-                <td>₹{{ "%.2f" | format(invoice.total_cgst) }}</td>
-            </tr>
-            <tr>
-                <td>SGST (1.5%)</td>
-                <td>₹{{ "%.2f" | format(invoice.total_sgst) }}</td>
-            </tr>
+            <tr><td>Subtotal</td><td>₹{{ "%.2f" | format(invoice.subtotal) }}</td></tr>
+            <tr><td>CGST</td><td>₹{{ "%.2f" | format(invoice.total_cgst) }}</td></tr>
+            <tr><td>SGST</td><td>₹{{ "%.2f" | format(invoice.total_sgst) }}</td></tr>
             {% if invoice.total_making_charges %}
-            <tr>
-                <td>Making Charges</td>
-                <td>₹{{ "%.2f" | format(invoice.total_making_charges) }}</td>
-            </tr>
-            <tr>
-                <td>Making GST</td>
-                <td>₹{{ "%.2f" | format(invoice.making_cgst + invoice.making_sgst) }}</td>
-            </tr>
+            <tr><td>Making Charges</td><td>₹{{ "%.2f" | format(invoice.total_making_charges) }}</td></tr>
+            <tr><td>Making GST (18%)</td><td>₹{{ "%.2f" | format(invoice.making_cgst + invoice.making_sgst) }}</td></tr>
             {% endif %}
-            {% if invoice.old_gold_value %}<tr>
-                <td>Old Gold</td>
-                <td>-₹{{ "%.2f" | format(invoice.old_gold_value) }}</td>
-            </tr>{% endif %}
-            {% if invoice.discount %}<tr>
-                <td>Discount</td>
-                <td>-₹{{ "%.2f" | format(invoice.discount) }}</td>
-            </tr>{% endif %}
-            {% if invoice.round_off %}<tr>
-                <td>Round Off</td>
-                <td>₹{{ "%.2f" | format(invoice.round_off) }}</td>
-            </tr>{% endif %}
-            <tr class="grand-total">
-                <td>Grand Total</td>
-                <td>₹{{ "%.2f" | format(invoice.grand_total) }}</td>
-            </tr>
-            <tr>
-                <td>Amount Paid</td>
-                <td>₹{{ "%.2f" | format(invoice.amount_paid) }}</td>
-            </tr>
-            <tr>
-                <td><strong>Balance Due</strong></td>
-                <td><strong>₹{{ "%.2f" | format(invoice.amount_due) }}</strong></td>
-            </tr>
+            {% if invoice.old_gold_value %}
+            <tr><td>Old Gold Deduction</td><td>-₹{{ "%.2f" | format(invoice.old_gold_value) }}</td></tr>
+            {% endif %}
+            {% if invoice.discount %}
+            <tr><td>Discount</td><td>-₹{{ "%.2f" | format(invoice.discount) }}</td></tr>
+            {% endif %}
+            {% if invoice.round_off %}
+            <tr><td>Round Off</td><td>₹{{ "%.2f" | format(invoice.round_off) }}</td></tr>
+            {% endif %}
+            <tr class="grand-total"><td>Grand Total</td><td>₹{{ "%.2f" | format(invoice.grand_total) }}</td></tr>
+            <tr><td>Amount Paid</td><td>₹{{ "%.2f" | format(invoice.amount_paid) }}</td></tr>
+            <tr><td><strong>Balance Due</strong></td><td><strong>₹{{ "%.2f" | format(invoice.amount_due) }}</strong></td></tr>
         </table>
     </div>
 
@@ -207,8 +158,10 @@
 
     <div class="footer">
         <div>
-            <strong>Payment Status:</strong>
-            {{ invoice.payment_status | upper }}
+            <strong>Payment Status:</strong> {{ invoice.payment_status | upper }}
+            {% if invoice.place_of_supply %}
+            <br><span style="font-size:11px;color:#888">Place of Supply: {{ invoice.place_of_supply }}</span>
+            {% endif %}
         </div>
         <div style="text-align:right">
             <br><br>
@@ -217,5 +170,4 @@
     </div>
 
 </body>
-
 </html>

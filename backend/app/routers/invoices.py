@@ -4,7 +4,8 @@ from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 from app.database import get_session
 from app.models.invoices import Invoice, InvoiceItem, InvoiceEditLog, InvoiceVersion
-from app.models.parties import Party
+from app.models.parties import Party, OldGoldExchange
+from app.models.payments import Advance
 from app.models.inventory import GoldRate
 from app.services.invoice_service import (
     create_invoice, cancel_invoice, recover_invoice,
@@ -111,10 +112,20 @@ async def create_bill_submit(request: Request, session: Session = Depends(get_se
                 return JSONResponse(status_code=400, content={
                     "success": False, "error": "Customer name is required"
                 })
-            walkin_party = Party(type="customer", name=walkin_name, phone=walkin_phone)
-            session.add(walkin_party)
-            session.flush()
-            party_id = walkin_party.id
+            # FIX 12: Walk-in deduplication — reuse existing party if phone matches
+            existing_party = None
+            if walkin_phone:
+                existing_party = session.exec(
+                    select(Party).where(Party.phone == walkin_phone)
+                ).first()
+
+            if existing_party:
+                party_id = existing_party.id
+            else:
+                walkin_party = Party(type="customer", name=walkin_name, phone=walkin_phone or None)
+                session.add(walkin_party)
+                session.flush()
+                party_id = walkin_party.id
         else:
             party_id = int(party_id)
 
@@ -130,6 +141,7 @@ async def create_bill_submit(request: Request, session: Session = Depends(get_se
                 huid           = item.get("huid")        or None,
                 hsn_code       = item.get("hsn_code")    or "7113",
                 description    = item.get("description") or None,
+                product_id     = int(item["product_id"]) if item.get("product_id") else None,
             ))
 
         invoice_data = InvoiceCreate(
@@ -151,6 +163,29 @@ async def create_bill_submit(request: Request, session: Session = Depends(get_se
         )
 
         invoice = create_invoice(session, invoice_data)
+
+        # FIX 6: advance_used is the actual advance portion applied, sent separately
+        advance_used = float(data.get("advance_used", 0))
+        if advance_used > 0 and party_id:
+            open_advances = session.exec(
+                select(Advance)
+                .where(Advance.party_id == party_id)
+                .where(Advance.status == "open")
+                .order_by(Advance.advance_date)
+            ).all()
+            remaining = advance_used
+            for adv in open_advances:
+                if remaining <= 0.0:   # FIX 3: was < 0.0
+                    break
+                available = adv.amount - adv.adjusted_amount
+                use       = min(available, remaining)
+                adv.adjusted_amount = round(adv.adjusted_amount + use, 2)
+                if adv.adjusted_amount >= adv.amount:
+                    adv.status = "used"
+                session.add(adv)
+                remaining = round(remaining - use, 2)
+            session.commit()
+
         return {"success": True, "invoice_id": invoice.id, "invoice_number": invoice.invoice_number}
 
     except HTTPException as e:
@@ -206,7 +241,6 @@ def invoice_detail(invoice_id: int, request: Request, session: Session = Depends
         .order_by(InvoiceItem.sort_order)
     ).all()
     party     = session.get(Party, invoice.party_id) if invoice.party_id else None
-    # Pass edit logs so detail page can show history
     edit_logs = session.exec(
         select(InvoiceEditLog)
         .where(InvoiceEditLog.invoice_id == invoice_id)
@@ -219,7 +253,7 @@ def invoice_detail(invoice_id: int, request: Request, session: Session = Depends
             "items":     items,
             "party":     party,
             "edit_logs": edit_logs,
-            "today":     date.today(),   # FIX: was missing, needed for due date comparison
+            "today":     date.today(),
         }
     )
 
@@ -235,7 +269,7 @@ def edit_bill_form(invoice_id: int, request: Request, session: Session = Depends
         raise HTTPException(status_code=400, detail="Bill is cancelled")
     items_orm = session.exec(select(InvoiceItem).where(InvoiceItem.invoice_id == invoice_id)).all()
     party     = session.get(Party, invoice.party_id) if invoice.party_id else None
-    # Convert ORM objects to plain dicts for tojson serialization
+    # FIX 9: include huid in items dict so edit.html can prefill and preserve it
     items = [
         {
             "item_name":      i.item_name,
@@ -256,7 +290,7 @@ def edit_bill_form(invoice_id: int, request: Request, session: Session = Depends
     )
 
 
-@router.post("/{invoice_id}/edit")   # FIX: was PUT, JS submits POST
+@router.post("/{invoice_id}/edit")
 async def edit_bill_submit(invoice_id: int, request: Request, session: Session = Depends(get_session)):
     data = await request.json()
     try:
@@ -268,9 +302,9 @@ async def edit_bill_submit(invoice_id: int, request: Request, session: Session =
                 rate_per_gram  = float(item["rate_per_gram"])  if item.get("rate_per_gram")  else None,
                 making_charges = float(item["making_charges"]) if item.get("making_charges") else None,
                 gst_rate       = float(item.get("gst_rate", 3.0)),
-                purity         = item.get("purity") or None,
-                huid           = item.get("huid")   or None,
-                hsn_code       = item.get("hsn_code") or "7113",
+                purity         = item.get("purity")      or None,
+                huid           = item.get("huid")        or None,   # FIX 9: was missing
+                hsn_code       = item.get("hsn_code")    or "7113",
                 description    = item.get("description") or None,
             ))
 
@@ -285,7 +319,7 @@ async def edit_bill_submit(invoice_id: int, request: Request, session: Session =
             items           = items if len(items) > 0 else None,
         )
         invoice = update_invoice(session, invoice_id, update_data)
-        return {"success": True, "invoice_id": invoice.id}   # FIX: was "invoice" key
+        return {"success": True, "invoice_id": invoice.id}
 
     except HTTPException as e:
         return JSONResponse(status_code=e.status_code, content={"success": False, "error": e.detail})
@@ -301,14 +335,26 @@ def print_bill(invoice_id: int, request: Request, session: Session = Depends(get
     if not invoice:
         raise HTTPException(status_code=404, detail="Bill not found")
     items = session.exec(
-        select(InvoiceItem).where(InvoiceItem.invoice_id == invoice_id).order_by(InvoiceItem.sort_order)
+        select(InvoiceItem)
+        .where(InvoiceItem.invoice_id == invoice_id)
+        .order_by(InvoiceItem.sort_order)
     ).all()
     party = session.get(Party, invoice.party_id) if invoice.party_id else None
     from app.models.shop import ShopSettings
-    shop  = session.exec(select(ShopSettings)).first()
+    shop      = session.exec(select(ShopSettings)).first()
+    # FIX 13: query OldGoldExchange for this bill so print can show old gold detail section
+    old_gold  = session.exec(
+        select(OldGoldExchange).where(OldGoldExchange.sale_invoice_id == invoice_id)
+    ).first()
     return templates.TemplateResponse(
         request=request, name="invoices/bill_print.html",
-        context={"invoice": invoice, "items": items, "party": party, "shop": shop}
+        context={
+            "invoice":  invoice,
+            "items":    items,
+            "party":    party,
+            "shop":     shop,
+            "old_gold": old_gold,   # FIX 13: passed to template for detailed old gold section
+        }
     )
 
 
@@ -325,13 +371,16 @@ async def record_credit_payment(invoice_id: int, request: Request, session: Sess
     mode         = data.get("mode", "cash")
     reference_no = data.get("reference_no", "")
 
+    # FIX 15: give clear feedback when bill is already fully paid
     max_payable = round(invoice.grand_total - invoice.amount_paid, 2)
+    if max_payable <= 0:
+        return JSONResponse(status_code=400, content={
+            "success": False, "error": "Bill is already fully paid."
+        })
     if paid_now > max_payable:
         paid_now = max_payable
 
     from app.models.payments import CreditPayment
-    # party_id on CreditPayment is required — use 0 sentinel if walk-in has no party
-    # In practice walk-in always creates a Party record so this is a safety guard
     if invoice.party_id:
         session.add(CreditPayment(
             invoice_id   = invoice_id,
@@ -343,7 +392,7 @@ async def record_credit_payment(invoice_id: int, request: Request, session: Sess
         ))
 
     invoice.amount_paid    = round(invoice.amount_paid + paid_now, 2)
-    invoice.amount_due     = round(invoice.grand_total - invoice.amount_paid, 2)
+    invoice.amount_due     = max(0.0, round(invoice.grand_total - invoice.amount_paid, 2))
     invoice.payment_status = (
         "paid"    if invoice.amount_paid >= invoice.grand_total else
         "partial" if invoice.amount_paid > 0 else
@@ -382,7 +431,7 @@ def credit_note_form(invoice_id: int, request: Request, session: Session = Depen
     )
 
 
-@router.post("/{invoice_id}/credit-note")   # FIX: was PUT, now POST to match JS
+@router.post("/{invoice_id}/credit-note")
 async def credit_note_submit(invoice_id: int, request: Request, session: Session = Depends(get_session)):
     data = await request.json()
     try:
@@ -429,7 +478,7 @@ def mark_gst_ready(invoice_id: int, session: Session = Depends(get_session)):
     invoice = session.get(Invoice, invoice_id)
     if not invoice:
         raise HTTPException(status_code=404, detail="Bill not found")
-    invoice.gst_status = "gst_ready"   # FIX: was "ready" — must be "gst_ready"
+    invoice.gst_status = "gst_ready"
     session.add(invoice)
     session.commit()
     return {"success": True, "gst_status": invoice.gst_status}

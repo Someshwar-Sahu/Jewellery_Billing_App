@@ -11,7 +11,6 @@
 <h1>New Bill</h1>
 <form id="billForm">
 
-    <!-- Row 1: Bill type first — drives everything else -->
     <div class="form-row">
         <div class="form-group">
             <label>Bill Type</label>
@@ -33,7 +32,6 @@
         </div>
     </div>
 
-    <!-- Party section — changes based on bill type -->
     <!-- SALE: registered customer OR walk-in -->
     <div id="salePartySection">
         <div class="form-row">
@@ -48,7 +46,7 @@
         <div class="form-row" id="partySelectRow">
             <div class="form-group" style="min-width:300px">
                 <label>Select Customer</label>
-                <select id="partyIdSelect">
+                <select id="partyIdSelect" onchange="checkAdvance()">
                     <option value="">-- Select Customer --</option>
                     {% for p in parties %}
                     {% if p.type in ['customer', 'both'] %}
@@ -56,6 +54,14 @@
                     {% endif %}
                     {% endfor %}
                 </select>
+            </div>
+        </div>
+        <div id="advanceHint" style="display:none;margin-bottom:12px">
+            <div style="background:#e6f1fb;border:1px solid #85b7eb;border-radius:6px;
+                padding:10px 14px;font-size:13px;display:flex;align-items:center;gap:12px">
+                <span>💰 This customer has <strong id="advanceAmount">₹0</strong>
+                    available advance balance.</span>
+                <button type="button" onclick="applyAdvance()" class="btn-secondary btn-sm">Apply to Bill</button>
             </div>
         </div>
         <div class="form-row" id="walkinRow" style="display:none">
@@ -70,7 +76,7 @@
         </div>
     </div>
 
-    <!-- PURCHASE: always a registered supplier — no walk-in for purchases -->
+    <!-- PURCHASE: registered supplier only -->
     <div id="purchasePartySection" style="display:none">
         <div class="form-row">
             <div class="form-group" style="min-width:300px">
@@ -90,7 +96,7 @@
         </div>
     </div>
 
-    <!-- Credit due date — shown only when Payment Type = Credit -->
+    <!-- Credit due date -->
     <div class="form-row" id="creditDateRow" style="display:none">
         <div class="form-group">
             <label>Due Date *</label>
@@ -98,7 +104,7 @@
         </div>
     </div>
 
-    <!-- Items section -->
+    <!-- Items -->
     <div class="section-header">
         <h2>Items</h2>
         <div style="display:flex;gap:10px;align-items:center">
@@ -132,6 +138,45 @@
                 <input type="number" name="old_gold_value" id="oldGoldValue" value="0" min="0" step="0.01"
                     oninput="recalcTotals()">
             </div>
+            <div class="form-group" style="align-self:flex-end">
+                <!-- FIX 7: checkbox toggles detail fields -->
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:normal">
+                    <input type="checkbox" id="oldGoldDetailed" onchange="toggleOldGoldDetails()"
+                           style="width:auto;margin:0">
+                    Add weight / purity details
+                </label>
+                <small style="color:#888;font-size:11px">
+                    Check to record in Old Gold Register
+                </small>
+            </div>
+        </div>
+
+        <!-- FIX 7: old gold detail fields — hidden by default (Mode A), shown when checkbox checked (Mode B) -->
+        <div class="form-row" id="oldGoldDetailFields" style="display:none;flex-wrap:wrap;gap:12px">
+            <div class="form-group">
+                <label>Metal Type</label>
+                <select name="old_gold_metal_type">
+                    <option value="gold">Gold</option>
+                    <option value="silver">Silver</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Purity</label>
+                <input type="text" name="old_gold_purity" placeholder="e.g. 22K, 18K">
+            </div>
+            <div class="form-group">
+                <label>Weight (g)</label>
+                <input type="number" name="old_gold_weight" step="0.001" min="0" placeholder="0.000"
+                       oninput="calcOldGoldValue()">
+            </div>
+            <div class="form-group">
+                <label>Rate/gram (₹)</label>
+                <input type="number" name="old_gold_rate" step="0.01" min="0" placeholder="0.00"
+                       oninput="calcOldGoldValue()">
+            </div>
+        </div>
+
+        <div class="form-row">
             <div class="form-group">
                 <label>Discount (₹)</label>
                 <input type="number" name="discount" id="discount" value="0" min="0" step="0.01"
@@ -188,17 +233,15 @@
 <script src="/static/js/invoice.js"></script>
 <script>
     window.onload = () => addItem();
-    
+
     fetch("/rates/today")
         .then(r => r.json())
         .then(data => {
-            if (data.found){
+            if (data.found) {
                 const hint = document.getElementById("todayRateHint");
                 hint.textContent = `Today: 22K ₹${data.gold_22k}/g` +
                     (data.gold_18k ? `, 18K ₹${data.gold_18k}/g` : "") +
-                    (data.silver ? `, Silver ₹${data.silver}/g` : "");
-                
-                // Store for auto-fill
+                    (data.silver   ? `, Silver ₹${data.silver}/g` : "");
                 window.todayRate = data;
             }
         });

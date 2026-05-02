@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}Add Expense{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Add Expense</h1>
+    <a href="/expenses" class="btn-ghost">← Back</a>
+</div>
+
+<form id="expenseForm" style="background:#fff;padding:24px;border-radius:8px;max-width:600px">
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Date *</label>
+            <input type="date" name="expense_date" value="{{ today }}" required>
+        </div>
+        <div class="form-group" style="flex:2">
+            <label>Category *</label>
+            <div style="display:flex;gap:8px">
+                <select name="category_id" id="categorySelect" required style="flex:1"
+                        onchange="checkITC()">
+                    <option value="">-- Select Category --</option>
+                    {% for c in categories %}
+                    <option value="{{ c.id }}"
+                            data-itc="{{ 'true' if c.is_itc_eligible else 'false' }}">
+                        {{ c.name }}
+                        {% if c.is_itc_eligible %} (ITC eligible){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+                <button type="button" onclick="addCategory()"
+                        class="btn-secondary btn-sm">+ New</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group" style="flex:2">
+            <label>Description</label>
+            <input type="text" name="description"
+                   placeholder="e.g. Monthly shop rent, Electricity bill May">
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Amount (₹) *</label>
+            <input type="number" name="amount" step="0.01" min="0"
+                   placeholder="0.00" oninput="calcITC()" required>
+        </div>
+        <div class="form-group">
+            <label>GST Amount (₹)</label>
+            <input type="number" name="gst_amount" id="gstAmount"
+                   step="0.01" min="0" placeholder="0.00" oninput="calcITC()">
+        </div>
+        <div class="form-group">
+            <label>ITC Claimable (₹)</label>
+            <input type="number" id="itcDisplay" step="0.01" disabled
+                   style="background:#f0fff4;color:#155724;font-weight:600"
+                   placeholder="Auto-calculated">
+            <small id="itcNote" style="font-size:11px;color:#888">
+                Select an ITC-eligible category to enable
+            </small>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label>Payment Mode</label>
+            <select name="payment_mode">
+                <option value="">-- Select --</option>
+                {% for m in ["cash","upi","cheque","neft","rtgs","card"] %}
+                <option value="{{ m }}">{{ m | upper }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Reference No.</label>
+            <input type="text" name="reference_no"
+                   placeholder="Cheque no. / UPI txn ID">
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group" style="flex:2">
+            <label>Paid To (Supplier)</label>
+            <select name="party_id">
+                <option value="">-- Optional --</option>
+                {% for p in parties %}
+                <option value="{{ p.id }}">{{ p.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <button type="button" onclick="saveExpense()"
+                class="btn-primary btn-large">Save Expense</button>
+        <a href="/expenses" class="btn-ghost">Cancel</a>
+    </div>
+</form>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function checkITC() {
+    calcITC();
+}
+
+function calcITC() {
+    const sel      = document.getElementById("categorySelect");
+    const selOpt   = sel.options[sel.selectedIndex];
+    const isITC    = selOpt && selOpt.dataset.itc === "true";
+    const gst      = parseFloat(document.getElementById("gstAmount").value) || 0;
+    const itcDisp  = document.getElementById("itcDisplay");
+    const itcNote  = document.getElementById("itcNote");
+
+    if (isITC && gst > 0) {
+        itcDisp.value         = gst.toFixed(2);
+        itcNote.textContent   = "✓ Full GST amount claimable as ITC";
+        itcNote.style.color   = "#28a745";
+    } else if (isITC) {
+        itcDisp.value         = "";
+        itcNote.textContent   = "Enter GST amount above to calculate ITC";
+        itcNote.style.color   = "#888";
+    } else {
+        itcDisp.value         = "";
+        itcNote.textContent   = "This category is not ITC eligible";
+        itcNote.style.color   = "#888";
+    }
+}
+
+async function addCategory() {
+    const name = prompt("New category name (e.g. Rent, Electricity, Labour):");
+    if (!name) return;
+    const itcStr  = prompt("Is this ITC eligible? (yes/no):");
+    const is_itc  = itcStr && itcStr.toLowerCase().startsWith("y");
+
+    const res  = await fetch("/expenses/categories/create", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({name, is_itc_eligible: is_itc}),
+    });
+    const data = await res.json();
+    if (data.success) {
+        const sel = document.getElementById("categorySelect");
+        const opt = document.createElement("option");
+        opt.value          = data.category_id;
+        opt.text           = data.name + (is_itc ? " (ITC eligible)" : "");
+        opt.dataset.itc    = is_itc ? "true" : "false";
+        opt.selected       = true;
+        sel.appendChild(opt);
+        calcITC();
+    }
+}
+
+async function saveExpense() {
+    const form   = document.getElementById("expenseForm");
+    const cat    = form.querySelector('[name="category_id"]').value;
+    const amount = form.querySelector('[name="amount"]').value;
+    if (!cat)    { alert("Please select a category."); return; }
+    if (!amount) { alert("Please enter an amount."); return; }
+
+    const payload = {
+        expense_date: form.querySelector('[name="expense_date"]').value,
+        category_id:  cat,
+        description:  form.querySelector('[name="description"]').value  || null,
+        amount:       amount,
+        gst_amount:   form.querySelector('[name="gst_amount"]').value   || 0,
+        payment_mode: form.querySelector('[name="payment_mode"]').value || null,
+        reference_no: form.querySelector('[name="reference_no"]').value || null,
+        party_id:     form.querySelector('[name="party_id"]').value     || null,
+    };
+
+    const res  = await fetch("/expenses/create", {
+        method: "POST", headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.success) {
+        window.location.href = "/expenses";
+    } else {
+        alert("Error: " + data.error);
+    }
+}
+</script>
+{% endblock %}

@@ -1,12 +1,9 @@
 let itemCount = 0;
 
 // ── BILL TYPE CHANGE ──────────────────────────────────────────────────────────
-// When bill type switches between Sale and Purchase, the party section changes.
-// Sale → show customer section (registered or walk-in)
-// Purchase → show supplier section only (no walk-in for purchases)
 
 function onBillTypeChange() {
-    const type = document.getElementById("invoiceType").value;
+    const type            = document.getElementById("invoiceType").value;
     const saleSection     = document.getElementById("salePartySection");
     const purchaseSection = document.getElementById("purchasePartySection");
 
@@ -19,7 +16,7 @@ function onBillTypeChange() {
     }
 }
 
-// ── WALK-IN TOGGLE (sale only) ────────────────────────────────────────────────
+// ── WALK-IN TOGGLE ────────────────────────────────────────────────────────────
 
 function togglePartyMode() {
     const mode        = document.getElementById("partyMode").value;
@@ -45,42 +42,138 @@ function toggleCreditDate() {
     dateInput.required = cat === "credit";
 }
 
+// ── OLD GOLD DETAIL TOGGLE (FIX 7) ───────────────────────────────────────────
+
+function toggleOldGoldDetails() {
+    const checked     = document.getElementById("oldGoldDetailed").checked;
+    const detailBlock = document.getElementById("oldGoldDetailFields");
+    detailBlock.style.display = checked ? "flex" : "none";
+    if (!checked) {
+        // clear detail fields when hidden so they don't get sent
+        document.querySelector('[name="old_gold_metal_type"]').value = "gold";
+        document.querySelector('[name="old_gold_purity"]').value     = "";
+        document.querySelector('[name="old_gold_weight"]').value     = "";
+        document.querySelector('[name="old_gold_rate"]').value       = "";
+    }
+}
+
+// Auto-calculate old gold value from weight × rate when details filled
+function calcOldGoldValue() {
+    const weight = parseFloat(document.querySelector('[name="old_gold_weight"]')?.value) || 0;
+    const rate   = parseFloat(document.querySelector('[name="old_gold_rate"]')?.value)   || 0;
+    if (weight && rate) {
+        document.getElementById("oldGoldValue").value = (weight * rate).toFixed(2);
+        recalcTotals();
+    }
+}
+
 // ── ITEM ROWS ─────────────────────────────────────────────────────────────────
 
 function addItem() {
     itemCount++;
+    const n     = itemCount;
     const tbody = document.getElementById("itemsBody");
     const row   = document.createElement("tr");
-    row.id = `item-row-${itemCount}`;
+    row.id = `item-row-${n}`;
     row.innerHTML = `
-        <td><input type="text" name="item_name" placeholder="Gold Ornament" required
-             style="width:140px"></td>
-        <td><input type="text" name="purity" placeholder="22K"
-             style="width:55px"></td>
+        <td style="position:relative">
+            <input type="text" name="item_name" placeholder="Type to search..."
+                 autocomplete="off" style="width:150px"
+                 oninput="searchProducts(${n}, this.value)"
+                 onfocus="searchProducts(${n}, this.value)">
+            <div id="suggestions-${n}"
+                 style="display:none;position:absolute;top:100%;left:0;z-index:99;
+                        background:#fff;border:1px solid #ccc;border-radius:6px;
+                        min-width:220px;box-shadow:0 4px 12px rgba(0,0,0,0.1)">
+            </div>
+        </td>
+        <td><input type="text" name="purity" placeholder="22K" style="width:55px"></td>
         <td><input type="number" name="weight_grams" placeholder="0.000"
-             step="0.001" min="0" style="width:85px"
-             oninput="calcRow(${itemCount})"></td>
+             step="0.001" min="0" style="width:85px" oninput="calcRow(${n})"></td>
         <td><input type="number" name="rate_per_gram" placeholder="0.00"
-             step="0.01" min="0" style="width:90px"
-             oninput="calcRow(${itemCount})"></td>
-        <td><span id="amount-${itemCount}">0.00</span></td>
+             step="0.01" min="0" style="width:90px" oninput="calcRow(${n})"></td>
+        <td><span id="amount-${n}">0.00</span></td>
         <td><input type="number" name="making_charges" placeholder="0.00"
-             step="0.01" min="0" style="width:90px"
-             oninput="calcRow(${itemCount})"></td>
+             step="0.01" min="0" style="width:90px" oninput="calcRow(${n})"></td>
         <td>
-            <select name="gst_rate" onchange="calcRow(${itemCount})">
+            <select name="gst_rate" onchange="calcRow(${n})">
                 <option value="3.0">3%</option>
                 <option value="1.5">1.5%</option>
                 <option value="0">0%</option>
                 <option value="18.0">18%</option>
             </select>
         </td>
-        <td><strong><span id="line-total-${itemCount}">0.00</span></strong></td>
-        <td><button type="button" onclick="removeItem(${itemCount})"
+        <td><strong><span id="line-total-${n}">0.00</span></strong></td>
+        <td><button type="button" onclick="removeItem(${n})"
             style="color:red;background:none;border:none;cursor:pointer;font-size:16px">✕</button></td>
     `;
     tbody.appendChild(row);
 }
+
+// ── PRODUCT SEARCH AUTOCOMPLETE ───────────────────────────────────────────────
+
+let _searchTimer = null;
+
+function searchProducts(n, query) {
+    clearTimeout(_searchTimer);
+    const box = document.getElementById(`suggestions-${n}`);
+
+    if (!query || query.length < 1) {
+        box.style.display = "none";
+        return;
+    }
+
+    _searchTimer = setTimeout(async () => {
+        const res  = await fetch(`/products/search?q=${encodeURIComponent(query)}`);
+        const list = await res.json();
+
+        if (!list.length) { box.style.display = "none"; return; }
+
+        box.innerHTML = list.map(p => `
+            <div onclick="selectProduct(${n}, ${JSON.stringify(p).replace(/"/g, '&quot;')})"
+                 style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #eee"
+                 onmouseover="this.style.background='#f5f5f5'"
+                 onmouseout="this.style.background=''">
+                <strong>${p.name}</strong>
+                ${p.purity ? `<span style="color:#888;margin-left:6px">${p.purity}</span>` : ""}
+                <span style="color:#aaa;font-size:11px;margin-left:6px">${p.metal_type}</span>
+            </div>
+        `).join("");
+        box.style.display = "block";
+    }, 200);
+}
+
+function selectProduct(n, product) {
+    const row = document.getElementById(`item-row-${n}`);
+    if (!row) return;
+
+    row.querySelector('[name="item_name"]').value = product.name;
+
+    if (product.purity) {
+        row.querySelector('[name="purity"]').value = product.purity;
+    }
+    if (product.making_charge_rate) {
+        row.querySelector('[name="making_charges"]').value = product.making_charge_rate;
+    }
+
+    const gstSel = row.querySelector('[name="gst_rate"]');
+    for (let opt of gstSel.options) {
+        if (parseFloat(opt.value) === parseFloat(product.gst_rate || 3.0)) {
+            opt.selected = true; break;
+        }
+    }
+
+    row.dataset.product_id = product.id;
+    document.getElementById(`suggestions-${n}`).style.display = "none";
+    calcRow(n);
+}
+
+document.addEventListener("click", function(e) {
+    if (!e.target.closest('[id^="suggestions-"]') &&
+        !e.target.closest('[name="item_name"]')) {
+        document.querySelectorAll('[id^="suggestions-"]').forEach(b => b.style.display = "none");
+    }
+});
 
 function removeItem(n) {
     const row = document.getElementById(`item-row-${n}`);
@@ -177,19 +270,59 @@ function onAmountPaidInput() {
     recalcTotals();
 }
 
+// ── ADVANCE CHECK ─────────────────────────────────────────────────────────────
+
+async function checkAdvance() {
+    const partyId = document.getElementById("partyIdSelect")?.value;
+    const hint    = document.getElementById("advanceHint");
+    if (!hint) return;
+
+    if (!partyId) { hint.style.display = "none"; return; }
+
+    try {
+        const res  = await fetch(`/advances/balance/${partyId}`);
+        const data = await res.json();
+        if (data.available > 0) {
+            document.getElementById("advanceAmount").textContent = "₹" + data.available.toFixed(2);
+            hint.style.display     = "block";
+            hint.dataset.available = data.available;
+            hint.dataset.applied   = "0";   // FIX 6: reset applied amount when party changes
+        } else {
+            hint.style.display = "none";
+        }
+    } catch (e) {
+        hint.style.display = "none";
+    }
+}
+
+function applyAdvance() {
+    const hint       = document.getElementById("advanceHint");
+    const available  = parseFloat(hint.dataset.available || 0);
+    const grandTotal = window._currentGrandTotal || 0;
+
+    const applyAmount = Math.min(available, grandTotal);
+    const paidInput   = document.getElementById("amountPaid");
+    if (paidInput) {
+        paidInput.value = applyAmount.toFixed(2);
+        onAmountPaidInput();
+    }
+    // FIX 6: store the advance-applied amount separately so submitBill sends correct advance_used
+    hint.dataset.applied   = applyAmount.toFixed(2);
+    hint.dataset.wasApplied = "1";
+    hint.style.display = "none";
+}
+
 // ── SUBMIT ────────────────────────────────────────────────────────────────────
 
-async function submitBill() {
+async function  submitBill() {
     const form     = document.getElementById("billForm");
     const billType = document.getElementById("invoiceType").value;
 
-    // Resolve party_id based on bill type
     let party_id     = null;
     let walkin_name  = null;
     let walkin_phone = null;
 
     if (billType === "purchase") {
-        // Purchase: must select a registered supplier
         const supplierVal = document.getElementById("supplierIdSelect").value;
         if (!supplierVal) {
             alert("Please select a supplier for this purchase bill.");
@@ -197,7 +330,6 @@ async function submitBill() {
         }
         party_id = parseInt(supplierVal);
     } else {
-        // Sale: registered customer or walk-in
         const mode = document.getElementById("partyMode").value;
         if (mode === "walkin") {
             walkin_name  = document.getElementById("walkinName").value.trim();
@@ -216,7 +348,6 @@ async function submitBill() {
         }
     }
 
-    // Collect items
     const items = [];
     document.querySelectorAll("#itemsBody tr").forEach(row => {
         const name = row.querySelector('[name="item_name"]')?.value?.trim();
@@ -228,6 +359,7 @@ async function submitBill() {
             rate_per_gram:  row.querySelector('[name="rate_per_gram"]')?.value  || null,
             making_charges: row.querySelector('[name="making_charges"]')?.value || null,
             gst_rate:       row.querySelector('[name="gst_rate"]')?.value       || "3.0",
+            product_id:     row.dataset.product_id                              || null,
         });
     });
 
@@ -240,10 +372,21 @@ async function submitBill() {
     let amountPaid   = parseFloat(document.getElementById("amountPaid").value) || 0;
     if (amountPaid > grandTotal) amountPaid = grandTotal;
 
+    // FIX 7: collect old gold detail fields
+    const oldGoldDetailed = document.getElementById("oldGoldDetailed")?.checked || false;
+
+    // FIX 6: advance_used is the amount that came from advance (set by applyAdvance),
+    //        NOT the full amountPaid which may include other sources
+    const hint        = document.getElementById("advanceHint");
+    const wasApplied  = hint?.dataset?.wasApplied === "1";
+    const available   = parseFloat(hint?.dataset?.available || 0);
+    const advanceUsed = wasApplied ? Math.min(available, amountPaid) : 0;
+
     const payload = {
         party_id,
         walkin_name,
         walkin_phone,
+        advance_used:    advanceUsed,   // FIX 6: only the advance-applied portion
         invoice_date:    form.querySelector('[name="invoice_date"]').value,
         invoice_type:    billType,
         bill_category:   form.querySelector('[name="bill_category"]').value,
@@ -251,6 +394,19 @@ async function submitBill() {
         payment_mode:    form.querySelector('[name="payment_mode"]').value || null,
         amount_paid:     amountPaid,
         old_gold_value:  parseFloat(form.querySelector('[name="old_gold_value"]').value) || 0,
+        // FIX 7: old gold detail fields — only sent when detailed mode is on
+        old_gold_metal_type: oldGoldDetailed
+            ? (form.querySelector('[name="old_gold_metal_type"]')?.value || "gold")
+            : "gold",
+        old_gold_purity: oldGoldDetailed
+            ? (form.querySelector('[name="old_gold_purity"]')?.value || null)
+            : null,
+        old_gold_weight: oldGoldDetailed
+            ? (form.querySelector('[name="old_gold_weight"]')?.value || null)
+            : null,
+        old_gold_rate:   oldGoldDetailed
+            ? (form.querySelector('[name="old_gold_rate"]')?.value || null)
+            : null,
         discount:        parseFloat(form.querySelector('[name="discount"]').value) || 0,
         notes:           form.querySelector('[name="notes"]').value || null,
         items,
