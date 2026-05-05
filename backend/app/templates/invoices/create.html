@@ -245,5 +245,127 @@
                 window.todayRate = data;
             }
         });
+
+    (function (){
+        const params = new URLSearchParams(window.location.search);
+        if (!params.has("from_scan")) return;
+
+        const raw = sessionStorage.getItem("scanPrefill");
+        if (!raw) return;
+
+        let data ;
+        try{ data = JSON.parse(raw);}
+        catch(e){ return;}
+
+        sessionStorage.removeItem("scanPrefill");
+        
+        setTimeout(function(){
+            if (data.invoice_date){
+                const dateInput = document.querySelector('[name="invoice_date"]');
+                if(dateInput) dateInput.value = data.invoice_date;
+            }
+
+            if (data.invoice_type){
+                const typeSelect = document.getElementById("invoiceType");
+                if (typeSelect){
+                    typeSelect.value = data.invoice_type;
+                    onBillTypeChange();
+                }
+            }
+
+            if (data.payment_mode){
+                const modeSelect = document.querySelector('[name="payment_mode"]');
+                if(modeSelect){
+                    for(let opt of modeSelect.options){
+                        if(opt.value === data.payment_mode){opt.selected = true; break;}
+                    }
+                }
+            }
+
+            if(data.amount_paid != null){
+                const paidInput = document.getElementById("amountPaid");
+                if(paidInput){
+                    paidInput.value = data.amount_paid;
+                    onAmountPaidInput();
+                }
+            }
+
+            if (data.old_gold_value != null && data.old_gold_value > 0){
+                const ogInput = document.getElementById("oldGoldValue");
+                if(ogInput) ogInput.value = data.old_gold_value;
+            }
+
+            if(data.discount != null && data.discount > 0){
+                const discInput = document.getElementById("discount");
+                if(discInput) discInput.value = data.discount;
+            }
+
+            if(data.party_name){
+                const modeSelect = document.getElementById("partyMode");
+                if(modeSelect){
+                    modeSelect.value = "walkin";
+                    togglePartyMode();
+                }
+
+                const nameInput = document.getElementById("walkinName");
+                if(nameInput) nameInput.value = data.party_name;
+
+                if (data.party_phone){
+                    const phoneInput = document.getElementById("walkinPhone");
+                    if(phoneInput) phoneInput.value = data.party_phone;
+                }
+            }
+
+            if(data.notes){
+                const notesInput = document.querySelector('[name="notes"]');
+                if(notesInput) notesInput.value = data.notes;
+            }
+
+            if(data.items && data.items.length > 0){
+                const tbody = document.getElementById("itemsBody");
+                tbody.innerHTML = "";
+                itemCount = 0;
+
+                data.items.forEach(function(item){
+                    addItem();
+                    const n = itemCount;
+                    const row = document.getElementById("item-row-" + n);
+                    if(!row) return;
+
+                    if(item.item_name){
+                        row.querySelector('[name="item_name"]').value = item.item_name;
+                    }
+
+                    if(item.purity){
+                        row.querySelector('[name="purity"]').value = item.purity;
+                    }
+                    if(item.weight_grams != null){
+                        row.querySelector('[name="weight_grams"]').value = item.weight_grams;
+                    }
+                    if(item.rate_per_gram != null){
+                        row.querySelector('[name="rate_per_gram"]').value = item.rate_per_gram;
+                    }
+                    if(item.making_charges != null){
+                        row.querySelector('[name="making_charges"]').value = item.making_charges;
+                    }
+                    const gstSel = row.querySelector('[name="gst_rate"]');
+                    if(gstSel){
+                        for(let opt of gstSel.options){
+                            if (opt.value === "3.0"){opt.selected = true; break;}
+                        }
+                    }
+                    calcRow(n);
+
+                });
+            }
+            recalcTotals();
+
+            const banner = document.createElement("div");
+            banner.className = "alert alert-warning";
+            banner.style.cssText = "margin-bottom:16px";
+            banner.innerHTML = "📷 <strong>Form pre-filled from scanned bill.</strong>"+"Please review all fields carefully before saving.";
+            document.getElementById("billForm").insertAdjacentElement("beforebegin", banner);
+        }, 300);
+    })();
 </script>
 {% endblock %}

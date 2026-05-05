@@ -78,10 +78,12 @@ async def submit_form(request: Request, session: Session = Depends(get_session))
         amount     = float(data["amount"])
         gst_amount = float(data.get("gst_amount", 0.0))
         cat        = session.get(ExpenseCategory, int(data["category_id"]))
+        if not cat:
+            return JSONResponse(status_code=400, content={"success": False, "error": "Invalid expense category."})
         itc        = gst_amount if (cat and cat.is_itc_eligible) else 0.0
 
         expense = Expense(
-            category_id   = int(data["category_id"]),
+            category_id   = cat.id,
             party_id      = int(data["party_id"]) if data.get("party_id") else None,
             expense_date  = date.fromisoformat(data["expense_date"]),
             description   = data.get("description") or None,

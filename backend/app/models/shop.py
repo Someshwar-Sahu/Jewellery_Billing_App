@@ -16,8 +16,13 @@ class ShopSettings(SQLModel, table=True):
     email: Optional[str] = None
     logo_url: Optional[str] = None
     bill_prefix: Optional[str] = "BILL/"
-    bill_template: str = "template_1"
+    bill_template: str = "template_dad"
     financial_year: Optional[str] = None
+    bank_name: Optional[str] = None
+    bank_account_no : Optional[str] = None
+    bank_ifsc: Optional[str] = None
+    terms_line1: Optional[str] = "Goods once sold will not be taken back."
+    terms_line2: Optional[str] = "All disputes subject to local Jurisdiction only."
 
 class User(SQLModel, table=True):
     __tablename__ = "users"

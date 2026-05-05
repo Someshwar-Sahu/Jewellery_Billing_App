@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from app.database import create_db_and_tables
 from app.models import *
-from app.routers import invoices, parties, rates, old_gold, products, expenses, stocks, advances
+from app.routers import invoices, parties, rates, old_gold, products, expenses, stocks, advances, settings,scan
 import os
 
 app = FastAPI(
@@ -24,6 +24,8 @@ routers = [
     expenses.router,
     stocks.router,
     advances.router,
+    settings.router,
+    scan.router,
 ]
 
 for router in routers:
@@ -31,8 +33,13 @@ for router in routers:
 
 @app.on_event("startup")
 def on_startup():
-    create_db_and_tables()
-    print("✅ Database tables created / verified")
+    # Run all pending Alembic migrations automatically on every startup
+    # This means: deploy to prod, restart app — DB is always up to date
+    from alembic.config import Config
+    from alembic import command
+    alembic_cfg = Config("alembic.ini")
+    command.upgrade(alembic_cfg, "head")
+    print("✅ Database migrations applied")
 
 @app.get("/")
 def root():

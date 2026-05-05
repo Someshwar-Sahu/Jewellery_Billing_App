@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{ invoice.invoice_number }}</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            color: #000;
+            background: #fff;
+            padding: 12px;
+            max-width: 720px;
+            margin: 0 auto;
+        }
+
+        /* ── OUTER BORDER ── */
+        .bill-wrapper {
+            border: 2px solid #1a237e;
+            padding: 0;
+        }
+
+        /* ── HEADER ── */
+        .bill-header {
+            border-bottom: 1.5px solid #1a237e;
+            padding: 8px 12px 6px;
+        }
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #1a237e;
+            margin-bottom: 4px;
+        }
+        .header-top .tax-invoice-badge {
+            border: 1px solid #1a237e;
+            padding: 1px 8px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        .shop-name {
+            text-align: center;
+            font-size: 24px;
+            font-weight: 900;
+            color: #1a237e;
+            letter-spacing: 1px;
+            line-height: 1.2;
+        }
+        .shop-address {
+            text-align: center;
+            font-size: 11px;
+            color: #333;
+            margin-top: 2px;
+        }
+
+        /* ── CUSTOMER SECTION ── */
+        .customer-section {
+            display: grid;
+            grid-template-columns: 1fr 140px;
+            border-bottom: 1px solid #1a237e;
+        }
+        .customer-fields {
+            padding: 8px 10px;
+            border-right: 1px solid #1a237e;
+        }
+        .customer-fields .field-row {
+            display: flex;
+            align-items: baseline;
+            margin-bottom: 5px;
+            gap: 4px;
+        }
+        .customer-fields .field-label {
+            font-style: italic;
+            font-weight: bold;
+            white-space: nowrap;
+            min-width: 52px;
+            font-size: 10.5px;
+        }
+        .customer-fields .field-dots {
+            flex: 1;
+            border-bottom: 1px dotted #555;
+            padding-bottom: 1px;
+            font-size: 11px;
+            padding-left: 4px;
+        }
+        .bill-meta-right {
+            padding: 8px 10px;
+        }
+        .bill-meta-right .sno-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+        .bill-meta-right .sno-label {
+            font-size: 10px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+        .bill-meta-right .sno-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #1a237e;
+        }
+        .bill-meta-right .date-row {
+            font-size: 10.5px;
+            margin-top: 4px;
+        }
+        .bill-meta-right .date-row span {
+            font-weight: bold;
+        }
+
+        /* ── ITEMS TABLE ── */
+        table.items-tbl {
+            width: 100%;
+            border-collapse: collapse;
+            border-bottom: 1px solid #1a237e;
+        }
+        table.items-tbl th {
+            border: 1px solid #1a237e;
+            padding: 5px 6px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: bold;
+            background: #fff;
+        }
+        table.items-tbl td {
+            border: 1px solid #1a237e;
+            padding: 4px 6px;
+            font-size: 11px;
+            vertical-align: top;
+        }
+        table.items-tbl td.center { text-align: center; }
+        table.items-tbl td.right  { text-align: right;  }
+
+        /* Empty rows to fill space like real bill */
+        table.items-tbl tr.empty-row td {
+            height: 18px;
+            border-left: 1px solid #1a237e;
+            border-right: 1px solid #1a237e;
+            border-top: 1px solid #aaa;
+            border-bottom: 1px solid #aaa;
+        }
+
+        /* ── FOOTER BLOCK ── */
+        .footer-block {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            border-bottom: 1px solid #1a237e;
+        }
+        .bank-details {
+            padding: 8px 10px;
+            border-right: 1px solid #1a237e;
+            font-size: 10.5px;
+        }
+        .bank-details .bank-title {
+            font-weight: bold;
+            font-size: 11px;
+            margin-bottom: 4px;
+        }
+        .bank-details .bank-row {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 2px;
+        }
+        .bank-details .bank-row .bk-label {
+            font-weight: bold;
+            min-width: 68px;
+        }
+        .tax-summary {
+            padding: 8px 10px;
+        }
+        table.tax-tbl {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table.tax-tbl td {
+            border: 1px solid #1a237e;
+            padding: 4px 8px;
+            font-size: 11px;
+        }
+        table.tax-tbl td.right { text-align: right; }
+        table.tax-tbl tr.grand td {
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        /* ── RS IN WORD ── */
+        .rs-in-word {
+            padding: 5px 10px;
+            border-bottom: 1px solid #1a237e;
+            font-size: 10.5px;
+        }
+        .rs-in-word span { font-weight: bold; }
+
+        /* ── CERTIFICATION + TERMS ── */
+        .cert-row {
+            display: flex;
+            justify-content: flex-end;
+            padding: 6px 10px 2px;
+            font-size: 10.5px;
+            border-bottom: 1px solid #1a237e;
+        }
+        .terms-sign-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            padding: 6px 10px 8px;
+            align-items: flex-end;
+        }
+        .terms-block {
+            font-size: 10px;
+        }
+        .terms-block .terms-title {
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+        .sign-block {
+            text-align: right;
+            font-size: 10.5px;
+        }
+
+        /* ── PRINT ── */
+        .no-print { margin-bottom: 10px; }
+        @media print {
+            .no-print { display: none; }
+            body { padding: 4px; }
+        }
+    </style>
+</head>
+<body>
+
+<button class="no-print" onclick="window.print()"
+        style="padding:8px 20px;background:#1a237e;color:#fff;border:none;
+               border-radius:6px;cursor:pointer;font-size:13px">
+    🖨 Print Bill
+</button>
+
+<div class="bill-wrapper">
+
+    <!-- ── HEADER ─────────────────────────────────────────────────────── -->
+    <div class="bill-header">
+        <div class="header-top">
+            <span>GST. No. {{ shop.gstin if shop and shop.gstin else '—' }}</span>
+            <span class="tax-invoice-badge">Tax Invoice</span>
+            <span>Mob.: {{ shop.phone if shop and shop.phone else '—' }}</span>
+        </div>
+        <div class="shop-name">{{ shop.shop_name if shop else 'SHOP NAME' }}</div>
+        <div class="shop-address">
+            {{ shop.address if shop and shop.address else '' }}
+            {%- if shop and shop.city %}, {{ shop.city }}{% endif %}
+        </div>
+    </div>
+
+    <!-- ── CUSTOMER ────────────────────────────────────────────────────── -->
+    <div class="customer-section">
+        <div class="customer-fields">
+            <div class="field-row">
+                <span class="field-label">Name</span>
+                <span class="field-dots">
+                    {% if party %}{{ party.name }}{% else %}Walk-in Customer{% endif %}
+                </span>
+            </div>
+            <div class="field-row">
+                <span class="field-label">Address</span>
+                <span class="field-dots">
+                    {{ party.address if party and party.address else '' }}
+                </span>
+            </div>
+            <div class="field-row">
+                <span class="field-label" style="min-width:0;margin-left:auto">Mobile</span>
+                <span class="field-dots">
+                    {{ party.phone if party and party.phone else '' }}
+                </span>
+            </div>
+            <div class="field-row">
+                <span class="field-label">State</span>
+                <span class="field-dots" style="max-width:120px">
+                    {{ party.state if party and party.state else (shop.state if shop else 'Uttar Pradesh') }}
+                </span>
+                <span class="field-label" style="min-width:64px">State Code</span>
+                <span class="field-dots" style="max-width:60px">
+                    {{ party.state_code if party and party.state_code else (shop.state_code if shop else '09') }}
+                </span>
+            </div>
+        </div>
+
+        <div class="bill-meta-right">
+            <div class="sno-row">
+                <span class="sno-label">S. No.</span>
+                <span class="sno-value">{{ invoice.invoice_number.split('/')[-1] | int }}</span>
+            </div>
+            <div class="date-row">Date<br>
+                <span>{{ invoice.invoice_date.strftime('%d-%m-%Y') if invoice.invoice_date else '' }}</span>
+            </div>
+            {% if invoice.credit_due_date %}
+            <div class="date-row" style="margin-top:4px;color:#c00">Due<br>
+                <span>{{ invoice.credit_due_date.strftime('%d-%m-%Y') }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ── ITEMS TABLE ─────────────────────────────────────────────────── -->
+    <table class="items-tbl">
+        <thead>
+            <tr>
+                <th style="width:36px">S.No.</th>
+                <th>Particulars</th>
+                <th style="width:68px">HSN Code</th>
+                <th style="width:58px">Qty.</th>
+                <th style="width:72px">Rate</th>
+                <th style="width:80px">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td class="center">{{ loop.index }}</td>
+                <td>
+                    {# Particulars = item name + purity combined, just like dad's bill #}
+                    {{ item.item_name }}
+                    {%- if item.purity %} ({{ item.purity }}){% endif %}
+                    {%- if item.huid %}<br><span style="font-size:9px;color:#555">HUID: {{ item.huid }}</span>{% endif %}
+                    {# Making charges shown as sub-line inside Particulars — no separate column #}
+                    {% if item.making_charges and item.making_charges > 0 %}
+                    <br><span style="font-size:10px;color:#333">
+                        Making: ₹{{ "%.2f"|format(item.making_charges) }}
+                        + GST: ₹{{ "%.2f"|format(item.making_cgst + item.making_sgst) }}
+                    </span>
+                    {% endif %}
+                </td>
+                <td class="center">{{ item.hsn_code or '7113' }}</td>
+                <td class="center">
+                    {# Qty = weight in grams for jewellery #}
+                    {{ item.weight_grams if item.weight_grams else '—' }}
+                    {%- if item.weight_grams %}g{% endif %}
+                </td>
+                <td class="right">
+                    {% if item.rate_per_gram %}
+                    ₹{{ "%.2f"|format(item.rate_per_gram) }}/g
+                    {% else %}—{% endif %}
+                </td>
+                <td class="right">
+                    ₹{{ "%.2f"|format(item.amount) }}
+                </td>
+            </tr>
+            {% endfor %}
+
+            {# Fill remaining rows to match real bill look — at least 10 rows total #}
+            {% set filled = items | length %}
+            {% set needed = [10 - filled, 0] | max %}
+            {% for i in range(needed) %}
+            <tr class="empty-row">
+                <td></td><td></td><td></td><td></td><td></td><td></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- ── OLD GOLD (if any) ───────────────────────────────────────────── -->
+    {% if invoice.old_gold_value and invoice.old_gold_value > 0 %}
+    <div style="padding:4px 10px;border-bottom:1px solid #1a237e;font-size:10.5px">
+        <strong>Old Gold / Silver Received:</strong>
+        {% if old_gold and old_gold.weight_grams and old_gold.weight_grams > 0 %}
+            {{ old_gold.metal_type | upper }}
+            {%- if old_gold.purity %} ({{ old_gold.purity }}){% endif %}
+            — {{ old_gold.weight_grams }}g @ ₹{{ "%.2f"|format(old_gold.rate_per_gram) }}/g
+            = <strong>₹{{ "%.2f"|format(old_gold.total_value) }}</strong> (deducted)
+        {% else %}
+            Value deducted: <strong>₹{{ "%.2f"|format(invoice.old_gold_value) }}</strong>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- ── FOOTER: BANK + TAX SUMMARY ─────────────────────────────────── -->
+    <div class="footer-block">
+
+        <div class="bank-details">
+            {% if shop and shop.bank_name %}
+            <div class="bank-title">BANK DETAIL</div>
+            <div class="bank-row">
+                <span class="bk-label">Bank Name</span>
+                <span>: {{ shop.bank_name }}</span>
+            </div>
+            <div class="bank-row">
+                <span class="bk-label">A/c No.</span>
+                <span>: {{ shop.bank_account_no or '—' }}</span>
+            </div>
+            <div class="bank-row">
+                <span class="bk-label">IFSC Code</span>
+                <span>: {{ shop.bank_ifsc or '—' }}</span>
+            </div>
+            {% else %}
+            <div style="color:#aaa;font-size:10px">
+                Bank details not set.<br>Add them in ⚙ Settings.
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="tax-summary">
+            <table class="tax-tbl">
+                <tr>
+                    <td>Total Amount Before Tax</td>
+                    <td class="right">₹{{ "%.2f"|format(invoice.subtotal + (invoice.total_making_charges or 0)) }}</td>
+                </tr>
+                <tr>
+                    {# Show actual GST rate — for jewellery always 1.5% + 1.5% #}
+                    <td>CGST @ 1.5%</td>
+                    <td class="right">₹{{ "%.2f"|format(invoice.total_cgst + (invoice.making_cgst or 0)) }}</td>
+                </tr>
+                <tr>
+                    <td>SGST @ 1.5%</td>
+                    <td class="right">₹{{ "%.2f"|format(invoice.total_sgst + (invoice.making_sgst or 0)) }}</td>
+                </tr>
+                {% if invoice.old_gold_value and invoice.old_gold_value > 0 %}
+                <tr>
+                    <td>Old Gold Deduction</td>
+                    <td class="right">-₹{{ "%.2f"|format(invoice.old_gold_value) }}</td>
+                </tr>
+                {% endif %}
+                {% if invoice.discount and invoice.discount > 0 %}
+                <tr>
+                    <td>Discount</td>
+                    <td class="right">-₹{{ "%.2f"|format(invoice.discount) }}</td>
+                </tr>
+                {% endif %}
+                {% if invoice.round_off %}
+                <tr>
+                    <td>Round Off</td>
+                    <td class="right">₹{{ "%.2f"|format(invoice.round_off) }}</td>
+                </tr>
+                {% endif %}
+                <tr class="grand">
+                    <td>Total Amount After Tax</td>
+                    <td class="right">₹{{ "%.2f"|format(invoice.grand_total) }}</td>
+                </tr>
+                {% if invoice.amount_paid and invoice.amount_paid > 0 %}
+                <tr>
+                    <td>Amount Paid</td>
+                    <td class="right">₹{{ "%.2f"|format(invoice.amount_paid) }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Balance Due</strong></td>
+                    <td class="right"><strong>₹{{ "%.2f"|format(invoice.amount_due) }}</strong></td>
+                </tr>
+                {% endif %}
+            </table>
+        </div>
+
+    </div>
+
+    <!-- ── RS IN WORD ──────────────────────────────────────────────────── -->
+    <div class="rs-in-word">
+        (Rs. In word) <span>{{ amount_word if amount_word else '—' }}</span>
+    </div>
+
+    <!-- ── CERTIFICATION ──────────────────────────────────────────────── -->
+    <div class="cert-row">
+        Certified that the particulars given above are true and correct.
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        For- <strong>{{ shop.shop_name if shop else '' }}</strong>
+    </div>
+
+    <!-- ── TERMS + SIGNATORY ──────────────────────────────────────────── -->
+    <div class="terms-sign-row">
+        <div class="terms-block">
+            <div class="terms-title">TERMS & CONDITIONS</div>
+            {% if shop and shop.terms_line1 %}
+            <div>1. {{ shop.terms_line1 }}</div>
+            {% endif %}
+            {% if shop and shop.terms_line2 %}
+            <div>2. {{ shop.terms_line2 }}</div>
+            {% endif %}
+        </div>
+        <div class="sign-block">
+            <br><br>
+            Authorised Signatory
+        </div>
+    </div>
+
+</div><!-- end bill-wrapper -->
+
+</body>
+</html>

@@ -220,20 +220,20 @@ def create_invoice(session: Session, data: InvoiceCreate) -> Invoice:
         session.add(old_gold_entry)
 
     # Stock ledger — auto-update for product-linked items
-    is_sale     = data.invoice_type.value == "sale"
-    is_purchase = data.invoice_type.value == "purchase"
+    is_stock_out = data.invoice_type in ["sale", "debit_note"]
+    is_stock_in = data.invoice_type in ["purchase", "credit_note"]
 
     for item_data, calc in calculated_items:
         if not item_data.product_id:
             continue
-        stock_qty = item_data.weight_grams if item_data.weight_grams else (item_data.quantity, 1.0)
+        stock_qty = item_data.weight_grams if item_data.weight_grams else (item_data.quantity or 1.0)
         stock_entry = StockLedger(
             product_id       = item_data.product_id,
             stock_date       = data.invoice_date,
-            transaction_type = "sale" if is_sale else "purchase",
+            transaction_type = data.invoice_type.value,
             invoice_id       = invoice.id,
-            quantity_in      = stock_qty if is_purchase else 0.0,
-            quantity_out     = stock_qty if is_sale     else 0.0,
+            quantity_in      = stock_qty if is_stock_in else 0.0,
+            quantity_out     = stock_qty if is_stock_out else 0.0,
             balance          = 0.0,
             rate             = item_data.rate_per_gram,
             notes            = f"Auto from invoice {invoice.invoice_number}",
@@ -297,8 +297,15 @@ def update_invoice(session: Session, invoice_id: int, data: InvoiceUpdate) -> In
         old_val = getattr(invoice, field, None)
         if hasattr(value, "value"):
             value = value.value
-        if str(old_val) != str(value):
-            log_change(field, str(old_val), str(value))
+
+        if hasattr(old_val, "value"):
+            old_val = old_val.value
+
+        str_old = str(old_val) if old_val is not None else ""
+        str_new = str(value) if value is not None else ""
+
+        if str_old != str_new:
+            log_change(field, str_old, str_new)
             setattr(invoice, field, value)
 
     # Replace items if new ones provided
@@ -390,7 +397,7 @@ def duplicate_invoice(session: Session, invoice_id: int) -> Invoice:
             product_id     = item.product_id,
             hsn_code       = item.hsn_code,
             purity         = item.purity,
-            huid           = item.huid,
+            huid           = None,  # HUID should not be duplicated — forces user to re-scan item if they want HUID on new bill
             weight_grams   = item.weight_grams,
             rate_per_gram  = item.rate_per_gram,
             quantity       = item.quantity,
@@ -406,7 +413,7 @@ def duplicate_invoice(session: Session, invoice_id: int) -> Invoice:
         bill_category  = BillCategory(original.bill_category),
         party_id       = original.party_id,
         invoice_date   = date.today(),
-        credit_due_date = None,
+        credit_due_date = date.today() if original.bill_category == 'credit' else None,
         place_of_supply = original.place_of_supply,
         party_gstin    = original.party_gstin,
         payment_mode   = PaymentMode(original.payment_mode) if original.payment_mode else None,
@@ -432,8 +439,8 @@ def cancel_invoice(session: Session, invoice_id: int, reason: str = None) -> Inv
         select(InvoiceItem).where(InvoiceItem.invoice_id == invoice_id)
     ).all()
 
-    is_sale     = invoice.invoice_type == "sale"
-    is_purchase = invoice.invoice_type == "purchase"
+    is_stock_out     = invoice.invoice_type in ["sale", "debit_note"]
+    is_stock_in      = invoice.invoice_type in ["purchase", "credit_note"]
 
     for item in items:
         if not item.product_id:
@@ -445,8 +452,8 @@ def cancel_invoice(session: Session, invoice_id: int, reason: str = None) -> Inv
             stock_date       = date.today(),
             transaction_type = "adjustment",
             invoice_id       = invoice_id,
-            quantity_in      = reversal_qty if is_sale     else 0.0,
-            quantity_out     = reversal_qty if is_purchase else 0.0,
+            quantity_in      = reversal_qty if is_stock_out     else 0.0,
+            quantity_out     = reversal_qty if is_stock_in else 0.0,
             balance          = 0.0,
             rate             = item.rate_per_gram,
             notes            = f"Reversal: bill {invoice.invoice_number} cancelled",
@@ -467,6 +474,28 @@ def recover_invoice(session: Session, invoice_id: int) -> Invoice:
     invoice = session.get(Invoice, invoice_id)
     if not invoice:
         raise HTTPException(status_code=404, detail="Bill not found")
+
+    items =session.exec(select(InvoiceItem).where(InvoiceItem.invoice_id == invoice_id)).all()
+    is_sale = invoice.invoice_type == "sale"
+    is_purchase = invoice.invoice_type == "purchase"
+
+    for item in items:
+        if not item.product_id:
+            continue
+
+        re_apply_qty = item.weight_grams if item.weight_grams else (item.quantity or 1.0)
+        re_entry = StockLedger(
+            product_id=       item.product_id,
+            stock_date=       date.today(),
+            transaction_type= "sale" if is_sale else "purchase",
+            invoice_id=       invoice_id,
+            quantity_in=      re_apply_qty if is_purchase else 0.0,
+            quantity_out=     re_apply_qty if is_sale     else 0.0,
+            balance=          0.0,
+            rate=             item.rate_per_gram,
+            notes=            f"Re-application: bill {invoice.invoice_number} recovered from cancellation",
+        )
+        session.add(re_entry)
 
     invoice.is_cancelled     = False
     invoice.cancelled_at     = None

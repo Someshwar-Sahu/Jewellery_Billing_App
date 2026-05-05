@@ -14,6 +14,7 @@ from app.services.invoice_service import (
 from app.schemas.invoice import InvoiceCreate, InvoiceItemCreate, InvoiceUpdate
 from datetime import date
 from markupsafe import Markup
+from num2words import num2words
 
 import json as _json
 
@@ -178,6 +179,7 @@ async def create_bill_submit(request: Request, session: Session = Depends(get_se
                 if remaining <= 0.0:   # FIX 3: was < 0.0
                     break
                 available = adv.amount - adv.adjusted_amount
+                available = max(0.0, available)  
                 use       = min(available, remaining)
                 adv.adjusted_amount = round(adv.adjusted_amount + use, 2)
                 if adv.adjusted_amount >= adv.amount:
@@ -272,6 +274,7 @@ def edit_bill_form(invoice_id: int, request: Request, session: Session = Depends
     # FIX 9: include huid in items dict so edit.html can prefill and preserve it
     items = [
         {
+            "product_id":     i.product_id,
             "item_name":      i.item_name,
             "purity":         i.purity,
             "weight_grams":   i.weight_grams,
@@ -346,17 +349,34 @@ def print_bill(invoice_id: int, request: Request, session: Session = Depends(get
     old_gold  = session.exec(
         select(OldGoldExchange).where(OldGoldExchange.sale_invoice_id == invoice_id)
     ).first()
+    
+    try: 
+        rupees = int(invoice.grand_total)
+        paise_raw = round((invoice.grand_total - rupees) * 100)
+        amount_word = num2words(rupees, lang="en_IN").title() + " Rupees"
+        if paise_raw > 0:
+            amount_word += " And" + num2words(paise_raw, lang= "en_IN").title() + " Paise"
+
+        amount_word += " Only"
+    except Exception:
+        amount_word = ""
+    template_name = "invoices/bill_print.html"
+    if shop and shop.bill_template == "template_a4":
+        template_name = "invoices/print_a4.html"
+    else:
+        template_name = "invoices/print_dad.html"
+
     return templates.TemplateResponse(
-        request=request, name="invoices/bill_print.html",
+        request=request, name=template_name,
         context={
-            "invoice":  invoice,
-            "items":    items,
-            "party":    party,
-            "shop":     shop,
-            "old_gold": old_gold,   # FIX 13: passed to template for detailed old gold section
+            "invoice": invoice,
+            "items": items,
+            "party": party,
+            "shop": shop,   
+            "old_gold": old_gold,
+            "amount_word": amount_word,
         }
     )
-
 
 # ── RECORD PAYMENT ────────────────────────────────────────────────────────────
 

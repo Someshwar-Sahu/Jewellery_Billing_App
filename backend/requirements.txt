@@ -9,3 +9,5 @@ uvicorn
 alembic
 jinja2 
 python-multipart
+num2words
+google-genai
