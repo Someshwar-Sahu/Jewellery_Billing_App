@@ -3,7 +3,11 @@
 {% block content %}
 <div class="page-header">
     <h1>Bills</h1>
-    <a href="/invoices/create" class="btn-primary">+ New Bill</a>
+    <div style="display:flex;gap:8px">
+        <a href="/invoices/create" class="btn-primary">+ New Bill</a>
+        <a href="/exports/sales-register" class="btn-secondary">⬇ Sales Register</a>
+        <a href="/exports/purchase-register" class="btn-secondary">⬇ Purchase Register</a>
+    </div>
 </div>
 
 <table class="table">

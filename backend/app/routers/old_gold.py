@@ -73,8 +73,12 @@ def create_form(request: Request, session: Session = Depends(get_session)):
 async def create_submit(request: Request, session: Session = Depends(get_session)):
     data = await request.json()
     try:
-        weight     = float(data["weight_grams"])
-        rate       = float(data["rate_per_gram"])
+        weight = float(data["weight_grams"])
+        rate   = float(data["rate_per_gram"])
+        if weight <= 0:
+            return JSONResponse(status_code=400, content={"success": False, "error": "Weight must be greater than zero."})
+        if rate <= 0:
+            return JSONResponse(status_code=400, content={"success": False, "error": "Rate must be greater than zero."})
         total      = round(weight * rate, 2)
         tx_type    = data.get("transaction_type", "direct_purchase")
         party_id   = int(data["party_id"])

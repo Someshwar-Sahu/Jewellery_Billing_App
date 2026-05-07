@@ -16,6 +16,8 @@
     <div style="display:flex;gap:8px">
         <a href="/parties/{{ party.id }}/edit" class="btn-secondary">✏ Edit</a>
         <a href="/invoices/create" class="btn-primary">+ New Bill</a>
+        <!-- Find the page-header in detail.html and add this button -->
+        <a href="/exports/party-ledger/{{ party.id }}" class="btn-secondary">⬇ Export Ledger</a>
     </div>
 </div>
 
@@ -34,7 +36,8 @@
     <div class="detail-card">
         <h3>Account Summary</h3>
         <p>Total Bills: <strong>{{ total_bills }}</strong>
-            <small style="color:#888">({{ sale_count }} sales, {{ purchase_count }} purchases)</small></p>
+            <small style="color:#888">({{ sale_count }} sales, {{ purchase_count }} purchases)</small>
+        </p>
         <p>Total Billed: <strong>₹{{ "%.2f"|format(total_billed) }}</strong></p>
         <p>Amount Paid: <strong>₹{{ "%.2f"|format(total_paid) }}</strong></p>
         <p>Balance Due:
@@ -63,7 +66,8 @@
 <!-- Pending credit bills for this party -->
 {% if credit_bills %}
 <div style="background:#fff8e1;border:1px solid #ffc107;border-radius:8px;padding:14px;margin-bottom:20px">
-    <strong style="color:#856404">⚠ {{ credit_bills|length }} pending credit bill{{ 's' if credit_bills|length != 1 else '' }}</strong>
+    <strong style="color:#856404">⚠ {{ credit_bills|length }} pending credit bill{{ 's' if credit_bills|length != 1 else
+        '' }}</strong>
     — Total due: <strong>₹{{ "%.2f"|format(credit_bills|sum(attribute='amount_due')) }}</strong>
     <a href="/invoices/credit/unsettled" style="margin-left:12px;font-size:12px">View all pending →</a>
 </div>

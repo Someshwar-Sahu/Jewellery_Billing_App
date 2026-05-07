@@ -77,6 +77,12 @@ async def submit_form(request: Request, session: Session = Depends(get_session))
     try:
         amount     = float(data["amount"])
         gst_amount = float(data.get("gst_amount", 0.0))
+        if amount <= 0:
+            return JSONResponse(status_code=400, content={"success": False, "error": "Amount must be greater than zero."})
+        if gst_amount < 0:
+            return JSONResponse(status_code=400, content={"success": False, "error": "GST amount cannot be negative."})
+        if gst_amount > amount:
+            return JSONResponse(status_code=400, content={"success": False, "error": "GST amount cannot exceed expense amount."})
         cat        = session.get(ExpenseCategory, int(data["category_id"]))
         if not cat:
             return JSONResponse(status_code=400, content={"success": False, "error": "Invalid expense category."})

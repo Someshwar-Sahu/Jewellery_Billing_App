@@ -54,11 +54,22 @@ async def create_rate_submit(request: Request, session: Session = Depends(get_se
             return {"success": True, "updated": True}
 
         else:
+            gold_22k = float(data["gold_22k"]) if data.get("gold_22k") else None
+            gold_18k = float(data["gold_18k"]) if data.get("gold_18k") else None
+            silver   = float(data["silver"])   if data.get("silver")   else None
+
+            # ADD:
+            if gold_22k is not None and gold_22k <= 0:
+                return JSONResponse(status_code=400, content={"success": False, "error": "Gold 22K rate must be greater than zero."})
+            if gold_18k is not None and gold_18k <= 0:
+                return JSONResponse(status_code=400, content={"success": False, "error": "Gold 18K rate must be greater than zero."})
+            if silver is not None and silver <= 0:
+                return JSONResponse(status_code=400, content={"success": False, "error": "Silver rate must be greater than zero."})
             rate = GoldRate(
                 rate_date=rate_date,
-                gold_22k_per_gram=float(data["gold_22k"]) if data.get("gold_22k") else None,
-                gold_18k_per_gram=float(data["gold_18k"]) if data.get("gold_18k") else None,
-                silver_per_gram=float(data["silver"])     if data.get("silver")    else None,
+                gold_22k_per_gram=gold_22k,
+                gold_18k_per_gram=gold_18k,
+                silver_per_gram=silver,
             )
 
             session.add(rate)

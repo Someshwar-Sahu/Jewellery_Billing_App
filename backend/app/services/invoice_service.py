@@ -6,7 +6,7 @@ from app.models.inventory import GoldRate, StockLedger
 from datetime import datetime, date
 from fastapi import HTTPException
 import json
-
+from app.models.system import MonthLock
 
 def calculate_item(item_data) -> dict:
     """Calculate all amounts for one invoice line item."""
@@ -87,6 +87,7 @@ def _build_totals(calculated_items, items_to_calc, old_gold_value: float, discou
 
     gross       = subtotal + total_cgst + total_sgst + total_making + total_making_cgst + total_making_sgst
     gross       = gross - old_gold_value - discount
+    gross       = max(0.0, gross)
     round_off   = round(round(gross) - gross, 2)
     grand_total = round(gross + round_off, 2)
     # FIX 11: floor amount_due at 0 — never show negative
@@ -129,6 +130,9 @@ def create_invoice(session: Session, data: InvoiceCreate) -> Invoice:
         data.amount_paid or 0,
     )
 
+    amount_paid = min(data.amount_paid or 0, totals["grand_total"])
+    amount_due  = max(0.0, round(totals["grand_total"] - invoice.amount_paid, 2))
+
     invoice = Invoice(
         invoice_number       = get_next_invoice_number(session, data.invoice_type.value),
         invoice_type         = data.invoice_type.value,
@@ -149,8 +153,8 @@ def create_invoice(session: Session, data: InvoiceCreate) -> Invoice:
         discount             = data.discount,
         round_off            = totals["round_off"],
         grand_total          = totals["grand_total"],
-        amount_paid          = data.amount_paid or 0,
-        amount_due           = totals["amount_due"],
+        amount_paid          = amount_paid,
+        amount_due           = amount_due,
         payment_mode         = data.payment_mode.value if data.payment_mode else None,
         payment_status       = totals["payment_status"],
         notes                = data.notes,
@@ -253,6 +257,15 @@ def update_invoice(session: Session, invoice_id: int, data: InvoiceUpdate) -> In
         raise HTTPException(status_code=404, detail="Bill not found")
     if invoice.is_cancelled:
         raise HTTPException(status_code=400, detail="Cannot edit a cancelled bill")
+
+    lock = session.exec(
+        select(MonthLock).where(MonthLock.year == invoice.invoice_date.year)
+        .where(MonthLock.month == invoice.invoice_date.month)
+        .where(MonthLock.is_locked == True)
+        ).first()
+    
+    if lock:
+        raise HTTPException(status_code=400, detail=f"Cannot edit: {invoice.invoice_date.strftime("%B %Y")} is locked for GST filing.")
 
     current_items = session.exec(
         select(InvoiceItem).where(InvoiceItem.invoice_id == invoice_id)
@@ -433,6 +446,15 @@ def cancel_invoice(session: Session, invoice_id: int, reason: str = None) -> Inv
     invoice = session.get(Invoice, invoice_id)
     if not invoice:
         raise HTTPException(status_code=404, detail="Bill not found")
+
+    lock = session.exec(
+        select(MonthLock)
+        .where(MonthLock.year  == invoice.invoice_date.year)
+        .where(MonthLock.month == invoice.invoice_date.month)
+        .where(MonthLock.is_locked == True)
+    ).first()
+    if lock:
+        raise HTTPException(status_code=400, detail=f"Cannot cancel: {invoice.invoice_date.strftime('%B %Y')} is locked for GST filing.")
 
     # FIX 10: Reverse stock for product-linked items when bill is cancelled
     items = session.exec(

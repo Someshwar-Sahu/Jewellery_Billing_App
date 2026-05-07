@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Excel Exports{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>⬇ Excel Exports</h1>
+</div>
+
+<p style="color:#888;font-size:13px;margin-bottom:24px">
+    All exports download as <strong>.xlsx</strong> files.
+    Use month filter on Sales/Expense exports by adding <code>?month=2024-04</code> to the URL.
+</p>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">
+
+    <div class="detail-card">
+        <h3>Sales Register</h3>
+        <p style="color:#888;font-size:12px;margin-bottom:12px">All sale bills with GST breakdown</p>
+        <a href="/exports/sales-register" class="btn-primary">⬇ Download All</a>
+    </div>
+
+    <div class="detail-card">
+        <h3>Purchase Register</h3>
+        <p style="color:#888;font-size:12px;margin-bottom:12px">All purchase bills</p>
+        <a href="/exports/purchase-register" class="btn-primary">⬇ Download All</a>
+    </div>
+
+    <div class="detail-card">
+        <h3>Expense Register</h3>
+        <p style="color:#888;font-size:12px;margin-bottom:12px">All expenses with ITC summary</p>
+        <a href="/exports/expenses" class="btn-primary">⬇ Download All</a>
+    </div>
+
+    <div class="detail-card">
+        <h3>Old Gold Register</h3>
+        <p style="color:#888;font-size:12px;margin-bottom:12px">All old gold / silver transactions</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <a href="/exports/old-gold" class="btn-primary">⬇ All</a>
+            <a href="/exports/old-gold?metal=gold" class="btn-secondary">Gold Only</a>
+            <a href="/exports/old-gold?metal=silver" class="btn-secondary">Silver Only</a>
+        </div>
+    </div>
+
+    <div class="detail-card">
+        <h3>Stock Register</h3>
+        <p style="color:#888;font-size:12px;margin-bottom:12px">All products with current balance</p>
+        <a href="/exports/stock" class="btn-primary">⬇ Download</a>
+    </div>
+
+    <div class="detail-card">
+        <h3>Party Ledger</h3>
+        <p style="color:#888;font-size:12px;margin-bottom:12px">
+            Go to a party's detail page and click <strong>⬇ Export Ledger</strong>
+        </p>
+        <a href="/parties" class="btn-secondary">Go to Parties →</a>
+    </div>
+
+</div>
+
+{% endblock %}

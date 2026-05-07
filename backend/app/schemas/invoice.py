@@ -55,6 +55,14 @@ class InvoiceItemCreate(BaseModel):
         if v is not None and v < 0:
             raise ValueError("Value cannot be negative.")
         return v
+    
+    @model_validator(mode="after")
+    def item_must_have_value(self):
+        has_amount = (self.weight_grams or 0) > 0 and (self.rate_per_gram or 0) > 0
+        has_making = (self.making_charges or 0) > 0
+        if not has_amount and not has_making:
+            raise ValueError("Item must have either weight+rate or making charges.")
+        return self
 
 class InvoiceItemRead(InvoiceItemCreate):
     id: int
@@ -95,11 +103,36 @@ class InvoiceCreate(BaseModel):
         return v
     
     @model_validator(mode="after")
+    @model_validator(mode="after")
     def credit_need_due_date(self):
         if self.bill_category == BillCategory.credit and self.credit_due_date is None:
             raise ValueError("Credit invoices must have a due date.")
+        if self.credit_due_date and self.invoice_date and self.credit_due_date < self.invoice_date:
+            raise ValueError("Due date cannot be before invoice date.")
         return self
     
+    @field_validator("amount_paid")
+    @classmethod
+    def amount_paid_valid(cls, v):
+        if v is not None and v < 0:
+            raise ValueError("Amount paid cannot be negative.")
+        return v
+    
+    @field_validator("old_gold_value", "discount")
+    @classmethod
+    def deductions_not_negative(cls, v):
+        if v is not None and v < 0:
+            raise ValueError("Deductions cannot be negative.")
+        return v
+    
+    @field_validator("invoice_date")
+    @classmethod
+    def date_not_too_far_future(cls, v):
+        from datetime import date
+        if v > date.today().replace(year=date.today().year + 1):
+            raise ValueError("Invoice date cannot be more than 1 year in the future.")
+        return v
+
 class InvoiceUpdate(BaseModel):
     invoice_date: Optional[date] = None
     credit_due_date: Optional[date] = None

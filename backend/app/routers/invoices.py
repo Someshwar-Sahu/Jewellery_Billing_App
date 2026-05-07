@@ -387,7 +387,9 @@ async def record_credit_payment(invoice_id: int, request: Request, session: Sess
         raise HTTPException(status_code=404, detail="Bill not found")
 
     data         = await request.json()
-    paid_now     = float(data.get("amount", 0))
+    paid_now = float(data.get("amount", 0))
+    if paid_now <= 0:
+        return JSONResponse(status_code=400, content={"success": False, "error": "Payment amount must be greater than zero."})
     mode         = data.get("mode", "cash")
     reference_no = data.get("reference_no", "")
 

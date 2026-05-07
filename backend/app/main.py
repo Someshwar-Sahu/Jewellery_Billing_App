@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from app.database import create_db_and_tables
 from app.models import *
-from app.routers import invoices, parties, rates, old_gold, products, expenses, stocks, advances, settings,scan
+from app.routers import invoices, parties, rates, old_gold, products, expenses, stocks, advances, settings,scan, reports, exports, dashboard
 import os
 
 app = FastAPI(
@@ -26,6 +26,9 @@ routers = [
     advances.router,
     settings.router,
     scan.router,
+    reports.router,
+    exports.router,
+    dashboard.router,
 ]
 
 for router in routers:

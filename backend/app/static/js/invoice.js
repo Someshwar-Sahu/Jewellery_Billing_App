@@ -152,6 +152,24 @@ function selectProduct(n, product) {
     if (product.purity) {
         row.querySelector('[name="purity"]').value = product.purity;
     }
+    if(window.todayRate && window.todayRate.found){
+        const rateInput = row.querySelector('[name="rate_per_gram"]');
+        let rate = null;
+        const purity = (product.purity || "").toUpperCase();
+        const metal = (product.metal_type || "").toLowerCase();
+
+        if (metal === "gold"){
+            if (purity.includes("18"))      rate = window.todayRate.gold_18k;
+            else if (purity.includes("22")) rate = window.todayRate.gold_22k;
+            else                            rate = window.todayRate.gold_22k;
+        }else if (metal === "silver"){
+            rate = window.todayRate.silver;
+        }
+
+        if(rate){
+            rateInput.value = rate;
+        }
+    }
     if (product.making_charge_rate) {
         row.querySelector('[name="making_charges"]').value = product.making_charge_rate;
     }

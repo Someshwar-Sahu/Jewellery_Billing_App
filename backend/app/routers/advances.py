@@ -46,10 +46,13 @@ def create_form(request: Request, session: Session = Depends(get_session)):
 async def create_submit(request: Request, session: Session = Depends(get_session)):
     data = await request.json()
     try:
+        am = float(data["amount"])
+        if am <= 0:
+            return JSONResponse(status_code=400, content={"success": False, "error": "Amount must be greater than zero."})
         advance = Advance(
             party_id     = int(data["party_id"]),
             advance_date = date.fromisoformat(data["advance_date"]),
-            amount       = float(data["amount"]),
+            amount       = am,
             mode         = data.get("mode", "cash"),
             notes        = data.get("notes") or None,
         )
