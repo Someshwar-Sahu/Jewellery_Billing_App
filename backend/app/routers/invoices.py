@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 from app.database import get_session
-from app.models.invoices import Invoice, InvoiceItem, InvoiceEditLog, InvoiceVersion
+from app.models.invoices import Invoice, InvoiceItem, InvoiceEditLog
 from app.models.parties import Party, OldGoldExchange
 from app.models.inventory import GoldRate
 from app.models.system import MonthLock
@@ -41,9 +41,8 @@ def invoice_list(request: Request, fy_id: int = 0, session: Session = Depends(ge
     if fy_id:
         selected_fy = session.get(FinancialYear, fy_id)
     if not selected_fy:
-        selected_fy = active_fy   # default to active
+        selected_fy = active_fy   
 
-    # Build query scoped to selected FY's date range
     stmt = select(Invoice).where(Invoice.is_cancelled == False)
     if selected_fy:
         stmt = stmt.where(Invoice.invoice_date >= selected_fy.start_date)
@@ -140,7 +139,6 @@ async def create_bill_submit(request: Request, session: Session = Depends(get_se
                 return JSONResponse(status_code=400, content={
                     "success": False, "error": "Customer name is required"
                 })
-            # FIX 12: Walk-in deduplication — reuse existing party if phone matches
             existing_party = None
             if walkin_phone:
                 existing_party = session.exec(
@@ -284,7 +282,6 @@ def edit_bill_form(invoice_id: int, request: Request, session: Session = Depends
         raise HTTPException(status_code=404, detail="Bill not found")
     if invoice.is_cancelled:
         raise HTTPException(status_code=400, detail="Bill is cancelled")
-    # Block edit form for historical FY bills — service would reject anyway, but stop early
     active_fy = session.exec(
         select(FinancialYear).where(FinancialYear.is_active == True)
     ).first()
@@ -295,7 +292,6 @@ def edit_bill_form(invoice_id: int, request: Request, session: Session = Depends
         )
     items_orm = session.exec(select(InvoiceItem).where(InvoiceItem.invoice_id == invoice_id)).all()
     party     = session.get(Party, invoice.party_id) if invoice.party_id else None
-    # FIX 9: include huid in items dict so edit.html can prefill and preserve it
     items = [
         {
             "product_id":     i.product_id,
@@ -330,7 +326,7 @@ async def edit_bill_submit(invoice_id: int, request: Request, session: Session =
                 making_charges = float(item["making_charges"]) if item.get("making_charges") else None,
                 gst_rate       = float(item.get("gst_rate", 3.0)),
                 purity         = item.get("purity")      or None,
-                huid           = item.get("huid")        or None,   # FIX 9: was missing
+                huid           = item.get("huid")        or None,   
                 hsn_code       = item.get("hsn_code")    or "7113",
                 description    = item.get("description") or None,
             ))
@@ -369,7 +365,6 @@ def print_bill(invoice_id: int, request: Request, session: Session = Depends(get
     party = session.get(Party, invoice.party_id) if invoice.party_id else None
     from app.models.shop import ShopSettings
     shop      = session.exec(select(ShopSettings)).first()
-    # FIX 13: query OldGoldExchange for this bill so print can show old gold detail section
     old_gold  = session.exec(
         select(OldGoldExchange).where(OldGoldExchange.sale_invoice_id == invoice_id)
     ).first()

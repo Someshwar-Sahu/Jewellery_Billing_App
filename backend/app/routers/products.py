@@ -4,7 +4,6 @@ from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 from app.database import get_session
 from app.models.products import Product, ProductGroup
-from datetime import date
 
 router    = APIRouter(prefix="/products", tags=["Products"])
 templates = Jinja2Templates(directory="app/templates")

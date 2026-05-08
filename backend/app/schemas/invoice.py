@@ -78,7 +78,7 @@ class InvoiceItemRead(InvoiceItemCreate):
 class InvoiceCreate(BaseModel):
     invoice_type: InvoiceType = InvoiceType.sale
     bill_category: BillCategory = BillCategory.cash
-    party_id: Optional[int] = None  # None allowed — walk-in customer handled in router
+    party_id: Optional[int] = None  
     invoice_date: date
     credit_due_date: Optional[date] = None
     place_of_supply: Optional[str] = "Uttar Pradesh"

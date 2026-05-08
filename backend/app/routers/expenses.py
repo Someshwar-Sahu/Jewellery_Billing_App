@@ -51,7 +51,7 @@ def expense_list(request: Request, month: str = "", session: Session = Depends(g
     return templates.TemplateResponse(
         request=request, name="expenses/list.html",
         context={
-            "expenses":     expenses,   # FIX 2: key was "expesnses" — template uses "expenses"
+            "expenses":     expenses,   
             "categories":   categories,
             "parties":      parties,
             "total_amount": total_amount,

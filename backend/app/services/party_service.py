@@ -1,9 +1,8 @@
-from sqlmodel import Session, select, func
+from sqlmodel import Session, select
 from app.models.parties import Party
 from app.models.invoices import Invoice
 from app.schemas.party import PartyCreate, PartyUpdate
 from fastapi import HTTPException
-from datetime import datetime
 
 
 def create_party(session: Session, data: PartyCreate) -> Party:

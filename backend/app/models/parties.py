@@ -16,8 +16,8 @@ class Party(SQLModel, table=True):
     state_code: Optional[str] = None
     gstin: Optional[str] = None
     gstin_verified: bool = False
-    gstin_status: Optional[str] = None  # active / cancelled / pending
-    business_type: Optional[str] = None # fixed typo: bussiness -> business
+    gstin_status: Optional[str] = None  
+    business_type: Optional[str] = None 
     credit_limit: Optional[float] = None
     credit_days: Optional[int] = None
     opening_balance: Optional[float] = None
@@ -32,12 +32,12 @@ class OldGoldExchange(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     party_id: int = Field(foreign_key="parties.id")
     sale_invoice_id: Optional[int] = Field(default=None, foreign_key="invoices.id")
-    exchange_date: date                 # renamed from date to avoid conflict with date type
-    transaction_type: str = "exchange"  # exchange (part of sale) / direct_purchase (cash to customer)
-    metal_type: str = "gold"            # gold / silver
-    purity: Optional[str] = None        # 22K, 18K, 925, 999 etc
+    exchange_date: date                 
+    transaction_type: str = "exchange"  
+    metal_type: str = "gold"            
+    purity: Optional[str] = None        
     weight_grams: float
     rate_per_gram: float
     total_value: float
-    cash_paid: Optional[float] = None   # for direct_purchase — how much cash dad paid
+    cash_paid: Optional[float] = None   
     notes: Optional[str] = None

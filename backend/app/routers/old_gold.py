@@ -1,10 +1,9 @@
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 from app.database import get_session
 from app.models.parties import Party, OldGoldExchange
-from app.models.invoices import Invoice
 from app.models.system import MonthLock
 from app.models.shop import FinancialYear
 from datetime import date
@@ -109,7 +108,7 @@ async def create_submit(request: Request, session: Session = Depends(get_session
 
         entry = OldGoldExchange(
             party_id         = party_id,
-            sale_invoice_id  = None,   # direct purchase — not linked to a sale bill
+            sale_invoice_id  = None,   
             exchange_date    = ex_date,
             transaction_type = tx_type,
             metal_type       = data.get("metal_type", "gold"),

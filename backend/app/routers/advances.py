@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
@@ -81,9 +81,6 @@ async def create_submit(request: Request, session: Session = Depends(get_session
     except Exception as e:
         return JSONResponse(status_code=400, content={"success": False, "error": str(e)})
 
-# ── BALANCE (JSON — called by invoice.js when party selected on bill form) ────
-# FIX 1: Route was entirely missing. invoice.js calls GET /advances/balance/{party_id}
-
 @router.get("/balance/{party_id}")
 def get_balance(party_id: int, session: Session = Depends(get_session)):
     """Return total available advance balance for a party."""
@@ -94,8 +91,6 @@ def get_balance(party_id: int, session: Session = Depends(get_session)):
     ).all()
     available = round(sum(a.amount - a.adjusted_amount for a in advances), 2)
     return {"available": available, "party_id": party_id}
-
-# ── ADJUST (called when a bill uses advance amount) ───────────────────────────
 
 @router.post("/adjust/{party_id}")
 async def adjust_advance(party_id: int, request: Request, session: Session = Depends(get_session)):
@@ -111,7 +106,7 @@ async def adjust_advance(party_id: int, request: Request, session: Session = Dep
 
     remaining = amount
     for adv in advances:
-        if remaining <= 0.0:   # FIX 3: was < 0.0
+        if remaining <= 0.0:   
             break
         available = adv.amount - adv.adjusted_amount
         use       = min(available, remaining)

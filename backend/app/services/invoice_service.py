@@ -2,7 +2,7 @@ from sqlmodel import Session, select
 from app.models.invoices import Invoice, InvoiceItem, InvoiceVersion, InvoiceEditLog
 from app.schemas.invoice import InvoiceCreate, InvoiceUpdate
 from app.models.parties import OldGoldExchange
-from app.models.inventory import GoldRate, StockLedger
+from app.models.inventory import StockLedger
 from datetime import datetime, date
 from fastapi import HTTPException
 import json
@@ -133,7 +133,6 @@ def _build_totals(calculated_items, items_to_calc, old_gold_value: float, discou
     gross = max(Decimal("0"), gross)
     round_off = _d(round(gross) - gross)
     grand_total = gross + round_off
-    # FIX 11: floor amount_due at 0 — never show negative
     amount_due = max(Decimal("0"), grand_total - _d(amount_paid))
 
     if _d(amount_paid) >= grand_total:
@@ -369,14 +368,14 @@ def update_invoice(session: Session, invoice_id: int, data: InvoiceUpdate) -> In
         "saved_at":       datetime.utcnow().isoformat(),
         "reason":         data.edit_reason or "manual edit",
     }
-    # FIX 8: save InvoiceVersion with OLD version number BEFORE incrementing
+    
     version = InvoiceVersion(
         invoice_id     = invoice_id,
-        version_number = invoice.version_number,   # preserves the pre-edit version label
+        version_number = invoice.version_number,   
         snapshot       = json.dumps(snapshot),
     )
     session.add(version)
-    invoice.version_number += 1   # now increment
+    invoice.version_number += 1  
 
     def log_change(field: str, old_val: str, new_val: str):
         if old_val != new_val:
@@ -435,7 +434,7 @@ def update_invoice(session: Session, invoice_id: int, data: InvoiceUpdate) -> In
                 item_name      = item_data.item_name,
                 hsn_code       = item_data.hsn_code or "7113",
                 purity         = item_data.purity,
-                huid           = item_data.huid,       # FIX 9: huid preserved through edit
+                huid           = item_data.huid,       
                 weight_grams   = item_data.weight_grams,
                 rate_per_gram  = item_data.rate_per_gram,
                 quantity       = item_data.quantity,
@@ -504,7 +503,7 @@ def duplicate_invoice(session: Session, invoice_id: int) -> Invoice:
             product_id     = item.product_id,
             hsn_code       = item.hsn_code,
             purity         = item.purity,
-            huid           = None,  # HUID should not be duplicated — forces user to re-scan item if they want HUID on new bill
+            huid           = None,  
             weight_grams   = item.weight_grams,
             rate_per_gram  = item.rate_per_gram,
             quantity       = item.quantity,
@@ -526,7 +525,6 @@ def duplicate_invoice(session: Session, invoice_id: int) -> Invoice:
         payment_mode   = PaymentMode(original.payment_mode) if original.payment_mode else None,
         amount_paid    = 0.0,
         old_gold_value = original.old_gold_value,
-        # Duplicate keeps old_gold_weight=None so no OldGoldExchange is re-created (Mode A)
         old_gold_metal_type = "gold",
         discount       = original.discount,
         notes          = f"Duplicated from {original.invoice_number}",
@@ -544,7 +542,6 @@ def cancel_invoice(session: Session, invoice_id: int, reason: str = None) -> Inv
     _ensure_date_in_active_fy(session, invoice.invoice_date)
     _ensure_month_unlocked(session, invoice.invoice_date, "cancel invoice")
 
-    # FIX 10: Reverse stock for product-linked items when bill is cancelled
     items = session.exec(
         select(InvoiceItem).where(InvoiceItem.invoice_id == invoice_id)
     ).all()
@@ -581,7 +578,6 @@ def cancel_invoice(session: Session, invoice_id: int, reason: str = None) -> Inv
 
 def recover_invoice(session: Session, invoice_id: int) -> Invoice:
     """Recover a cancelled bill back to active."""
-    # BUG 1 FIX: fetch invoice FIRST before passing to guards
     invoice = session.get(Invoice, invoice_id)
     if not invoice:
         raise HTTPException(status_code=404, detail="Bill not found")
@@ -606,7 +602,7 @@ def recover_invoice(session: Session, invoice_id: int) -> Invoice:
         re_apply_qty = item.weight_grams if item.weight_grams else (item.quantity or 1.0)
         re_entry = StockLedger(
             product_id       = item.product_id,
-            stock_date       = invoice.invoice_date,   # BUG 5 FIX: use original date not today
+            stock_date       = invoice.invoice_date,   
             transaction_type = invoice.invoice_type,
             invoice_id       = invoice_id,
             quantity_in      = re_apply_qty if is_purchase else 0.0,

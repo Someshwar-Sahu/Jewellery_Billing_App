@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
@@ -26,7 +26,6 @@ def rates_list(request: Request, session: Session = Depends(get_session)):
 
 @router.get("/create",response_class= HTMLResponse)
 def create_rate_form(request: Request, session: Session = Depends(get_session)):
-    # Prefill with yesterday's rate if today's rate doesn't exist
 
     today_rate = session.exec(select(GoldRate).where(GoldRate.rate_date == date.today())).first()
 

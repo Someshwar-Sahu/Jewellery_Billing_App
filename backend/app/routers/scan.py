@@ -89,10 +89,8 @@ EXTRACTION LOGIC:
                 content={"success": False, "error": "Google API key not configured"},
             )
 
-        # Client reads GOOGLE_API_KEY from environment automatically
         client = genai.Client(api_key=settings.GOOGLE_API_KEY)
 
-        # Decode base64 string back to raw bytes for Gemini
         image_bytes = base64.b64decode(image_b64)
 
         fallback_models = [

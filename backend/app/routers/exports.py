@@ -8,7 +8,7 @@ from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 
 from app.database import get_session
-from app.models.invoices import Invoice, InvoiceItem
+from app.models.invoices import Invoice
 from app.models.parties import Party, OldGoldExchange
 from app.models.expenses import Expense, ExpenseCategory
 from app.models.inventory import StockLedger
@@ -26,9 +26,9 @@ templates = Jinja2Templates(directory="app/templates")
 
 # ── STYLE HELPERS ─────────────────────────────────────────────────────────────
 
-HEADER_FILL   = PatternFill("solid", fgColor="1A237E")   # dark blue
+HEADER_FILL   = PatternFill("solid", fgColor="1A237E")   
 HEADER_FONT   = Font(color="FFFFFF", bold=True, size=10)
-SUBHEAD_FILL  = PatternFill("solid", fgColor="E8EAF6")   # light blue
+SUBHEAD_FILL  = PatternFill("solid", fgColor="E8EAF6")   
 BOLD_FONT     = Font(bold=True, size=10)
 NORMAL_FONT   = Font(size=10)
 RUPEE_FORMAT  = '#,##0.00'

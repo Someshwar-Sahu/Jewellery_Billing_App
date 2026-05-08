@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
@@ -7,7 +7,6 @@ from app.models.shop import ShopSettings, FinancialYear
 from datetime import date
 from app.models.invoices import Invoice
 from app.models.parties import Party
-from app.models.payments import Advance
 from decimal import Decimal
 
 router    = APIRouter(prefix="/settings", tags=["Settings"])
@@ -265,7 +264,7 @@ async def close_fy(request: Request, session: Session = Depends(get_session)):
             is_closed  = False,
         )
         session.add(new_fy)
-        session.flush()   # flush so new_fy.id is available
+        session.flush()   
 
         # ── CARRY FORWARD ─────────────────────────────────────────────
         _carry_forward_party_balances(session, active_fy)
@@ -294,9 +293,7 @@ def _carry_forward_party_balances(session: Session, closing_fy: FinancialYear) -
     - Only updates parties with a non-zero net balance.
     - Idempotent: overwrites previous carry-forward value (type = "carried_forward").
     """
-    from app.models.invoices import Invoice
-    from app.models.parties import Party
-    from decimal import Decimal
+    
 
     # Fetch all unpaid/partial bills in the closing FY
     bills = session.exec(
