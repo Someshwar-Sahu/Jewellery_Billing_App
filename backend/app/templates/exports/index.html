@@ -15,14 +15,23 @@
 
     <div class="detail-card">
         <h3>Sales Register</h3>
-        <p style="color:#888;font-size:12px;margin-bottom:12px">All sale bills with GST breakdown</p>
-        <a href="/exports/sales-register" class="btn-primary">⬇ Download All</a>
+        <p style="color:#888;font-size:12px;margin-bottom:8px">All sale bills with GST breakdown</p>
+        <select id="salesFySelect"
+            style="width:100%;padding:6px;border-radius:6px;border:1px solid #ddd;margin-bottom:10px;font-size:13px">
+            <option value="">Active FY (default)</option>
+            <!-- populated by JS below -->
+        </select>
+        <a id="salesDownloadBtn" href="/exports/sales-register" class="btn-primary">⬇ Download</a>
     </div>
 
     <div class="detail-card">
         <h3>Purchase Register</h3>
-        <p style="color:#888;font-size:12px;margin-bottom:12px">All purchase bills</p>
-        <a href="/exports/purchase-register" class="btn-primary">⬇ Download All</a>
+        <p style="color:#888;font-size:12px;margin-bottom:8px">All purchase bills</p>
+        <select id="purchaseFySelect"
+            style="width:100%;padding:6px;border-radius:6px;border:1px solid #ddd;margin-bottom:10px;font-size:13px">
+            <option value="">Active FY (default)</option>
+        </select>
+        <a id="purchaseDownloadBtn" href="/exports/purchase-register" class="btn-primary">⬇ Download</a>
     </div>
 
     <div class="detail-card">
@@ -57,4 +66,36 @@
 
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Fetch all FYs and populate dropdowns, then update download links
+fetch("/settings/all-fy")
+    .then(r => r.json())
+    .then(fys => {
+        ["salesFySelect", "purchaseFySelect"].forEach(id => {
+            const sel = document.getElementById(id);
+            if (!sel) return;
+            fys.forEach(fy => {
+                const opt  = document.createElement("option");
+                opt.value  = fy.id;
+                opt.text   = fy.label + (fy.is_active ? " ●" : "");
+                sel.appendChild(opt);
+            });
+        });
+    })
+    .catch(() => {});   // silently skip if endpoint not available
+
+function updateLink(selectId, btnId, base) {
+    const sel = document.getElementById(selectId);
+    const btn = document.getElementById(btnId);
+    if (!sel || !btn) return;
+    sel.addEventListener("change", () => {
+        btn.href = sel.value ? `${base}?fy_id=${sel.value}` : base;
+    });
+}
+updateLink("salesFySelect",    "salesDownloadBtn",    "/exports/sales-register");
+updateLink("purchaseFySelect", "purchaseDownloadBtn", "/exports/purchase-register");
+</script>
 {% endblock %}

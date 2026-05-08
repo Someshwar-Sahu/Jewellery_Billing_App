@@ -11,6 +11,7 @@ from app.models.parties import Party
 from app.models.payments import Advance
 from app.models.inventory import StockLedger
 from app.models.products import Product
+from app.models.shop import FinancialYear
 from app.models.system import MonthLock, AppAlert
 
 router    = APIRouter(prefix="/dashboard", tags=["Dashboard"])
@@ -25,6 +26,11 @@ def _month_label(y: int, m: int) -> str:
 def dashboard_home(request: Request, session: Session = Depends(get_session)):
 
     today     = date.today()
+    # After: today = date.today()
+    # ADD:
+    active_fy   = session.exec(select(FinancialYear).where(FinancialYear.is_active == True)).first()
+    fy_start    = active_fy.start_date if active_fy else date(today.year, 4, 1)
+    fy_end      = active_fy.end_date   if active_fy else date(today.year + 1, 3, 31)
     month_start = today.replace(day=1)
 
     # ── TODAY'S SALES ──────────────────────────────────────────────────────
@@ -33,6 +39,7 @@ def dashboard_home(request: Request, session: Session = Depends(get_session)):
         .where(Invoice.invoice_type == "sale")
         .where(Invoice.is_cancelled == False)
         .where(Invoice.invoice_date == today)
+        .where(Invoice.invoice_date >= fy_start)
     ).all()
     today_sale_count  = len(today_bills)
     today_sale_total  = round(sum(b.grand_total for b in today_bills), 2)
@@ -205,6 +212,8 @@ def dashboard_home(request: Request, session: Session = Depends(get_session)):
             "show_lock_warning":  show_lock_warning,
             "days_to_month_end":  days_to_month_end,
             "alerts":             alerts,
+            "active_fy": active_fy,
+            "fy_label":  active_fy.label if active_fy else "—",
         },
     )
 

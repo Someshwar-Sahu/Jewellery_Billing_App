@@ -1,6 +1,7 @@
 from sqlmodel import SQLModel, Field
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, date
+from sqlalchemy import UniqueConstraint
 
 class ShopSettings(SQLModel, table=True):
     __tablename__ = "shop_settings"
@@ -35,9 +36,11 @@ class User(SQLModel, table=True):
     
 class FinancialYear(SQLModel, table=True):
     __tablename__ = "financial_years"
+    __table_args__ = (UniqueConstraint("label", name="uq_financial_years_label"),)
 
     id: Optional[int] = Field(default=None, primary_key=True)
     label: str
-    start_date: str
-    end_date: str
+    start_date: date
+    end_date: date
     is_active: bool = False
+    is_closed: bool = False

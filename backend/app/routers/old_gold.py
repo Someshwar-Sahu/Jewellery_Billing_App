@@ -5,6 +5,8 @@ from sqlmodel import Session, select
 from app.database import get_session
 from app.models.parties import Party, OldGoldExchange
 from app.models.invoices import Invoice
+from app.models.system import MonthLock
+from app.models.shop import FinancialYear
 from datetime import date
 
 router    = APIRouter(prefix="/old-gold", tags=["Old Gold"])
@@ -89,10 +91,26 @@ async def create_submit(request: Request, session: Session = Depends(get_session
             return JSONResponse(status_code=400,
                 content={"success": False, "error": "Party not found"})
 
+        ex_date = date.fromisoformat(data["exchange_date"])
+        active_fy = session.exec(select(FinancialYear).where(FinancialYear.is_active == True)).first()
+        if not active_fy:
+            return JSONResponse(status_code=400, content={"success": False, "error": "No active financial year configured."})
+        if not (active_fy.start_date <= ex_date <= active_fy.end_date):
+            return JSONResponse(status_code=400, content={"success": False, "error": f"Date is outside active financial year {active_fy.label}."})
+
+        lock = session.exec(
+            select(MonthLock)
+            .where(MonthLock.year == ex_date.year)
+            .where(MonthLock.month == ex_date.month)
+            .where(MonthLock.is_locked == True)
+        ).first()
+        if lock:
+            return JSONResponse(status_code=400, content={"success": False, "error": f"{ex_date.strftime('%B %Y')} is locked for GST filing."})
+
         entry = OldGoldExchange(
             party_id         = party_id,
             sale_invoice_id  = None,   # direct purchase — not linked to a sale bill
-            exchange_date    = date.fromisoformat(data["exchange_date"]),
+            exchange_date    = ex_date,
             transaction_type = tx_type,
             metal_type       = data.get("metal_type", "gold"),
             purity           = data.get("purity") or None,

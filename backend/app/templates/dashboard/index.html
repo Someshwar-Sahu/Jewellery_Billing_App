@@ -25,8 +25,11 @@
 {% endfor %}
 
 <!-- ── TODAY STRIP ────────────────────────────────────────────────── -->
-<div style="margin-bottom:6px">
+<div style="margin-bottom:6px;display:flex;gap:16px;align-items:center">
     <span style="font-size:13px;color:#888">{{ today.strftime('%A, %d %B %Y') }}</span>
+    <span style="font-size:12px;background:#1a1a2e;color:#fff;padding:3px 10px;border-radius:12px">
+        FY {{ fy_label }}
+    </span>
 </div>
 
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-bottom:24px">

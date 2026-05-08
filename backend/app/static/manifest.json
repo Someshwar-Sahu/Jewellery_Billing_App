@@ -1,0 +1,40 @@
+{
+    "name": "Jewellery Billing App",
+    "short_name": "JewelBill",
+    "description": "Complete billing and GST management for jewellery shops",
+    "start_url": "/invoices",
+    "display": "standalone",
+    "background_color": "#f5f5f5",
+    "theme_color": "#1a1a2e",
+    "orientation": "portrait-primary",
+    "scope": "/",
+    "lang": "en",
+    "icons": [
+        {
+            "src": "/static/icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/static/icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "New Bill",
+            "short_name": "New Bill",
+            "url": "/invoices/create",
+            "description": "Create a new bill"
+        },
+        {
+            "name": "Gold Rates",
+            "short_name": "Rates",
+            "url": "/rates/create",
+            "description": "Enter today's gold rate"
+        }
+    ]
+}

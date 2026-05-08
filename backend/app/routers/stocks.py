@@ -6,6 +6,8 @@ from app.database import get_session
 from app.models.inventory import StockLedger
 from app.models.products import Product
 from app.models.invoices import Invoice
+from app.models.system import MonthLock
+from app.models.shop import FinancialYear
 
 router    = APIRouter(prefix="/stock", tags=["Stock"])
 templates = Jinja2Templates(directory="app/templates")
@@ -112,15 +114,37 @@ async def adjust_stock(product_id: int, request: Request, session: Session = Dep
     try:
         from datetime import date as date_type
         adj_type = data.get("type", "in")
+        stock_date = date_type.fromisoformat(data.get("date", date_type.today().isoformat()))
+        active_fy = session.exec(select(FinancialYear).where(FinancialYear.is_active == True)).first()
+        if not active_fy:
+            return JSONResponse(status_code=400, content={"success": False, "error": "No active financial year configured."})
+        if not (active_fy.start_date <= stock_date <= active_fy.end_date):
+            return JSONResponse(status_code=400, content={"success": False, "error": f"Date is outside active financial year {active_fy.label}."})
+
+        quantity = float(data["quantity"])
+        if quantity <= 0:
+            return JSONResponse(status_code=400, content={"success": False, "error": "Quantity must be greater than zero."})
+        rate = float(data["rate"]) if data.get("rate") else None
+        if rate is not None and rate < 0:
+            return JSONResponse(status_code=400, content={"success": False, "error": "Rate cannot be negative."})
+
+        lock = session.exec(
+            select(MonthLock)
+            .where(MonthLock.year == stock_date.year)
+            .where(MonthLock.month == stock_date.month)
+            .where(MonthLock.is_locked == True)
+        ).first()
+        if lock:
+            return JSONResponse(status_code=400, content={"success": False, "error": f"{stock_date.strftime('%B %Y')} is locked for GST filing."})
         entry = StockLedger(
             product_id       = product_id,
-            stock_date       = date_type.fromisoformat(data.get("date", date_type.today().isoformat())),
+            stock_date       = stock_date,
             transaction_type = "adjustment",
             invoice_id       = None,
-            quantity_in      = float(data["quantity"]) if adj_type == "in"  else 0.0,
-            quantity_out     = float(data["quantity"]) if adj_type == "out" else 0.0,
+            quantity_in      = quantity if adj_type == "in"  else 0.0,
+            quantity_out     = quantity if adj_type == "out" else 0.0,
             balance          = 0.0,
-            rate             = float(data["rate"]) if data.get("rate") else None,
+            rate             = rate,
             notes            = data.get("notes"),
         )
         session.add(entry)

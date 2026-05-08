@@ -13,16 +13,39 @@
 </p>
 
 <!-- ── MONTH FILTER ─────────────────────────────────────────────── -->
-<form method="get" style="margin-bottom:20px;display:flex;gap:10px;align-items:center">
-    <label style="font-weight:600">Filter by Month:</label>
-    <select name="month" onchange="this.form.submit()" style="padding:6px 10px;border-radius:6px;border:1px solid #ddd">
+<form method="get" style="margin-bottom:20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+
+    {% if all_fys|length > 1 %}
+    <label style="font-weight:600;font-size:13px">FY:</label>
+    <select name="fy_id" onchange="this.form.submit()"
+            style="padding:6px 10px;border-radius:6px;border:1px solid #ddd;font-size:13px">
+        {% for fy in all_fys %}
+        <option value="{{ fy.id }}"
+                {{ 'selected' if selected_fy and fy.id == selected_fy.id else '' }}>
+            {{ fy.label }}{{ ' ●' if fy.is_active else '' }}
+        </option>
+        {% endfor %}
+    </select>
+    {% else %}
+    <input type="hidden" name="fy_id" value="{{ selected_fy.id if selected_fy else '' }}">
+    {% endif %}
+
+    <label style="font-weight:600;font-size:13px">Month:</label>
+    <select name="month" onchange="this.form.submit()"
+            style="padding:6px 10px;border-radius:6px;border:1px solid #ddd;font-size:13px">
         <option value="">All Months</option>
         {% for key, label in all_months %}
         <option value="{{ key }}" {{ 'selected' if selected_month == key else '' }}>{{ label }}</option>
         {% endfor %}
     </select>
+
     {% if selected_month %}
-    <a href="/reports/gstr3b" class="btn-secondary btn-sm">✕ Clear</a>
+    <a href="/reports/gstr3b?fy_id={{ selected_fy.id if selected_fy else '' }}"
+       class="btn-secondary btn-sm">✕ Clear Month</a>
+    {% endif %}
+
+    {% if selected_fy %}
+    <span style="color:#888;font-size:13px;margin-left:4px">FY {{ selected_fy.label }}</span>
     {% endif %}
 </form>
 

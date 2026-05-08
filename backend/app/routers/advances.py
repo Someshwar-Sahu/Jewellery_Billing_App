@@ -5,6 +5,8 @@ from sqlmodel import Session, select
 from app.database import get_session
 from app.models.payments import Advance
 from app.models.parties import Party
+from app.models.system import MonthLock
+from app.models.shop import FinancialYear
 from datetime import date
 
 router    = APIRouter(prefix="/advances", tags=["Advances"])
@@ -49,9 +51,25 @@ async def create_submit(request: Request, session: Session = Depends(get_session
         am = float(data["amount"])
         if am <= 0:
             return JSONResponse(status_code=400, content={"success": False, "error": "Amount must be greater than zero."})
+        adv_date = date.fromisoformat(data["advance_date"])
+        active_fy = session.exec(select(FinancialYear).where(FinancialYear.is_active == True)).first()
+        if not active_fy:
+            return JSONResponse(status_code=400, content={"success": False, "error": "No active financial year configured."})
+        if not (active_fy.start_date <= adv_date <= active_fy.end_date):
+            return JSONResponse(status_code=400, content={"success": False, "error": f"Date is outside active financial year {active_fy.label}."})
+
+        lock = session.exec(
+            select(MonthLock)
+            .where(MonthLock.year == adv_date.year)
+            .where(MonthLock.month == adv_date.month)
+            .where(MonthLock.is_locked == True)
+        ).first()
+        if lock:
+            return JSONResponse(status_code=400, content={"success": False, "error": f"{adv_date.strftime('%B %Y')} is locked for GST filing."})
+
         advance = Advance(
             party_id     = int(data["party_id"]),
-            advance_date = date.fromisoformat(data["advance_date"]),
+            advance_date = adv_date,
             amount       = am,
             mode         = data.get("mode", "cash"),
             notes        = data.get("notes") or None,

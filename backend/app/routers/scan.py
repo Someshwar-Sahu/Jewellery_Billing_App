@@ -83,6 +83,12 @@ EXTRACTION LOGIC:
         from google.genai import types
         from app.config import settings
 
+        if not settings.GOOGLE_API_KEY:
+            return JSONResponse(
+                status_code=503,
+                content={"success": False, "error": "Google API key not configured"},
+            )
+
         # Client reads GOOGLE_API_KEY from environment automatically
         client = genai.Client(api_key=settings.GOOGLE_API_KEY)
 
@@ -95,7 +101,6 @@ EXTRACTION LOGIC:
             "gemini-2.0-flash-001",
             "gemini-2.0-flash-lite-001",
             "gemini-2.0-flash-lite",
-            "gemini-2.5-flash-preview-tts",
             "gemini-flash-latest",
             "gemini-flash-lite-latest",
             "gemini-2.5-flash-lite",

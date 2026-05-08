@@ -85,6 +85,7 @@ class InvoiceCreate(BaseModel):
     party_gstin: Optional[str] = None
     payment_mode: Optional[PaymentMode] = None
     amount_paid: Optional[float] = 0.0
+    advance_used: Optional[float] = 0.0
     old_gold_value: float = 0.0
     old_gold_metal_type: MetalType = MetalType.gold
     old_gold_purity: Optional[str] = None
@@ -103,7 +104,6 @@ class InvoiceCreate(BaseModel):
         return v
     
     @model_validator(mode="after")
-    @model_validator(mode="after")
     def credit_need_due_date(self):
         if self.bill_category == BillCategory.credit and self.credit_due_date is None:
             raise ValueError("Credit invoices must have a due date.")
@@ -116,6 +116,13 @@ class InvoiceCreate(BaseModel):
     def amount_paid_valid(cls, v):
         if v is not None and v < 0:
             raise ValueError("Amount paid cannot be negative.")
+        return v
+
+    @field_validator("advance_used")
+    @classmethod
+    def advance_used_valid(cls, v):
+        if v is not None and v < 0:
+            raise ValueError("Advance used cannot be negative.")
         return v
     
     @field_validator("old_gold_value", "discount")

@@ -5,8 +5,9 @@ from sqlmodel import Session, select
 from app.database import get_session
 from app.models.invoices import Invoice, InvoiceItem, InvoiceEditLog, InvoiceVersion
 from app.models.parties import Party, OldGoldExchange
-from app.models.payments import Advance
 from app.models.inventory import GoldRate
+from app.models.system import MonthLock
+from app.models.shop import FinancialYear
 from app.services.invoice_service import (
     create_invoice, cancel_invoice, recover_invoice,
     get_pending_bills, update_invoice, duplicate_invoice
@@ -15,6 +16,7 @@ from app.schemas.invoice import InvoiceCreate, InvoiceItemCreate, InvoiceUpdate
 from datetime import date
 from markupsafe import Markup
 from num2words import num2words
+from decimal import Decimal, ROUND_HALF_UP
 
 import json as _json
 
@@ -22,22 +24,47 @@ router    = APIRouter(prefix="/invoices", tags=["Invoices"])
 templates = Jinja2Templates(directory="app/templates")
 templates.env.filters["tojson"] = lambda v: Markup(_json.dumps(v, default=str))
 
+
+def _money(v) -> float:
+    return float(Decimal(str(v if v is not None else 0)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+
 # ── LIST ──────────────────────────────────────────────────────────────────────
 
 @router.get("/", response_class=HTMLResponse)
-def invoice_list(request: Request, session: Session = Depends(get_session)):
-    invoices  = session.exec(
-        select(Invoice).where(Invoice.is_cancelled == False).order_by(Invoice.id.desc())
-    ).all()
+def invoice_list(request: Request, fy_id: int = 0, session: Session = Depends(get_session)):
+    # Load all FYs for the switcher dropdown
+    all_fys = session.exec(select(FinancialYear).order_by(FinancialYear.start_date.desc())).all()
+    active_fy = next((f for f in all_fys if f.is_active), None)
+
+    # Determine which FY to display
+    selected_fy = None
+    if fy_id:
+        selected_fy = session.get(FinancialYear, fy_id)
+    if not selected_fy:
+        selected_fy = active_fy   # default to active
+
+    # Build query scoped to selected FY's date range
+    stmt = select(Invoice).where(Invoice.is_cancelled == False)
+    if selected_fy:
+        stmt = stmt.where(Invoice.invoice_date >= selected_fy.start_date)
+        stmt = stmt.where(Invoice.invoice_date <= selected_fy.end_date)
+    invoices = session.exec(stmt.order_by(Invoice.id.desc())).all()
+
     party_ids = {inv.party_id for inv in invoices if inv.party_id}
     parties   = {p.id: p for p in session.exec(
         select(Party).where(Party.id.in_(party_ids))
     ).all()} if party_ids else {}
+
     return templates.TemplateResponse(
         request=request, name="invoices/list.html",
-        context={"invoices": invoices, "parties": parties}
+        context={
+            "invoices":     invoices,
+            "parties":      parties,
+            "all_fys":      all_fys,
+            "selected_fy":  selected_fy,
+            "active_fy":    active_fy,
+        }
     )
-
 
 # ── CANCELLED ─────────────────────────────────────────────────────────────────
 
@@ -153,6 +180,7 @@ async def create_bill_submit(request: Request, session: Session = Depends(get_se
             credit_due_date     = date.fromisoformat(data["credit_due_date"]) if data.get("credit_due_date") else None,
             payment_mode        = data.get("payment_mode") or None,
             amount_paid         = float(data.get("amount_paid", 0)),
+            advance_used        = float(data.get("advance_used", 0)),
             old_gold_value      = float(data.get("old_gold_value", 0)),
             old_gold_metal_type = data.get("old_gold_metal_type") or "gold",
             old_gold_purity     = data.get("old_gold_purity")     or None,
@@ -164,29 +192,6 @@ async def create_bill_submit(request: Request, session: Session = Depends(get_se
         )
 
         invoice = create_invoice(session, invoice_data)
-
-        # FIX 6: advance_used is the actual advance portion applied, sent separately
-        advance_used = float(data.get("advance_used", 0))
-        if advance_used > 0 and party_id:
-            open_advances = session.exec(
-                select(Advance)
-                .where(Advance.party_id == party_id)
-                .where(Advance.status == "open")
-                .order_by(Advance.advance_date)
-            ).all()
-            remaining = advance_used
-            for adv in open_advances:
-                if remaining <= 0.0:   # FIX 3: was < 0.0
-                    break
-                available = adv.amount - adv.adjusted_amount
-                available = max(0.0, available)  
-                use       = min(available, remaining)
-                adv.adjusted_amount = round(adv.adjusted_amount + use, 2)
-                if adv.adjusted_amount >= adv.amount:
-                    adv.status = "used"
-                session.add(adv)
-                remaining = round(remaining - use, 2)
-            session.commit()
 
         return {"success": True, "invoice_id": invoice.id, "invoice_number": invoice.invoice_number}
 
@@ -248,14 +253,23 @@ def invoice_detail(invoice_id: int, request: Request, session: Session = Depends
         .where(InvoiceEditLog.invoice_id == invoice_id)
         .order_by(InvoiceEditLog.edited_at.desc())
     ).all()
+    active_fy   = session.exec(
+        select(FinancialYear).where(FinancialYear.is_active == True)
+    ).first()
+    is_historical = (
+        active_fy is None or
+        not (active_fy.start_date <= invoice.invoice_date <= active_fy.end_date)
+    )
     return templates.TemplateResponse(
         request=request, name="invoices/detail.html",
         context={
-            "invoice":   invoice,
-            "items":     items,
-            "party":     party,
-            "edit_logs": edit_logs,
-            "today":     date.today(),
+            "invoice":      invoice,
+            "items":        items,
+            "party":        party,
+            "edit_logs":    edit_logs,
+            "today":        date.today(),
+            "is_historical": is_historical,
+            "active_fy":    active_fy,
         }
     )
 
@@ -263,12 +277,22 @@ def invoice_detail(invoice_id: int, request: Request, session: Session = Depends
 # ── EDIT ──────────────────────────────────────────────────────────────────────
 
 @router.get("/{invoice_id}/edit", response_class=HTMLResponse)
+@router.get("/{invoice_id}/edit", response_class=HTMLResponse)
 def edit_bill_form(invoice_id: int, request: Request, session: Session = Depends(get_session)):
     invoice = session.get(Invoice, invoice_id)
     if not invoice:
         raise HTTPException(status_code=404, detail="Bill not found")
     if invoice.is_cancelled:
         raise HTTPException(status_code=400, detail="Bill is cancelled")
+    # Block edit form for historical FY bills — service would reject anyway, but stop early
+    active_fy = session.exec(
+        select(FinancialYear).where(FinancialYear.is_active == True)
+    ).first()
+    if active_fy and not (active_fy.start_date <= invoice.invoice_date <= active_fy.end_date):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Bill belongs to historical FY. Only FY {active_fy.label} is editable."
+        )
     items_orm = session.exec(select(InvoiceItem).where(InvoiceItem.invoice_id == invoice_id)).all()
     party     = session.get(Party, invoice.party_id) if invoice.party_id else None
     # FIX 9: include huid in items dict so edit.html can prefill and preserve it
@@ -385,16 +409,41 @@ async def record_credit_payment(invoice_id: int, request: Request, session: Sess
     invoice = session.get(Invoice, invoice_id)
     if not invoice:
         raise HTTPException(status_code=404, detail="Bill not found")
+    if invoice.is_cancelled:
+        raise HTTPException(status_code=400, detail="Cannot record payment on a cancelled bill.")
+
+    active_fy = session.exec(
+        select(FinancialYear).where(FinancialYear.is_active == True)
+    ).first()
+    if not active_fy:
+        raise HTTPException(status_code=400, detail="No active financial year configured.")
+    if not (active_fy.start_date <= invoice.invoice_date <= active_fy.end_date):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot modify bill outside active financial year {active_fy.label}.",
+        )
+
+    lock = session.exec(
+        select(MonthLock)
+        .where(MonthLock.year == invoice.invoice_date.year)
+        .where(MonthLock.month == invoice.invoice_date.month)
+        .where(MonthLock.is_locked == True)
+    ).first()
+    if lock:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot record payment: {invoice.invoice_date.strftime('%B %Y')} is locked for GST filing.",
+        )
 
     data         = await request.json()
-    paid_now = float(data.get("amount", 0))
+    paid_now = _money(data.get("amount", 0))
     if paid_now <= 0:
         return JSONResponse(status_code=400, content={"success": False, "error": "Payment amount must be greater than zero."})
     mode         = data.get("mode", "cash")
     reference_no = data.get("reference_no", "")
 
     # FIX 15: give clear feedback when bill is already fully paid
-    max_payable = round(invoice.grand_total - invoice.amount_paid, 2)
+    max_payable = _money(Decimal(str(invoice.grand_total)) - Decimal(str(invoice.amount_paid)))
     if max_payable <= 0:
         return JSONResponse(status_code=400, content={
             "success": False, "error": "Bill is already fully paid."
@@ -413,8 +462,8 @@ async def record_credit_payment(invoice_id: int, request: Request, session: Sess
             reference_no = reference_no,
         ))
 
-    invoice.amount_paid    = round(invoice.amount_paid + paid_now, 2)
-    invoice.amount_due     = max(0.0, round(invoice.grand_total - invoice.amount_paid, 2))
+    invoice.amount_paid    = _money(Decimal(str(invoice.amount_paid)) + Decimal(str(paid_now)))
+    invoice.amount_due     = max(0.0, _money(Decimal(str(invoice.grand_total)) - Decimal(str(invoice.amount_paid))))
     invoice.payment_status = (
         "paid"    if invoice.amount_paid >= invoice.grand_total else
         "partial" if invoice.amount_paid > 0 else

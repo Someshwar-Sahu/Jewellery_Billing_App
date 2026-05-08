@@ -10,6 +10,26 @@
     </div>
 </div>
 
+<!-- FY SWITCHER -->
+{% if all_fys|length > 1 %}
+<div
+    style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:10px 14px;background:#f5f5f5;border-radius:8px">
+    <span style="font-size:13px;color:#555;font-weight:600">Financial Year:</span>
+    {% for fy in all_fys %}
+    <a href="/invoices?fy_id={{ fy.id }}" style="padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;
+              background:{{ '#1a1a2e' if fy.id == selected_fy.id else '#fff' }};
+              color:{{ '#fff' if fy.id == selected_fy.id else '#555' }};
+              border:1px solid {{ '#1a1a2e' if fy.id == selected_fy.id else '#ddd' }}">
+        {{ fy.label }}
+        {% if fy.is_active %}<span style="font-size:10px;opacity:0.8"> ●</span>{% endif %}
+    </a>
+    {% endfor %}
+    {% if selected_fy and not selected_fy.is_active %}
+    <span style="font-size:12px;color:#e57373;font-weight:600">📖 View only — historical year</span>
+    {% endif %}
+</div>
+{% endif %}
+
 <table class="table">
     <thead>
         <tr>
@@ -59,7 +79,9 @@
             </td>
         </tr>
         {% else %}
-        <tr><td colspan="9">No bills yet. <a href="/invoices/create">Create your first bill.</a></td></tr>
+        <tr>
+            <td colspan="9">No bills yet. <a href="/invoices/create">Create your first bill.</a></td>
+        </tr>
         {% endfor %}
     </tbody>
 </table>

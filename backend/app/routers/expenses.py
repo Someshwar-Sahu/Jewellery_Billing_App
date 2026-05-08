@@ -5,6 +5,8 @@ from sqlmodel import Session, select
 from app.database import get_session
 from app.models.expenses import Expense, ExpenseCategory
 from app.models.parties import Party
+from app.models.system import MonthLock
+from app.models.shop import FinancialYear
 from datetime import date
 
 router    = APIRouter(prefix="/expenses", tags=["Expenses"])
@@ -14,7 +16,11 @@ templates = Jinja2Templates(directory="app/templates")
 
 @router.get("/", response_class=HTMLResponse)
 def expense_list(request: Request, month: str = "", session: Session = Depends(get_session)):
-    stmt = select(Expense).order_by(Expense.expense_date.desc())
+    stmt = (
+        select(Expense)
+        .where(Expense.is_deleted == False)
+        .order_by(Expense.expense_date.desc())
+    )
 
     if month:
         try:
@@ -88,10 +94,26 @@ async def submit_form(request: Request, session: Session = Depends(get_session))
             return JSONResponse(status_code=400, content={"success": False, "error": "Invalid expense category."})
         itc        = gst_amount if (cat and cat.is_itc_eligible) else 0.0
 
+        expense_date = date.fromisoformat(data["expense_date"])
+        active_fy = session.exec(select(FinancialYear).where(FinancialYear.is_active == True)).first()
+        if not active_fy:
+            return JSONResponse(status_code=400, content={"success": False, "error": "No active financial year configured."})
+        if not (active_fy.start_date <= expense_date <= active_fy.end_date):
+            return JSONResponse(status_code=400, content={"success": False, "error": f"Date is outside active financial year {active_fy.label}."})
+
+        lock = session.exec(
+            select(MonthLock)
+            .where(MonthLock.year == expense_date.year)
+            .where(MonthLock.month == expense_date.month)
+            .where(MonthLock.is_locked == True)
+        ).first()
+        if lock:
+            return JSONResponse(status_code=400, content={"success": False, "error": f"{expense_date.strftime('%B %Y')} is locked for GST filing."})
+
         expense = Expense(
             category_id   = cat.id,
             party_id      = int(data["party_id"]) if data.get("party_id") else None,
-            expense_date  = date.fromisoformat(data["expense_date"]),
+            expense_date  = expense_date,
             description   = data.get("description") or None,
             amount        = amount,
             gst_amount    = gst_amount,
@@ -130,6 +152,24 @@ def delete_expense(expense_id: int, session: Session = Depends(get_session)):
     expense = session.get(Expense, expense_id)
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
-    session.delete(expense)
+    if expense.is_deleted:
+        return {"success": True}
+    active_fy = session.exec(select(FinancialYear).where(FinancialYear.is_active == True)).first()
+    if not active_fy:
+        raise HTTPException(status_code=400, detail="No active financial year configured.")
+    if not (active_fy.start_date <= expense.expense_date <= active_fy.end_date):
+        raise HTTPException(status_code=400, detail=f"Cannot delete expense outside active financial year {active_fy.label}.")
+    lock = session.exec(
+        select(MonthLock)
+        .where(MonthLock.year == expense.expense_date.year)
+        .where(MonthLock.month == expense.expense_date.month)
+        .where(MonthLock.is_locked == True)
+    ).first()
+    if lock:
+        raise HTTPException(status_code=400, detail=f"Cannot delete: {expense.expense_date.strftime('%B %Y')} is locked for GST filing.")
+    from datetime import datetime
+    expense.is_deleted = True
+    expense.deleted_at = datetime.utcnow()
+    session.add(expense)
     session.commit()
     return {"success": True}

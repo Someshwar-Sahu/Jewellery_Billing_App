@@ -1,9 +1,11 @@
 from sqlmodel import SQLModel, Field
 from typing import Optional
 from datetime import date, datetime
+from sqlalchemy import UniqueConstraint
 
 class Invoice(SQLModel, table=True):
     __tablename__ = "invoices"
+    __table_args__ = (UniqueConstraint("invoice_number", name="uq_invoices_invoice_number"),)
 
     id: Optional[int] = Field(default=None, primary_key=True)
     invoice_number: str = Field(index=True)

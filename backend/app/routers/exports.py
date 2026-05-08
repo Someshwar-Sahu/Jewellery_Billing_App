@@ -14,6 +14,7 @@ from app.models.expenses import Expense, ExpenseCategory
 from app.models.inventory import StockLedger
 from app.models.products import Product
 from app.models.payments import CreditPayment
+from app.models.shop import FinancialYear
 
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -100,6 +101,7 @@ def exports_index(request: Request):
 @router.get("/sales-register")
 def export_sales_register(
     month: str = "",
+    fy_id: int = 0,
     session: Session = Depends(get_session),
 ):
     stmt = (
@@ -108,6 +110,18 @@ def export_sales_register(
         .where(Invoice.is_cancelled == False)
         .order_by(Invoice.invoice_date)
     )
+    selected_fy = None
+    if fy_id:
+        selected_fy = session.get(FinancialYear, fy_id)
+    if not selected_fy:
+        selected_fy = session.exec(
+            select(FinancialYear).where(FinancialYear.is_active == True)
+        ).first()
+
+    if selected_fy:
+        stmt = stmt.where(Invoice.invoice_date >= selected_fy.start_date)
+        stmt = stmt.where(Invoice.invoice_date <= selected_fy.end_date)
+
     if month:
         try:
             y, m = int(month[:4]), int(month[5:7])
@@ -177,7 +191,7 @@ def export_sales_register(
         total_values.append(round(totals.get(c_idx, 0), 2))
     _total_row(ws, total_values, t_row, AMT_COLS)
 
-    fname = f"sales_register_{month or 'all'}.xlsx"
+    fname = f"sales_register_{selected_fy.label if selected_fy else 'all'}_{month or 'all'}.xlsx"
     return _stream(wb, fname)
 
 
@@ -186,6 +200,7 @@ def export_sales_register(
 @router.get("/purchase-register")
 def export_purchase_register(
     month: str = "",
+    fy_id: int = 0,
     session: Session = Depends(get_session),
 ):
     stmt = (
@@ -194,6 +209,19 @@ def export_purchase_register(
         .where(Invoice.is_cancelled == False)
         .order_by(Invoice.invoice_date)
     )
+
+    selected_fy = None
+    if fy_id:
+        selected_fy = session.get(FinancialYear, fy_id)
+    if not selected_fy:
+        selected_fy = session.exec(
+            select(FinancialYear).where(FinancialYear.is_active == True)
+        ).first()
+
+    if selected_fy:
+        stmt = stmt.where(Invoice.invoice_date >= selected_fy.start_date)
+        stmt = stmt.where(Invoice.invoice_date <= selected_fy.end_date)
+
     if month:
         try:
             y, m = int(month[:4]), int(month[5:7])
@@ -252,7 +280,7 @@ def export_purchase_register(
         total_values.append(round(totals.get(c_idx, 0), 2))
     _total_row(ws, total_values, t_row, AMT_COLS)
 
-    fname = f"purchase_register_{month or 'all'}.xlsx"
+    fname = f"purchase_register_{selected_fy.label if selected_fy else 'all'}_{month or 'all'}.xlsx"
     return _stream(wb, fname)
 
 
@@ -464,7 +492,11 @@ def export_expenses(
     month: str = "",
     session: Session = Depends(get_session),
 ):
-    stmt = select(Expense).order_by(Expense.expense_date)
+    stmt = (
+        select(Expense)
+        .where(Expense.is_deleted == False)
+        .order_by(Expense.expense_date)
+    )
     if month:
         try:
             y, m = int(month[:4]), int(month[5:7])

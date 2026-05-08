@@ -208,6 +208,69 @@
     </div>
 </div>
 
+<!-- ── CLOSE FINANCIAL YEAR ──────────────────────────────────────────────── -->
+{% if fy %}
+<div style="background:#fff;border-radius:8px;padding:24px;margin-bottom:24px;border-left:4px solid #e57373">
+    <h2 style="margin-bottom:4px;color:#c62828">Close Financial Year</h2>
+    <p style="color:#888;font-size:13px;margin-bottom:16px">
+        Closing <strong>FY {{ fy.label }}</strong> will permanently lock it.
+        It cannot be reactivated. A new FY will be created and activated in its place.
+        All pending credit bills and open advances will remain visible.
+    </p>
+
+    <div id="closeFyWarningBox" style="display:none;background:#fff3cd;border:1px solid #ffc107;
+         border-radius:6px;padding:12px 16px;margin-bottom:14px">
+        <strong style="color:#856404">⚠ Review before closing:</strong>
+        <ul id="closeFyWarningList" style="margin:6px 0 0 16px;font-size:13px;color:#856404"></ul>
+        <div style="margin-top:12px;display:flex;gap:10px">
+            <button onclick="closeFY(true)" class="btn-danger btn-sm">Yes, Close FY {{ fy.label }}</button>
+            <button onclick="cancelCloseFY()" class="btn-secondary btn-sm">Cancel</button>
+        </div>
+    </div>
+
+    <div id="closeFyForm">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
+            <div class="form-group">
+                <label>New FY Label</label>
+                <input type="text" id="newFyLabel" placeholder="e.g. 25-26" style="width:90px">
+            </div>
+            <div class="form-group">
+                <label>New Start Date</label>
+                <input type="date" id="newFyStart">
+            </div>
+            <div class="form-group">
+                <label>New End Date</label>
+                <input type="date" id="newFyEnd">
+            </div>
+        </div>
+        <div id="closeFyMsg" style="display:none;padding:8px 12px;border-radius:6px;
+             font-size:13px;margin-bottom:10px"></div>
+        <button onclick="closeFY(false)" class="btn-danger">
+            🔒 Close FY {{ fy.label }} and Open New Year
+        </button>
+    </div>
+</div>
+{% endif %}
+
+<div class="detail-card" style="margin-top:24px;max-width:400px">
+    <h3>Change Password</h3>
+    <div id="pwMsg" style="display:none;padding:8px 12px;border-radius:6px;font-size:13px;margin-bottom:12px"></div>
+    <div class="form-group" style="margin-bottom:12px">
+        <label>Current Password</label>
+        <input type="password" id="oldPw" placeholder="Current password">
+    </div>
+    <div class="form-group" style="margin-bottom:12px">
+        <label>New Password</label>
+        <input type="password" id="newPw" placeholder="At least 6 characters">
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
+        <label>Confirm New Password</label>
+        <input type="password" id="confirmPw" placeholder="Repeat new password">
+    </div>
+    <button onclick="changePw()" class="btn-primary">Update Password</button>
+</div>
+
+
 {% endblock %}
 
 {% block scripts %}
@@ -263,6 +326,8 @@ async function createFY() {
     const start = document.getElementById("fyStart").value;
     const end   = document.getElementById("fyEnd").value;
     if (!label) { alert("Enter a label like 25-26."); return; }
+    if (!start) { alert("Enter a start date."); return; }
+    if (!end)   { alert("Enter an end date."); return; }
 
     const res  = await fetch("/settings/financial-year", {
         method: "POST", headers: {"Content-Type": "application/json"},
@@ -275,5 +340,79 @@ async function createFY() {
         alert("Error: " + data.error);
     }
 }
+
+async function changePw() {
+    const msg = document.getElementById("pwMsg");
+    const res = await fetch("/auth/change-password", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            old_password: document.getElementById("oldPw").value,
+            new_password: document.getElementById("newPw").value,
+            confirm:      document.getElementById("confirmPw").value,
+        }),
+    });
+    const data = await res.json();
+    msg.style.display    = "block";
+    msg.style.background = data.success ? "#e8f5e9" : "#fdecea";
+    msg.style.color      = data.success ? "#2e7d32" : "#c62828";
+    msg.textContent      = data.success ? "✅ Password updated." : data.error;
+    if (data.success) { document.getElementById("oldPw").value = ""; document.getElementById("newPw").value = ""; document.getElementById("confirmPw").value = ""; }
+}
+
+async function closeFY(confirmed) {
+    const label = document.getElementById("newFyLabel").value.trim();
+    const start = document.getElementById("newFyStart").value;
+    const end   = document.getElementById("newFyEnd").value;
+
+    if (!label || !start || !end) {
+        alert("Please fill in new FY label, start date, and end date.");
+        return;
+    }
+
+    const res  = await fetch("/settings/close-fy", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+            new_label:      label,
+            new_start_date: start,
+            new_end_date:   end,
+            confirmed:      confirmed,
+        }),
+    });
+    const data = await res.json();
+
+    if (data.requires_confirmation) {
+        // Show warning box with items to review
+        const list = document.getElementById("closeFyWarningList");
+        const items = data.warnings.map(w => `<li>${w}</li>`);
+        if (data.carry_forward_count > 0) {
+            items.push(`<li><strong>${data.carry_forward_count} party balance(s)</strong> will be set as opening balances in the new year.</li>`);
+        }
+        list.innerHTML = items.join("");
+        document.getElementById("closeFyWarningBox").style.display = "block";
+        document.getElementById("closeFyForm").style.display       = "none";
+        return;
+    }
+
+    const msg = document.getElementById("closeFyMsg");
+    msg.style.display = "block";
+    if (data.success) {
+        msg.style.background = "#e8f5e9";
+        msg.style.color      = "#2e7d32";
+        msg.textContent      = `✅ FY ${data.closed_fy} closed. FY ${data.new_fy} is now active.`;
+        setTimeout(() => location.reload(), 1500);
+    } else {
+        msg.style.background = "#fdecea";
+        msg.style.color      = "#c62828";
+        msg.textContent      = "Error: " + data.error;
+    }
+}
+
+function cancelCloseFY() {
+    document.getElementById("closeFyWarningBox").style.display = "none";
+    document.getElementById("closeFyForm").style.display       = "block";
+}
+
 </script>
 {% endblock %}

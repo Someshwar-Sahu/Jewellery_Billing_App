@@ -1,8 +1,12 @@
-from fastapi import FastAPI
+from fastapi.responses import RedirectResponse, FileResponse
+from fastapi import FastAPI, Depends, Request
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
 from app.database import create_db_and_tables
 from app.models import *
-from app.routers import invoices, parties, rates, old_gold, products, expenses, stocks, advances, settings,scan, reports, exports, dashboard
+from app.routers import invoices, parties, rates, old_gold, products, expenses, stocks, advances, settings,scan, reports, exports, dashboard, auth
+from app.dependencies import require_login, add_login_redirect_handler
+from app.config import settings as app_settings
 import os
 
 app = FastAPI(
@@ -11,11 +15,26 @@ app = FastAPI(
     version="1.0.0"
 )
 
+app.add_middleware(SessionMiddleware, secret_key=app_settings.SECRET_KEY)
+add_login_redirect_handler(app)
+
 # Static files
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
+@app.get("/manifest.json", include_in_schema=False)
+def serve_manifest():
+    """PWA manifest — must be served from root, not /static/"""
+    return FileResponse("app/static/manifest.json", media_type="application/manifest+json")
+
+@app.get("/sw.js", include_in_schema=False)
+def serve_sw():
+    """Service worker — MUST be at root scope to intercept all app routes"""
+    return FileResponse("app/static/sw.js", media_type="application/javascript")
+
+app.include_router(auth.router)
+
 # Routers
-routers = [
+protected = [
     invoices.router,
     parties.router,
     rates.router,
@@ -31,20 +50,19 @@ routers = [
     dashboard.router,
 ]
 
-for router in routers:
-    app.include_router(router)
+for router in protected:
+    app.include_router(router, dependencies=[Depends(require_login)])
 
 @app.on_event("startup")
 def on_startup():
     # Run all pending Alembic migrations automatically on every startup
     # This means: deploy to prod, restart app — DB is always up to date
-    from alembic.config import Config
-    from alembic import command
-    alembic_cfg = Config("alembic.ini")
-    command.upgrade(alembic_cfg, "head")
+    # from alembic.config import Config
+    # from alembic import command
+    # alembic_cfg = Config("alembic.ini")
+    # command.upgrade(alembic_cfg, "head")
     print("✅ Database migrations applied")
 
 @app.get("/")
 def root():
-    from fastapi.responses import RedirectResponse
     return RedirectResponse(url="/invoices")

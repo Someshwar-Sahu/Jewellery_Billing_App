@@ -1,11 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Billing App{% endblock %}</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <!-- In <head>, after <link rel="stylesheet" ...> -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="JewelBill">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
 </head>
+
 <body>
     <nav>
         <a href="/dashboard">📊 Dashboard</a>
@@ -26,10 +35,70 @@
         <a href="/invoices/cancelled">Cancelled</a>
         <a href="/settings">⚙ Settings</a>
         <a href="/scan">Scan Bill</a>
+        <span style="margin-left:auto;display:flex;align-items:center;gap:12px;font-size:13px">
+            <span style="color:#aaa">👤 {{ request.session.get('username', '') }}</span>
+            <form action="/auth/logout" method="post" style="margin:0">
+                <button type="submit" class="btn-ghost btn-sm" style="color:#e57373">Logout</button>
+            </form>
+        </span>
     </nav>
     <main>
         {% block content %}{% endblock %}
     </main>
     {% block scripts %}{% endblock %}
-</body>
+
+        <!-- PWA install banner -->
+        <div id="pwaInstallBanner" style="display:none;position:fixed;bottom:16px;left:50%;transform:translateX(-50%);
+             background:#1a1a2e;color:#fff;padding:12px 20px;border-radius:10px;
+             box-shadow:0 4px 16px rgba(0,0,0,0.3);z-index:9999;
+             align-items:center;gap:12px;font-size:13px;white-space:nowrap">
+            💎 Install Jewellery Billing as an app
+            <button id="pwaInstallBtn" class="btn-primary btn-sm" style="background:#e0b84e;color:#1a1a2e;font-weight:700">
+                Install
+            </button>
+            <button onclick="document.getElementById('pwaInstallBanner').style.display='none'"
+                    style="background:transparent;border:none;color:#aaa;cursor:pointer;font-size:16px;padding:0 4px">✕</button>
+        </div>
+
+        <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('SW registered, scope:', reg.scope))
+                    .catch(err => console.log('SW registration failed:', err));
+            });
+        }
+
+        let _deferredPrompt = null;
+        const _banner       = document.getElementById('pwaInstallBanner');
+        const _installBtn   = document.getElementById('pwaInstallBtn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            _deferredPrompt = e;
+            if (!localStorage.getItem('pwaInstallDismissed')) {
+                _banner.style.display = 'flex';
+            }
+        });
+
+        if (_installBtn) {
+            _installBtn.addEventListener('click', async () => {
+                if (!_deferredPrompt) return;
+                _deferredPrompt.prompt();
+                const { outcome } = await _deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    localStorage.setItem('pwaInstallDismissed', '1');
+                }
+                _deferredPrompt = null;
+                _banner.style.display = 'none';
+            });
+        }
+
+        window.addEventListener('appinstalled', () => {
+            _banner.style.display = 'none';
+            localStorage.setItem('pwaInstallDismissed', '1');
+        });
+        </script>
+
+    </body>
 </html>

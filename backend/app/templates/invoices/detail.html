@@ -12,7 +12,20 @@
         </small>
     </div>
     <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+
+        {% if is_historical %}
+        <!-- HISTORICAL FY — read only -->
+        <span style="font-size:12px;background:#fff3cd;color:#856404;padding:5px 12px;border-radius:6px;font-weight:600">
+            📖 Historical FY — View Only
+        </span>
+        <a href="/invoices/{{ invoice.id }}/print" class="btn-secondary" target="_blank">🖨 Print</a>
         {% if not invoice.is_cancelled %}
+        <button onclick="duplicateBill({{ invoice.id }})" class="btn-secondary"
+                title="Creates a new bill in current FY">Copy to Current FY</button>
+        {% endif %}
+
+        {% elif not invoice.is_cancelled %}
+        <!-- ACTIVE FY — full controls -->
         <a href="/invoices/{{ invoice.id }}/print" class="btn-secondary" target="_blank">🖨 Print</a>
         <a href="/invoices/{{ invoice.id }}/edit" class="btn-secondary">✏ Edit</a>
         <button onclick="duplicateBill({{ invoice.id }})" class="btn-secondary">Copy</button>
@@ -25,10 +38,14 @@
         <span class="badge badge-gst-gst_ready" style="align-self:center;">GST Ready</span>
         {% endif %}
         <button onclick="cancelBill({{ invoice.id }})" class="btn-danger">Cancel</button>
+
         {% else %}
+        <!-- CANCELLED — active FY -->
+        <a href="/invoices/{{ invoice.id }}/print" class="btn-secondary" target="_blank">🖨 Print</a>
         <span class="badge badge-overdue" style="font-size:13px; padding:6px 14px;">CANCELLED</span>
         <button onclick="recoverBill({{ invoice.id }})" class="btn-secondary">Recover Bill</button>
         {% endif %}
+
     </div>
 </div>
 
@@ -93,7 +110,7 @@
 </div>
 
 <!-- Record Payment -->
-{% if not invoice.is_cancelled and invoice.payment_status != "paid" %}
+{% if not invoice.is_cancelled and invoice.payment_status != "paid" and not is_historical %}
 <div class="detail-card" style="margin-bottom:20px">
     <h3>Record Payment</h3>
     <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">

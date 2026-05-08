@@ -62,6 +62,8 @@ def get_party_summary(session: Session, party_id: int) -> dict:
     credit_bills    = [b for b in bills if b.bill_category == "credit" and b.payment_status != "paid"]
     sale_bills      = [b for b in bills if b.invoice_type == "sale"]
     purchase_bills  = [b for b in bills if b.invoice_type == "purchase"]
+    opening_bal      = party.opening_balance or 0.0
+    opening_bal_type = party.opening_balance_type or "debit"
 
     return {
         "party":           party,
@@ -73,6 +75,8 @@ def get_party_summary(session: Session, party_id: int) -> dict:
         "sale_count":      len(sale_bills),
         "purchase_count":  len(purchase_bills),
         "total_bills":     len(bills),
+        "opening_bal":     round(opening_bal, 2),
+        "opening_bal_type":opening_bal_type
     }
 
 

@@ -7,6 +7,48 @@ from datetime import datetime, date
 from fastapi import HTTPException
 import json
 from app.models.system import MonthLock
+from app.models.shop import FinancialYear
+from decimal import Decimal, ROUND_HALF_UP
+from app.models.payments import Advance
+from sqlalchemy.exc import IntegrityError
+
+
+def _d(value) -> Decimal:
+    return Decimal(str(value if value is not None else 0))
+
+
+def _money(value) -> float:
+    return float(_d(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))
+
+
+def _active_fy(session: Session) -> FinancialYear:
+    fy = session.exec(select(FinancialYear).where(FinancialYear.is_active == True)).first()
+    if not fy:
+        raise HTTPException(status_code=400, detail="No active financial year configured.")
+    return fy
+
+
+def _ensure_date_in_active_fy(session: Session, bill_date: date):
+    fy = _active_fy(session)
+    if not (fy.start_date <= bill_date <= fy.end_date):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Date {bill_date.isoformat()} is outside active financial year {fy.label}.",
+        )
+
+
+def _ensure_month_unlocked(session: Session, bill_date: date, action: str):
+    lock = session.exec(
+        select(MonthLock)
+        .where(MonthLock.year == bill_date.year)
+        .where(MonthLock.month == bill_date.month)
+        .where(MonthLock.is_locked == True)
+    ).first()
+    if lock:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot {action}: {bill_date.strftime('%B %Y')} is locked for GST filing.",
+        )
 
 def calculate_item(item_data) -> dict:
     """Calculate all amounts for one invoice line item."""
@@ -15,15 +57,17 @@ def calculate_item(item_data) -> dict:
     gst_rate = item_data.gst_rate      or 3.0
     making   = item_data.making_charges or 0
 
-    amount      = round(weight * rate, 2) if (weight and rate) else 0.0
-    cgst_rate   = gst_rate / 2
-    cgst_amount = round(amount * cgst_rate / 100, 2)
+    amount      = _money(_d(weight) * _d(rate)) if (weight and rate) else 0.0
+    cgst_rate   = _d(gst_rate) / _d(2)
+    cgst_amount = _money(_d(amount) * cgst_rate / _d(100))
     sgst_amount = cgst_amount   # always equal — intrastate only
 
-    making_cgst = round(making * 9 / 100, 2) if making else 0.0
+    making_cgst = _money(_d(making) * _d(9) / _d(100)) if making else 0.0
     making_sgst = making_cgst
 
-    line_total = round(amount + cgst_amount + sgst_amount + making + making_cgst + making_sgst, 2)
+    line_total = _money(
+        _d(amount) + _d(cgst_amount) + _d(sgst_amount) + _d(making) + _d(making_cgst) + _d(making_sgst)
+    )
 
     return {
         "amount":      amount,
@@ -38,9 +82,7 @@ def calculate_item(item_data) -> dict:
 
 def get_next_invoice_number(session: Session, invoice_type: str) -> str:
     """Generate next sequential invoice number for the active financial year."""
-    from app.models.shop import FinancialYear
-    fy       = session.exec(select(FinancialYear).where(FinancialYear.is_active == True)).first()
-    fy_label = fy.label if fy else "24-25"
+    fy_label = _active_fy(session).label
 
     prefix_map = {
         "sale":        f"S/{fy_label}/",
@@ -54,6 +96,7 @@ def get_next_invoice_number(session: Session, invoice_type: str) -> str:
         select(Invoice)
         .where(Invoice.invoice_number.startswith(prefix))
         .order_by(Invoice.id.desc())
+        .with_for_update()
     ).first()
 
     if last:
@@ -70,52 +113,54 @@ def get_next_invoice_number(session: Session, invoice_type: str) -> str:
 
 def _build_totals(calculated_items, items_to_calc, old_gold_value: float, discount: float, amount_paid: float):
     """Shared total calculation used by create and update."""
-    subtotal          = 0.0
-    total_cgst        = 0.0
-    total_sgst        = 0.0
-    total_making      = 0.0
-    total_making_cgst = 0.0
-    total_making_sgst = 0.0
+    subtotal          = Decimal("0")
+    total_cgst        = Decimal("0")
+    total_sgst        = Decimal("0")
+    total_making      = Decimal("0")
+    total_making_cgst = Decimal("0")
+    total_making_sgst = Decimal("0")
 
     for item_data, calc in calculated_items:
-        subtotal          += calc["amount"]
-        total_cgst        += calc["cgst_amount"]
-        total_sgst        += calc["sgst_amount"]
-        total_making      += item_data.making_charges or 0
-        total_making_cgst += calc["making_cgst"]
-        total_making_sgst += calc["making_sgst"]
+        subtotal          += _d(calc["amount"])
+        total_cgst        += _d(calc["cgst_amount"])
+        total_sgst        += _d(calc["sgst_amount"])
+        total_making      += _d(item_data.making_charges or 0)
+        total_making_cgst += _d(calc["making_cgst"])
+        total_making_sgst += _d(calc["making_sgst"])
 
-    gross       = subtotal + total_cgst + total_sgst + total_making + total_making_cgst + total_making_sgst
-    gross       = gross - old_gold_value - discount
-    gross       = max(0.0, gross)
-    round_off   = round(round(gross) - gross, 2)
-    grand_total = round(gross + round_off, 2)
+    gross = subtotal + total_cgst + total_sgst + total_making + total_making_cgst + total_making_sgst
+    gross = gross - _d(old_gold_value) - _d(discount)
+    gross = max(Decimal("0"), gross)
+    round_off = _d(round(gross) - gross)
+    grand_total = gross + round_off
     # FIX 11: floor amount_due at 0 — never show negative
-    amount_due  = max(0.0, round(grand_total - amount_paid, 2))
+    amount_due = max(Decimal("0"), grand_total - _d(amount_paid))
 
-    if amount_paid >= grand_total:
+    if _d(amount_paid) >= grand_total:
         payment_status = "paid"
-    elif amount_paid > 0:
+    elif _d(amount_paid) > 0:
         payment_status = "partial"
     else:
         payment_status = "unpaid"
 
     return {
-        "subtotal":          round(subtotal, 2),
-        "total_cgst":        round(total_cgst, 2),
-        "total_sgst":        round(total_sgst, 2),
-        "total_making":      round(total_making, 2),
-        "total_making_cgst": round(total_making_cgst, 2),
-        "total_making_sgst": round(total_making_sgst, 2),
-        "round_off":         round_off,
-        "grand_total":       grand_total,
-        "amount_due":        amount_due,
+        "subtotal":          _money(subtotal),
+        "total_cgst":        _money(total_cgst),
+        "total_sgst":        _money(total_sgst),
+        "total_making":      _money(total_making),
+        "total_making_cgst": _money(total_making_cgst),
+        "total_making_sgst": _money(total_making_sgst),
+        "round_off":         _money(round_off),
+        "grand_total":       _money(grand_total),
+        "amount_due":        _money(amount_due),
         "payment_status":    payment_status,
     }
 
 
 def create_invoice(session: Session, data: InvoiceCreate) -> Invoice:
     """Create a full invoice with items and calculated totals."""
+    _ensure_date_in_active_fy(session, data.invoice_date)
+    _ensure_month_unlocked(session, data.invoice_date, "create invoice")
 
     calculated_items = []
     for item_data in data.items:
@@ -131,123 +176,174 @@ def create_invoice(session: Session, data: InvoiceCreate) -> Invoice:
     )
 
     amount_paid = min(data.amount_paid or 0, totals["grand_total"])
-    amount_due  = max(0.0, round(totals["grand_total"] - invoice.amount_paid, 2))
+    amount_due = max(0.0, _money(_d(totals["grand_total"]) - _d(amount_paid)))
 
-    invoice = Invoice(
-        invoice_number       = get_next_invoice_number(session, data.invoice_type.value),
-        invoice_type         = data.invoice_type.value,
-        bill_category        = data.bill_category.value,
-        party_id             = data.party_id,
-        ref_invoice_id       = data.ref_invoice_id,
-        invoice_date         = data.invoice_date,
-        credit_due_date      = data.credit_due_date,
-        place_of_supply      = data.place_of_supply,
-        party_gstin          = data.party_gstin,
-        subtotal             = totals["subtotal"],
-        total_cgst           = totals["total_cgst"],
-        total_sgst           = totals["total_sgst"],
-        total_making_charges = totals["total_making"],
-        making_cgst          = totals["total_making_cgst"],
-        making_sgst          = totals["total_making_sgst"],
-        old_gold_value       = data.old_gold_value,
-        discount             = data.discount,
-        round_off            = totals["round_off"],
-        grand_total          = totals["grand_total"],
-        amount_paid          = amount_paid,
-        amount_due           = amount_due,
-        payment_mode         = data.payment_mode.value if data.payment_mode else None,
-        payment_status       = totals["payment_status"],
-        notes                = data.notes,
-    )
-    session.add(invoice)
-    session.flush()
+    for attempt in range(3):
+        try:
+            invoice = Invoice(
+                invoice_number       = get_next_invoice_number(session, data.invoice_type.value),
+                invoice_type         = data.invoice_type.value,
+                bill_category        = data.bill_category.value,
+                party_id             = data.party_id,
+                financial_year_id    = _active_fy(session).id,
+                ref_invoice_id       = data.ref_invoice_id,
+                invoice_date         = data.invoice_date,
+                credit_due_date      = data.credit_due_date,
+                place_of_supply      = data.place_of_supply,
+                party_gstin          = data.party_gstin,
+                subtotal             = totals["subtotal"],
+                total_cgst           = totals["total_cgst"],
+                total_sgst           = totals["total_sgst"],
+                total_making_charges = totals["total_making"],
+                making_cgst          = totals["total_making_cgst"],
+                making_sgst          = totals["total_making_sgst"],
+                old_gold_value       = data.old_gold_value,
+                discount             = data.discount,
+                round_off            = totals["round_off"],
+                grand_total          = totals["grand_total"],
+                amount_paid          = amount_paid,
+                amount_due           = amount_due,
+                payment_mode         = data.payment_mode.value if data.payment_mode else None,
+                payment_status       = totals["payment_status"],
+                notes                = data.notes,
+            )
+            session.add(invoice)
+            session.flush()
 
-    for idx, (item_data, calc) in enumerate(calculated_items):
-        item = InvoiceItem(
-            invoice_id     = invoice.id,
-            product_id     = item_data.product_id,
-            item_name      = item_data.item_name,
-            hsn_code       = item_data.hsn_code or "7113",
-            purity         = item_data.purity,
-            huid           = item_data.huid,
-            weight_grams   = item_data.weight_grams,
-            rate_per_gram  = item_data.rate_per_gram,
-            quantity       = item_data.quantity,
-            unit           = item_data.unit,
-            amount         = calc["amount"],
-            making_charges = item_data.making_charges,
-            gst_rate       = item_data.gst_rate,
-            cgst_amount    = calc["cgst_amount"],
-            sgst_amount    = calc["sgst_amount"],
-            igst_amount    = calc["igst_amount"],
-            making_cgst    = calc["making_cgst"],
-            making_sgst    = calc["making_sgst"],
-            line_total     = calc["line_total"],
-            description    = item_data.description,
-            sort_order     = item_data.sort_order if item_data.sort_order else idx,
-        )
-        session.add(item)
+            for idx, (item_data, calc) in enumerate(calculated_items):
+                item = InvoiceItem(
+                    invoice_id     = invoice.id,
+                    product_id     = item_data.product_id,
+                    item_name      = item_data.item_name,
+                    hsn_code       = item_data.hsn_code or "7113",
+                    purity         = item_data.purity,
+                    huid           = item_data.huid,
+                    weight_grams   = item_data.weight_grams,
+                    rate_per_gram  = item_data.rate_per_gram,
+                    quantity       = item_data.quantity,
+                    unit           = item_data.unit,
+                    amount         = calc["amount"],
+                    making_charges = item_data.making_charges,
+                    gst_rate       = item_data.gst_rate,
+                    cgst_amount    = calc["cgst_amount"],
+                    sgst_amount    = calc["sgst_amount"],
+                    igst_amount    = calc["igst_amount"],
+                    making_cgst    = calc["making_cgst"],
+                    making_sgst    = calc["making_sgst"],
+                    line_total     = calc["line_total"],
+                    description    = item_data.description,
+                    sort_order     = item_data.sort_order if item_data.sort_order else idx,
+                )
+                session.add(item)
 
-    # Save version 1 snapshot
-    snapshot = {
-        "invoice_number": invoice.invoice_number,
-        "grand_total":    totals["grand_total"],
-        "items":          [i.item_name for i, _ in calculated_items],
-        "saved_at":       datetime.utcnow().isoformat(),
-    }
-    version = InvoiceVersion(
-        invoice_id     = invoice.id,
-        version_number = 1,
-        snapshot       = json.dumps(snapshot),
-    )
-    session.add(version)
+            snapshot = {
+                "invoice_number": invoice.invoice_number,
+                "grand_total":    totals["grand_total"],
+                "items":          [i.item_name for i, _ in calculated_items],
+                "saved_at":       datetime.utcnow().isoformat(),
+            }
 
-    # FIX 7: Only create OldGoldExchange when detailed mode (weight > 0)
-    # Mode A (value only, weight = 0) → skip register entry (meaningless without weight)
-    # Mode B (detailed, weight > 0)   → create proper register entry
-    if (data.old_gold_value and data.old_gold_value > 0
-            and data.party_id
-            and data.old_gold_weight and data.old_gold_weight > 0):
-        old_gold_entry = OldGoldExchange(
-            party_id         = data.party_id,
-            sale_invoice_id  = invoice.id,
-            exchange_date    = data.invoice_date,
-            transaction_type = "exchange",
-            metal_type       = (data.old_gold_metal_type.value
-                                if hasattr(data.old_gold_metal_type, "value")
-                                else str(data.old_gold_metal_type)),
-            purity           = data.old_gold_purity,
-            weight_grams     = data.old_gold_weight,
-            rate_per_gram    = data.old_gold_rate or 0.0,
-            total_value      = data.old_gold_value,
-        )
-        session.add(old_gold_entry)
+            version = InvoiceVersion(
+                invoice_id     = invoice.id,
+                version_number = 1,
+                snapshot       = json.dumps(snapshot),
+            )
+            session.add(version)
 
-    # Stock ledger — auto-update for product-linked items
-    is_stock_out = data.invoice_type in ["sale", "debit_note"]
-    is_stock_in = data.invoice_type in ["purchase", "credit_note"]
+            if (
+                data.old_gold_value and data.old_gold_value > 0
+                and data.party_id
+                and data.old_gold_weight and data.old_gold_weight > 0
+            ):
+                old_gold_entry = OldGoldExchange(
+                    party_id         = data.party_id,
+                    sale_invoice_id  = invoice.id,
+                    exchange_date    = data.invoice_date,
+                    transaction_type = "exchange",
+                    metal_type       = (
+                        data.old_gold_metal_type.value
+                        if hasattr(data.old_gold_metal_type, "value")
+                        else str(data.old_gold_metal_type)
+                    ),
+                    purity           = data.old_gold_purity,
+                    weight_grams     = data.old_gold_weight,
+                    rate_per_gram    = data.old_gold_rate or 0.0,
+                    total_value      = data.old_gold_value,
+                )
+                session.add(old_gold_entry)
 
-    for item_data, calc in calculated_items:
-        if not item_data.product_id:
-            continue
-        stock_qty = item_data.weight_grams if item_data.weight_grams else (item_data.quantity or 1.0)
-        stock_entry = StockLedger(
-            product_id       = item_data.product_id,
-            stock_date       = data.invoice_date,
-            transaction_type = data.invoice_type.value,
-            invoice_id       = invoice.id,
-            quantity_in      = stock_qty if is_stock_in else 0.0,
-            quantity_out     = stock_qty if is_stock_out else 0.0,
-            balance          = 0.0,
-            rate             = item_data.rate_per_gram,
-            notes            = f"Auto from invoice {invoice.invoice_number}",
-        )
-        session.add(stock_entry)
+            is_stock_out = data.invoice_type.value in ["sale", "debit_note"]
+            is_stock_in = data.invoice_type.value in ["purchase", "credit_note"]
 
-    session.commit()
-    session.refresh(invoice)
-    return invoice
+            for item_data, calc in calculated_items:
+                if not item_data.product_id:
+                    continue
 
+                stock_qty = (
+                    item_data.weight_grams
+                    if item_data.weight_grams
+                    else (item_data.quantity or 1.0)
+                )
+
+                stock_entry = StockLedger(
+                    product_id       = item_data.product_id,
+                    stock_date       = data.invoice_date,
+                    transaction_type = data.invoice_type.value,
+                    invoice_id       = invoice.id,
+                    quantity_in      = stock_qty if is_stock_in else 0.0,
+                    quantity_out     = stock_qty if is_stock_out else 0.0,
+                    balance          = 0.0,
+                    rate             = item_data.rate_per_gram,
+                    notes            = f"Auto from invoice {invoice.invoice_number}",
+                )
+                session.add(stock_entry)
+
+            # Keep invoice + advance adjustment atomic in one transaction.
+            advance_used = float(data.advance_used or 0)
+
+            if advance_used > 0 and data.party_id:
+                open_advances = session.exec(
+                    select(Advance)
+                    .where(Advance.party_id == data.party_id)
+                    .where(Advance.status == "open")
+                    .order_by(Advance.advance_date)
+                ).all()
+
+                remaining = advance_used
+
+                for adv in open_advances:
+                    if remaining <= 0.0:
+                        break
+
+                    available = max(0.0, adv.amount - adv.adjusted_amount)
+                    use = min(available, remaining)
+
+                    adv.adjusted_amount = _money(
+                        _d(adv.adjusted_amount) + _d(use)
+                    )
+
+                    if adv.adjusted_amount >= adv.amount:
+                        adv.status = "used"
+
+                    session.add(adv)
+
+                    remaining = _money(_d(remaining) - _d(use))
+
+            session.commit()
+            session.refresh(invoice)
+            return invoice
+
+        except IntegrityError as exc:
+            session.rollback()
+
+            if attempt < 2 and "uq_invoices_invoice_number" in str(exc):
+                continue
+
+            raise
+
+        except Exception:
+            session.rollback()
+            raise
 
 def update_invoice(session: Session, invoice_id: int, data: InvoiceUpdate) -> Invoice:
     """Edit an existing bill — saves version snapshot, logs changes, recalculates totals."""
@@ -258,14 +354,8 @@ def update_invoice(session: Session, invoice_id: int, data: InvoiceUpdate) -> In
     if invoice.is_cancelled:
         raise HTTPException(status_code=400, detail="Cannot edit a cancelled bill")
 
-    lock = session.exec(
-        select(MonthLock).where(MonthLock.year == invoice.invoice_date.year)
-        .where(MonthLock.month == invoice.invoice_date.month)
-        .where(MonthLock.is_locked == True)
-        ).first()
-    
-    if lock:
-        raise HTTPException(status_code=400, detail=f"Cannot edit: {invoice.invoice_date.strftime("%B %Y")} is locked for GST filing.")
+    _ensure_date_in_active_fy(session, invoice.invoice_date)
+    _ensure_month_unlocked(session, invoice.invoice_date, "edit invoice")
 
     current_items = session.exec(
         select(InvoiceItem).where(InvoiceItem.invoice_id == invoice_id)
@@ -386,7 +476,11 @@ def update_invoice(session: Session, invoice_id: int, data: InvoiceUpdate) -> In
 
     invoice.updated_at = datetime.utcnow()
     session.add(invoice)
-    session.commit()
+    try:
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
     session.refresh(invoice)
     return invoice
 
@@ -447,14 +541,8 @@ def cancel_invoice(session: Session, invoice_id: int, reason: str = None) -> Inv
     if not invoice:
         raise HTTPException(status_code=404, detail="Bill not found")
 
-    lock = session.exec(
-        select(MonthLock)
-        .where(MonthLock.year  == invoice.invoice_date.year)
-        .where(MonthLock.month == invoice.invoice_date.month)
-        .where(MonthLock.is_locked == True)
-    ).first()
-    if lock:
-        raise HTTPException(status_code=400, detail=f"Cannot cancel: {invoice.invoice_date.strftime('%B %Y')} is locked for GST filing.")
+    _ensure_date_in_active_fy(session, invoice.invoice_date)
+    _ensure_month_unlocked(session, invoice.invoice_date, "cancel invoice")
 
     # FIX 10: Reverse stock for product-linked items when bill is cancelled
     items = session.exec(
@@ -493,29 +581,39 @@ def cancel_invoice(session: Session, invoice_id: int, reason: str = None) -> Inv
 
 def recover_invoice(session: Session, invoice_id: int) -> Invoice:
     """Recover a cancelled bill back to active."""
+    # BUG 1 FIX: fetch invoice FIRST before passing to guards
     invoice = session.get(Invoice, invoice_id)
     if not invoice:
         raise HTTPException(status_code=404, detail="Bill not found")
 
-    items =session.exec(select(InvoiceItem).where(InvoiceItem.invoice_id == invoice_id)).all()
-    is_sale = invoice.invoice_type == "sale"
-    is_purchase = invoice.invoice_type == "purchase"
+    # BUG 5 FIX: only allow recovery if actually cancelled
+    if not invoice.is_cancelled:
+        raise HTTPException(status_code=400, detail="Bill is not cancelled.")
+
+    _ensure_date_in_active_fy(session, invoice.invoice_date)
+    _ensure_month_unlocked(session, invoice.invoice_date, "recover invoice")
+
+    items = session.exec(
+        select(InvoiceItem).where(InvoiceItem.invoice_id == invoice_id)
+    ).all()
+
+    is_sale     = invoice.invoice_type in ["sale", "debit_note"]
+    is_purchase = invoice.invoice_type in ["purchase", "credit_note"]
 
     for item in items:
         if not item.product_id:
             continue
-
         re_apply_qty = item.weight_grams if item.weight_grams else (item.quantity or 1.0)
         re_entry = StockLedger(
-            product_id=       item.product_id,
-            stock_date=       date.today(),
-            transaction_type= "sale" if is_sale else "purchase",
-            invoice_id=       invoice_id,
-            quantity_in=      re_apply_qty if is_purchase else 0.0,
-            quantity_out=     re_apply_qty if is_sale     else 0.0,
-            balance=          0.0,
-            rate=             item.rate_per_gram,
-            notes=            f"Re-application: bill {invoice.invoice_number} recovered from cancellation",
+            product_id       = item.product_id,
+            stock_date       = invoice.invoice_date,   # BUG 5 FIX: use original date not today
+            transaction_type = invoice.invoice_type,
+            invoice_id       = invoice_id,
+            quantity_in      = re_apply_qty if is_purchase else 0.0,
+            quantity_out     = re_apply_qty if is_sale     else 0.0,
+            balance          = 0.0,
+            rate             = item.rate_per_gram,
+            notes            = f"Re-applied: bill {invoice.invoice_number} recovered",
         )
         session.add(re_entry)
 
@@ -523,10 +621,13 @@ def recover_invoice(session: Session, invoice_id: int) -> Invoice:
     invoice.cancelled_at     = None
     invoice.cancelled_reason = None
     session.add(invoice)
-    session.commit()
+    try:
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
     session.refresh(invoice)
     return invoice
-
 
 def get_unsettled_credit_bills(session: Session):
     """Return all credit bills not fully paid."""

@@ -23,3 +23,5 @@ class Expense(SQLModel, table= True):
     payment_mode: Optional[str] = None
     reference_no: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    is_deleted: bool = False
+    deleted_at: Optional[datetime] = None
