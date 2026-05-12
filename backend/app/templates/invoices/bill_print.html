@@ -71,7 +71,6 @@
                 <th>Rate/g</th>
                 <th>Amount</th>
                 <th>Making</th>
-                <!-- FIX 14: removed hardcoded "1.5%" — rate varies per item -->
                 <th>CGST</th>
                 <th>SGST</th>
                 <th>Total</th>
@@ -96,8 +95,6 @@
         </tbody>
     </table>
 
-    <!-- FIX 13: Old Gold Received section — shown when bill had old gold exchange
-         Always shows the deduction value. Shows weight/purity/rate when detailed (Mode B). -->
     {% if invoice.old_gold_value > 0 %}
     <div class="old-gold-section">
         <h4>Old Gold / Silver Received (Deducted from Bill)</h4>

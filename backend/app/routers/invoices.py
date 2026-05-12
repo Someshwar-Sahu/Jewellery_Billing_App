@@ -31,12 +31,15 @@ def _money(v) -> float:
 # ── LIST ──────────────────────────────────────────────────────────────────────
 
 @router.get("/", response_class=HTMLResponse)
-def invoice_list(request: Request, fy_id: int = 0, session: Session = Depends(get_session)):
-    # Load all FYs for the switcher dropdown
+def invoice_list(
+    request: Request,
+    fy_id: int = 0,
+    gst: str = "",
+    session: Session = Depends(get_session),
+):
     all_fys = session.exec(select(FinancialYear).order_by(FinancialYear.start_date.desc())).all()
     active_fy = next((f for f in all_fys if f.is_active), None)
 
-    # Determine which FY to display
     selected_fy = None
     if fy_id:
         selected_fy = session.get(FinancialYear, fy_id)
@@ -47,6 +50,11 @@ def invoice_list(request: Request, fy_id: int = 0, session: Session = Depends(ge
     if selected_fy:
         stmt = stmt.where(Invoice.invoice_date >= selected_fy.start_date)
         stmt = stmt.where(Invoice.invoice_date <= selected_fy.end_date)
+    gst_key = (gst or "").strip().lower()
+    if gst_key == "ready":
+        stmt = stmt.where(Invoice.gst_status.in_(["gst_ready", "locked"]))
+    elif gst_key == "pending":
+        stmt = stmt.where(Invoice.gst_status == "pending_review")
     invoices = session.exec(stmt.order_by(Invoice.id.desc())).all()
 
     party_ids = {inv.party_id for inv in invoices if inv.party_id}
@@ -62,6 +70,7 @@ def invoice_list(request: Request, fy_id: int = 0, session: Session = Depends(ge
             "all_fys":      all_fys,
             "selected_fy":  selected_fy,
             "active_fy":    active_fy,
+            "gst_filter":   gst_key,
         }
     )
 
@@ -226,11 +235,15 @@ async def bulk_gst_mark(request: Request, session: Session = Depends(get_session
     if not ids:
         return JSONResponse(status_code=400, content={"success": False, "error": "No bills selected"})
     invoices = session.exec(select(Invoice).where(Invoice.id.in_(ids))).all()
+    n = 0
     for inv in invoices:
+        if inv.is_cancelled:
+            continue
         inv.gst_status = "gst_ready"
         session.add(inv)
+        n += 1
     session.commit()
-    return {"success": True, "count": len(invoices)}
+    return {"success": True, "count": n}
 
 
 # ── DETAIL ────────────────────────────────────────────────────────────────────
@@ -274,7 +287,6 @@ def invoice_detail(invoice_id: int, request: Request, session: Session = Depends
 
 # ── EDIT ──────────────────────────────────────────────────────────────────────
 
-@router.get("/{invoice_id}/edit", response_class=HTMLResponse)
 @router.get("/{invoice_id}/edit", response_class=HTMLResponse)
 def edit_bill_form(invoice_id: int, request: Request, session: Session = Depends(get_session)):
     invoice = session.get(Invoice, invoice_id)
@@ -383,7 +395,7 @@ def print_bill(invoice_id: int, request: Request, session: Session = Depends(get
     if shop and shop.bill_template == "template_a4":
         template_name = "invoices/print_a4.html"
     else:
-        template_name = "invoices/print_dad.html"
+        template_name = "invoices/template_small.html"
 
     return templates.TemplateResponse(
         request=request, name=template_name,
@@ -437,7 +449,6 @@ async def record_credit_payment(invoice_id: int, request: Request, session: Sess
     mode         = data.get("mode", "cash")
     reference_no = data.get("reference_no", "")
 
-    # FIX 15: give clear feedback when bill is already fully paid
     max_payable = _money(Decimal(str(invoice.grand_total)) - Decimal(str(invoice.amount_paid)))
     if max_payable <= 0:
         return JSONResponse(status_code=400, content={
@@ -544,6 +555,8 @@ def mark_gst_ready(invoice_id: int, session: Session = Depends(get_session)):
     invoice = session.get(Invoice, invoice_id)
     if not invoice:
         raise HTTPException(status_code=404, detail="Bill not found")
+    if invoice.is_cancelled:
+        raise HTTPException(status_code=400, detail="Cannot mark GST ready on a cancelled bill.")
     invoice.gst_status = "gst_ready"
     session.add(invoice)
     session.commit()

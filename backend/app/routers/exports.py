@@ -184,7 +184,6 @@ def export_sales_register(
         for c in AMT_COLS:
             totals[c] += row[c - 1] if isinstance(row[c - 1], (int, float)) else 0
 
-    # Totals row
     t_row = len(invoices) + 2
     total_values = ["TOTAL", f"{len(invoices)} bills", "", "", ""]
     for c_idx in range(6, 20):
@@ -296,7 +295,6 @@ def export_party_ledger(
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Party not found")
 
-    # All bills for this party
     invoices = session.exec(
         select(Invoice)
         .where(Invoice.party_id == party_id)
@@ -304,7 +302,6 @@ def export_party_ledger(
         .order_by(Invoice.invoice_date)
     ).all()
 
-    # All credit payments for this party
     payments = session.exec(
         select(CreditPayment)
         .where(CreditPayment.party_id == party_id)
@@ -318,7 +315,6 @@ def export_party_ledger(
     ws = wb.active
     ws.title = f"{party.name[:20]} Ledger"
 
-    # Party info block
     ws["A1"] = "Party Ledger"
     ws["A1"].font = Font(bold=True, size=14)
     ws["A2"] = party.name

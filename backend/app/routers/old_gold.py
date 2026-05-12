@@ -30,13 +30,11 @@ def old_gold_list(
 
     records = session.exec(stmt).all()
 
-    # Batch load parties
     party_ids = {r.party_id for r in records}
     parties   = {p.id: p for p in session.exec(
         select(Party).where(Party.id.in_(party_ids))
     ).all()} if party_ids else {}
 
-    # Summary totals
     total_gold_weight   = sum(r.weight_grams for r in records if r.metal_type == "gold")
     total_silver_weight = sum(r.weight_grams for r in records if r.metal_type == "silver")
     total_value         = sum(r.total_value  for r in records)
@@ -84,7 +82,6 @@ async def create_submit(request: Request, session: Session = Depends(get_session
         tx_type    = data.get("transaction_type", "direct_purchase")
         party_id   = int(data["party_id"])
 
-        # Validate party exists
         party = session.get(Party, party_id)
         if not party:
             return JSONResponse(status_code=400,

@@ -25,24 +25,25 @@ def _month_key(d: date) -> str:
     return d.strftime("%Y-%m")
 
 def _get_fys(session: Session):
-    """Return (all_fys, active_fy)."""
     all_fys   = session.exec(select(FinancialYear).order_by(FinancialYear.start_date.desc())).all()
     active_fy = next((f for f in all_fys if f.is_active), None)
     return all_fys, active_fy
 
 def _resolve_fy(session: Session, fy_id: int) -> FinancialYear | None:
-    """Return the selected FY, or active FY if fy_id not given."""
     if fy_id:
         return session.get(FinancialYear, fy_id)
     all_fys, active_fy = _get_fys(session)
     return active_fy
 
+def _invoice_party_gstin(inv: Invoice, party: Party | None) -> str | None:
+    raw = inv.party_gstin or (party.gstin if party else None)
+    if raw is None:
+        return None
+    s = raw.strip() if isinstance(raw, str) else ""
+    return s or None
+
+
 def _apply_fy_month_filter(stmt, fy: FinancialYear | None, month: str):
-    """
-    Apply date filters to an SQLModel select statement.
-    Month filter narrows within FY scope.
-    Returns (stmt, date_start, date_end).
-    """
     if fy:
         fy_start = fy.start_date
         fy_end   = fy.end_date
@@ -89,26 +90,63 @@ def gstr1_report(
     stmt, date_start, date_end = _apply_fy_month_filter(stmt, selected_fy, month)
     invoices = session.exec(stmt).all()
 
+    cn_stmt = (
+        select(Invoice)
+        .where(Invoice.invoice_type == "credit_note")
+        .where(Invoice.is_cancelled == False)
+        .where(Invoice.gst_status.in_(["gst_ready", "locked"]))
+        .order_by(Invoice.invoice_date)
+    )
+    cn_stmt, _, _ = _apply_fy_month_filter(cn_stmt, selected_fy, month)
+    credit_notes = session.exec(cn_stmt).all()
+
     party_ids = {inv.party_id for inv in invoices if inv.party_id}
     parties   = {}
+
     if party_ids:
         for p in session.exec(select(Party).where(Party.id.in_(party_ids))).all():
             parties[p.id] = p
 
-    b2b_rows   = []
-    b2c_rows   = []
-    b2b_totals = {"taxable": 0.0, "cgst": 0.0, "sgst": 0.0, "grand": 0.0}
-    b2c_totals = {"taxable": 0.0, "cgst": 0.0, "sgst": 0.0, "grand": 0.0}
+    b2b_rows  = []
+    b2cl_rows = []
+    b2cs_rows = []
+
+    b2b_totals = {
+        "taxable_gold": 0.0,
+        "taxable_making": 0.0,
+        "taxable": 0.0,
+        "cgst": 0.0,
+        "sgst": 0.0,
+        "grand": 0.0,
+        "deductions": 0.0,
+    }
+
+    b2c_totals = {
+        "taxable_gold": 0.0,
+        "taxable_making": 0.0,
+        "taxable": 0.0,
+        "cgst": 0.0,
+        "sgst": 0.0,
+        "grand": 0.0,
+        "deductions": 0.0,
+    }
+
+    B2CL_THRESHOLD = 250000.0
 
     for inv in invoices:
         party      = parties.get(inv.party_id) if inv.party_id else None
-        has_gstin  = bool(inv.party_gstin or (party and party.gstin))
-        gstin      = inv.party_gstin or (party.gstin if party else None)
+        gstin      = _invoice_party_gstin(inv, party)
+        has_gstin  = bool(gstin)
         party_name = party.name if party else "Walk-in"
 
-        taxable = round(inv.subtotal + (inv.total_making_charges or 0), 2)
-        cgst    = round((inv.total_cgst or 0) + (inv.making_cgst or 0), 2)
-        sgst    = round((inv.total_sgst or 0) + (inv.making_sgst or 0), 2)
+        taxable_gold   = round(inv.subtotal or 0, 2)
+        taxable_making = round(inv.total_making_charges or 0, 2)
+        taxable        = round(taxable_gold + taxable_making, 2)
+
+        cgst = round((inv.total_cgst or 0) + (inv.making_cgst or 0), 2)
+        sgst = round((inv.total_sgst or 0) + (inv.making_sgst or 0), 2)
+
+        deductions = round((inv.old_gold_value or 0) + (inv.discount or 0), 2)
 
         row = {
             "invoice_number": inv.invoice_number,
@@ -117,71 +155,113 @@ def gstr1_report(
             "month_label":    _month_label(inv.invoice_date),
             "party_name":     party_name,
             "gstin":          gstin,
+            "taxable_gold":   taxable_gold,
+            "taxable_making": taxable_making,
             "taxable":        taxable,
             "cgst":           cgst,
             "sgst":           sgst,
+            "deductions":     deductions,
             "grand_total":    inv.grand_total,
             "invoice_id":     inv.id,
         }
 
         if has_gstin:
             b2b_rows.append(row)
-            b2b_totals["taxable"] += taxable
-            b2b_totals["cgst"]    += cgst
-            b2b_totals["sgst"]    += sgst
-            b2b_totals["grand"]   += inv.grand_total
+            t = b2b_totals
         else:
-            b2c_rows.append(row)
-            b2c_totals["taxable"] += taxable
-            b2c_totals["cgst"]    += cgst
-            b2c_totals["sgst"]    += sgst
-            b2c_totals["grand"]   += inv.grand_total
+            if (inv.grand_total or 0) >= B2CL_THRESHOLD:
+                b2cl_rows.append(row)
+            else:
+                b2cs_rows.append(row)
+
+            t = b2c_totals
+
+        t["taxable_gold"]   += taxable_gold
+        t["taxable_making"] += taxable_making
+        t["taxable"]        += taxable
+        t["cgst"]           += cgst
+        t["sgst"]           += sgst
+        t["deductions"]     += deductions
+        t["grand"]          += inv.grand_total
 
     for t in [b2b_totals, b2c_totals]:
         for k in t:
             t[k] = round(t[k], 2)
 
-    # HSN summary
     invoice_ids = [inv.id for inv in invoices]
-    hsn_map     = defaultdict(lambda: {"taxable": 0.0, "cgst": 0.0, "sgst": 0.0, "qty": 0.0})
+
+    hsn_map = defaultdict(lambda: {
+        "taxable": 0.0,
+        "cgst": 0.0,
+        "sgst": 0.0,
+        "qty": 0.0,
+        "uqc": "GMS",
+    })
+
     if invoice_ids:
         items = session.exec(
             select(InvoiceItem).where(InvoiceItem.invoice_id.in_(invoice_ids))
         ).all()
+
         for item in items:
             hsn = item.hsn_code or "7113"
-            hsn_map[hsn]["taxable"] += item.amount or 0
-            hsn_map[hsn]["cgst"]    += (item.cgst_amount or 0) + (item.making_cgst or 0)
-            hsn_map[hsn]["sgst"]    += (item.sgst_amount or 0) + (item.making_sgst or 0)
-            hsn_map[hsn]["qty"]     += item.weight_grams or item.quantity or 0
+
+            hsn_map[hsn]["taxable"] += (item.amount or 0)
+            hsn_map[hsn]["cgst"]    += (item.cgst_amount or 0)
+            hsn_map[hsn]["sgst"]    += (item.sgst_amount or 0)
+            hsn_map[hsn]["qty"]     += (item.weight_grams or item.quantity or 0)
+
+            if item.making_charges:
+                hsn_map["9983"]["taxable"] += (item.making_charges or 0)
+                hsn_map["9983"]["cgst"]    += (item.making_cgst or 0)
+                hsn_map["9983"]["sgst"]    += (item.making_sgst or 0)
+                hsn_map["9983"]["uqc"]      = "NOS"
+                hsn_map["9983"]["qty"]     += 1
 
     hsn_summary = [
-        {"hsn": hsn, "taxable": round(v["taxable"], 2),
-         "cgst": round(v["cgst"], 2), "sgst": round(v["sgst"], 2), "qty": round(v["qty"], 3)}
+        {
+            "hsn":     hsn,
+            "taxable": round(v["taxable"], 2),
+            "cgst":    round(v["cgst"], 2),
+            "sgst":    round(v["sgst"], 2),
+            "qty":     round(v["qty"], 3),
+            "uqc":     v["uqc"],
+        }
         for hsn, v in sorted(hsn_map.items())
     ]
 
-    # Month dropdown — scoped to selected FY
+    # ── Month dropdown ────────────────────────────────────────────────────────
     month_stmt = (
         select(Invoice)
         .where(Invoice.invoice_type == "sale")
         .where(Invoice.is_cancelled == False)
         .where(Invoice.gst_status.in_(["gst_ready", "locked"]))
     )
+
     if selected_fy:
-        month_stmt = month_stmt.where(Invoice.invoice_date >= selected_fy.start_date)
-        month_stmt = month_stmt.where(Invoice.invoice_date <= selected_fy.end_date)
+        month_stmt = month_stmt.where(
+            Invoice.invoice_date >= selected_fy.start_date
+        )
+        month_stmt = month_stmt.where(
+            Invoice.invoice_date <= selected_fy.end_date
+        )
+
     all_months = sorted(
-        {_month_key(inv.invoice_date): _month_label(inv.invoice_date)
-         for inv in session.exec(month_stmt).all()}.items(),
+        {
+            _month_key(inv.invoice_date): _month_label(inv.invoice_date)
+            for inv in session.exec(month_stmt).all()
+        }.items(),
         reverse=True,
     )
 
     return templates.TemplateResponse(
-        request=request, name="reports/gstr1.html",
+        request=request,
+        name="reports/gstr1.html",
         context={
             "b2b_rows":       b2b_rows,
-            "b2c_rows":       b2c_rows,
+            "b2cl_rows":      b2cl_rows,
+            "b2cs_rows":      b2cs_rows,
+            "credit_notes":   credit_notes,
             "b2b_totals":     b2b_totals,
             "b2c_totals":     b2c_totals,
             "hsn_summary":    hsn_summary,
@@ -214,13 +294,31 @@ def gstr3b_report(
         .where(Invoice.is_cancelled == False)
         .where(Invoice.gst_status.in_(["gst_ready", "locked"]))
     )
-    sale_stmt, date_start, date_end = _apply_fy_month_filter(sale_stmt, selected_fy, month)
+
+    sale_stmt, date_start, date_end = _apply_fy_month_filter(
+        sale_stmt,
+        selected_fy,
+        month
+    )
+
     sale_bills = session.exec(sale_stmt).all()
 
-    out_cgst    = round(sum((b.total_cgst or 0) + (b.making_cgst or 0) for b in sale_bills), 2)
-    out_sgst    = round(sum((b.total_sgst or 0) + (b.making_sgst or 0) for b in sale_bills), 2)
-    out_taxable = round(sum((b.subtotal or 0) + (b.total_making_charges or 0) for b in sale_bills), 2)
-    out_total   = round(out_cgst + out_sgst, 2)
+    out_cgst = round(
+        sum((b.total_cgst or 0) + (b.making_cgst or 0) for b in sale_bills),
+        2
+    )
+
+    out_sgst = round(
+        sum((b.total_sgst or 0) + (b.making_sgst or 0) for b in sale_bills),
+        2
+    )
+
+    out_taxable = round(
+        sum((b.subtotal or 0) + (b.total_making_charges or 0) for b in sale_bills),
+        2
+    )
+
+    out_total = round(out_cgst + out_sgst, 2)
 
     # ── ITC from Purchase Bills ───────────────────────────────────────────
     pur_stmt = (
@@ -229,12 +327,29 @@ def gstr3b_report(
         .where(Invoice.is_cancelled == False)
         .where(Invoice.gst_status.in_(["gst_ready", "locked"]))
     )
-    pur_stmt, _, _ = _apply_fy_month_filter(pur_stmt, selected_fy, month)
+
+    pur_stmt, _, _ = _apply_fy_month_filter(
+        pur_stmt,
+        selected_fy,
+        month
+    )
+
     purchase_bills = session.exec(pur_stmt).all()
 
-    itc_purchase_cgst = round(sum((b.total_cgst or 0) + (b.making_cgst or 0) for b in purchase_bills), 2)
-    itc_purchase_sgst = round(sum((b.total_sgst or 0) + (b.making_sgst or 0) for b in purchase_bills), 2)
-    itc_purchase      = round(itc_purchase_cgst + itc_purchase_sgst, 2)
+    itc_purchase_cgst = round(
+        sum((b.total_cgst or 0) + (b.making_cgst or 0) for b in purchase_bills),
+        2
+    )
+
+    itc_purchase_sgst = round(
+        sum((b.total_sgst or 0) + (b.making_sgst or 0) for b in purchase_bills),
+        2
+    )
+
+    itc_purchase = round(
+        itc_purchase_cgst + itc_purchase_sgst,
+        2
+    )
 
     # ── ITC from Expenses ─────────────────────────────────────────────────
     exp_stmt = (
@@ -244,31 +359,58 @@ def gstr3b_report(
         .where(Expense.expense_date >= date_start)
         .where(Expense.expense_date <= date_end)
     )
+
     expenses_itc = session.exec(exp_stmt).all()
-    itc_expenses = round(sum(e.itc_claimable or 0 for e in expenses_itc), 2)
 
-    total_itc   = round(itc_purchase + itc_expenses, 2)
-    net_payable = round(max(0.0, out_total - total_itc), 2)
-    net_cgst    = round(max(0.0, out_cgst - (itc_purchase_cgst + itc_expenses / 2)), 2)
-    net_sgst    = round(max(0.0, out_sgst - (itc_purchase_sgst + itc_expenses / 2)), 2)
+    itc_expenses = round(
+        sum(e.itc_claimable or 0 for e in expenses_itc),
+        2
+    )
 
-    # Month dropdown — scoped to selected FY
+    itc_exp_cgst = round(itc_expenses / 2, 2)
+    itc_exp_sgst = round(itc_expenses - itc_exp_cgst, 2)
+
+    total_itc = round(itc_purchase + itc_expenses, 2)
+
+    net_cgst = round(
+        max(0.0, out_cgst - (itc_purchase_cgst + itc_exp_cgst)),
+        2
+    )
+
+    net_sgst = round(
+        max(0.0, out_sgst - (itc_purchase_sgst + itc_exp_sgst)),
+        2
+    )
+
+    net_payable = round(net_cgst + net_sgst, 2)
+
+    # ── Month dropdown ────────────────────────────────────────────────────
     month_stmt2 = (
         select(Invoice)
         .where(Invoice.is_cancelled == False)
         .where(Invoice.gst_status.in_(["gst_ready", "locked"]))
     )
+
     if selected_fy:
-        month_stmt2 = month_stmt2.where(Invoice.invoice_date >= selected_fy.start_date)
-        month_stmt2 = month_stmt2.where(Invoice.invoice_date <= selected_fy.end_date)
+        month_stmt2 = month_stmt2.where(
+            Invoice.invoice_date >= selected_fy.start_date
+        )
+
+        month_stmt2 = month_stmt2.where(
+            Invoice.invoice_date <= selected_fy.end_date
+        )
+
     all_months = sorted(
-        {_month_key(inv.invoice_date): _month_label(inv.invoice_date)
-         for inv in session.exec(month_stmt2).all()}.items(),
+        {
+            _month_key(inv.invoice_date): _month_label(inv.invoice_date)
+            for inv in session.exec(month_stmt2).all()
+        }.items(),
         reverse=True,
     )
 
     return templates.TemplateResponse(
-        request=request, name="reports/gstr3b.html",
+        request=request,
+        name="reports/gstr3b.html",
         context={
             "out_taxable":       out_taxable,
             "out_cgst":          out_cgst,

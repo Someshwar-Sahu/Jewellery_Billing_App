@@ -6,7 +6,7 @@ class Party(SQLModel, table=True):
     __tablename__ = "parties"
     
     id: Optional[int] = Field(default=None, primary_key=True)
-    type: str                           # customer / supplier / both
+    type: str                         
     name: str = Field(index=True)
     phone: Optional[str] = Field(default=None, index=True)
     email: Optional[str] = None
@@ -21,7 +21,7 @@ class Party(SQLModel, table=True):
     credit_limit: Optional[float] = None
     credit_days: Optional[int] = None
     opening_balance: Optional[float] = None
-    opening_balance_type: Optional[str] = None  # debit / credit
+    opening_balance_type: Optional[str] = None  
     notes: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 

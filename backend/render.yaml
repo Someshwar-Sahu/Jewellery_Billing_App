@@ -12,7 +12,7 @@ services:
 
     # Run Alembic migrations then start the server
     # Migrations run automatically on every deploy (safe — Alembic is idempotent)
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
 
     envVars:
       - key: DATABASE_URL

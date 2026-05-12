@@ -32,7 +32,7 @@ def expense_list(request: Request, month: str = "", session: Session = Depends(g
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
 
-    expenses = session.exec(stmt).all()   # FIX 2: variable renamed (was expesnses)
+    expenses = session.exec(stmt).all()   
 
     cat_ids    = {e.category_id for e in expenses}
     categories = {c.id: c for c in session.exec(

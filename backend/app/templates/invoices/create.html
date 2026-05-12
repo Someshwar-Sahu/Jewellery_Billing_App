@@ -1,371 +1,407 @@
 {% extends "base.html" %}
 {% block title %}New Bill{% endblock %}
+{% block nav_invoices %}active{% endblock %}
+{% block bnav_invoices %}active{% endblock %}
+{% block page_title %}New Bill{% endblock %}
+
 {% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1 class="page-title">New Bill</h1>
+    <p class="page-subtitle">Create a sale or purchase invoice</p>
+  </div>
+  <div class="page-header-actions">
+    <a href="/invoices" class="btn btn-ghost btn-sm">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      All Bills
+    </a>
+  </div>
+</div>
 
 {% if rate_alert %}
 <div class="alert alert-warning">
-    ⚠️ Today's gold rate is not set. Enter rate manually per item below.
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+  Today's gold rate is not set. Enter rate manually per item below.
 </div>
 {% endif %}
 
-<h1>New Bill</h1>
-<form id="billForm">
+<form id="billForm" autocomplete="off">
 
-    <div class="form-row">
-        <div class="form-group">
-            <label>Bill Type</label>
-            <select name="invoice_type" id="invoiceType" onchange="onBillTypeChange()">
-                <option value="sale">Sale (to Customer)</option>
-                <option value="purchase">Purchase (from Supplier)</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Bill Date *</label>
-            <input type="date" name="invoice_date" value="{{ today }}" required>
-        </div>
-        <div class="form-group">
-            <label>Payment Type</label>
-            <select name="bill_category" id="billCategory" onchange="toggleCreditDate()">
-                <option value="cash">Cash</option>
-                <option value="credit">Credit</option>
-            </select>
-        </div>
+  <!-- ── Section: Bill Basics ── -->
+  <div class="form-card">
+    <div class="form-card-header">
+      <span class="form-card-title">Bill Details</span>
+      <span class="rate-hint-badge" id="todayRateHint"></span>
     </div>
-
-    <!-- SALE: registered customer OR walk-in -->
-    <div id="salePartySection">
-        <div class="form-row">
-            <div class="form-group">
-                <label>Customer Type</label>
-                <select id="partyMode" onchange="togglePartyMode()">
-                    <option value="registered">Registered Customer</option>
-                    <option value="walkin">Walk-in Customer</option>
-                </select>
-            </div>
+    <div class="form-grid form-grid-3">
+      <div class="field-group">
+        <label class="field-label" for="invoiceType">Bill Type</label>
+        <div class="field-select-wrap">
+          <select class="field-select" name="invoice_type" id="invoiceType" onchange="onBillTypeChange()">
+            <option value="sale">Sale — to Customer</option>
+            <option value="purchase">Purchase — from Supplier</option>
+          </select>
         </div>
-        <div class="form-row" id="partySelectRow">
-            <div class="form-group" style="min-width:300px">
-                <label>Select Customer</label>
-                <select id="partyIdSelect" onchange="checkAdvance()">
-                    <option value="">-- Select Customer --</option>
-                    {% for p in parties %}
-                    {% if p.type in ['customer', 'both'] %}
-                    <option value="{{ p.id }}">{{ p.name }}{% if p.phone %} ({{ p.phone }}){% endif %}</option>
-                    {% endif %}
-                    {% endfor %}
-                </select>
-            </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Bill Date <span class="req">*</span></label>
+        <input class="field-input" type="date" name="invoice_date" value="{{ today }}" required>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Payment Type</label>
+        <div class="field-select-wrap">
+          <select class="field-select" name="bill_category" id="billCategory" onchange="toggleCreditDate()">
+            <option value="cash">Cash</option>
+            <option value="credit">Credit</option>
+          </select>
         </div>
-        <div id="advanceHint" style="display:none;margin-bottom:12px">
-            <div style="background:#e6f1fb;border:1px solid #85b7eb;border-radius:6px;
-                padding:10px 14px;font-size:13px;display:flex;align-items:center;gap:12px">
-                <span>💰 This customer has <strong id="advanceAmount">₹0</strong>
-                    available advance balance.</span>
-                <button type="button" onclick="applyAdvance()" class="btn-secondary btn-sm">Apply to Bill</button>
-            </div>
-        </div>
-        <div class="form-row" id="walkinRow" style="display:none">
-            <div class="form-group">
-                <label>Customer Name *</label>
-                <input type="text" id="walkinName" placeholder="e.g. Ramesh Kumar">
-            </div>
-            <div class="form-group">
-                <label>Phone (optional)</label>
-                <input type="text" id="walkinPhone" placeholder="9876543210">
-            </div>
-        </div>
+      </div>
     </div>
-
-    <!-- PURCHASE: registered supplier only -->
-    <div id="purchasePartySection" style="display:none">
-        <div class="form-row">
-            <div class="form-group" style="min-width:300px">
-                <label>Select Supplier *</label>
-                <select id="supplierIdSelect">
-                    <option value="">-- Select Supplier --</option>
-                    {% for p in parties %}
-                    {% if p.type in ['supplier', 'both'] %}
-                    <option value="{{ p.id }}">{{ p.name }}{% if p.gstin %} | {{ p.gstin }}{% endif %}</option>
-                    {% endif %}
-                    {% endfor %}
-                </select>
-                <small style="color:#888;font-size:11px">
-                    Supplier not listed? <a href="/parties/create?type=supplier">Add supplier</a>
-                </small>
-            </div>
-        </div>
-    </div>
-
     <!-- Credit due date -->
-    <div class="form-row" id="creditDateRow" style="display:none">
-        <div class="form-group">
-            <label>Due Date *</label>
-            <input type="date" name="credit_due_date" id="creditDueDate">
+    <div class="form-grid form-grid-3" id="creditDateRow" style="display:none">
+      <div class="field-group">
+        <label class="field-label">Credit Due Date <span class="req">*</span></label>
+        <input class="field-input" type="date" name="credit_due_date" id="creditDueDate">
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Section: Party ── -->
+  <div class="form-card" id="salePartySection">
+    <div class="form-card-header">
+      <span class="form-card-title">Customer</span>
+    </div>
+    <div class="form-grid form-grid-3">
+      <div class="field-group">
+        <label class="field-label">Customer Type</label>
+        <div class="field-select-wrap">
+          <select class="field-select" id="partyMode" onchange="togglePartyMode()">
+            <option value="registered">Registered Customer</option>
+            <option value="walkin">Walk-in Customer</option>
+          </select>
         </div>
+      </div>
     </div>
 
-    <!-- Items -->
-    <div class="section-header">
-        <h2>Items</h2>
-        <div style="display:flex;gap:10px;align-items:center">
-            <span id="todayRateHint" style="font-size:12px;color:#888"></span>
-            <button type="button" onclick="addItem()" class="btn-secondary">+ Add Item</button>
+    <div class="form-grid form-grid-3" id="partySelectRow">
+      <div class="field-group" style="grid-column: span 2">
+        <label class="field-label">Select Customer</label>
+        <div class="field-select-wrap">
+          <select class="field-select" id="partyIdSelect" onchange="checkAdvance()">
+            <option value="">— Select customer —</option>
+            {% for p in parties %}
+              {% if p.type in ['customer', 'both'] %}
+              <option value="{{ p.id }}">{{ p.name }}{% if p.phone %} · {{ p.phone }}{% endif %}</option>
+              {% endif %}
+            {% endfor %}
+          </select>
         </div>
+      </div>
     </div>
 
-    <table class="items-table" id="itemsTable">
+    <!-- Advance hint -->
+    <div class="advance-hint" id="advanceHint" style="display:none">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      <span>Available advance balance: <strong id="advanceAmount">₹0</strong></span>
+      <button type="button" onclick="applyAdvance()" class="btn btn-gold btn-sm">Apply to Bill</button>
+    </div>
+
+    <!-- Walk-in fields -->
+    <div class="form-grid form-grid-3" id="walkinRow" style="display:none">
+      <div class="field-group">
+        <label class="field-label">Customer Name <span class="req">*</span></label>
+        <input class="field-input" type="text" id="walkinName" placeholder="e.g. Ramesh Kumar">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Phone (optional)</label>
+        <input class="field-input" type="text" id="walkinPhone" placeholder="9876543210">
+      </div>
+    </div>
+  </div>
+
+  <!-- Supplier section (purchase mode) -->
+  <div class="form-card" id="purchasePartySection" style="display:none">
+    <div class="form-card-header">
+      <span class="form-card-title">Supplier</span>
+    </div>
+    <div class="form-grid form-grid-3">
+      <div class="field-group" style="grid-column: span 2">
+        <label class="field-label">Select Supplier <span class="req">*</span></label>
+        <div class="field-select-wrap">
+          <select class="field-select" id="supplierIdSelect">
+            <option value="">— Select supplier —</option>
+            {% for p in parties %}
+              {% if p.type in ['supplier', 'both'] %}
+              <option value="{{ p.id }}">{{ p.name }}{% if p.gstin %} · {{ p.gstin }}{% endif %}</option>
+              {% endif %}
+            {% endfor %}
+          </select>
+        </div>
+        <span class="field-hint">Not listed? <a href="/parties/create?type=supplier" class="link-gold">Add supplier</a></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Section: Items ── -->
+  <div class="form-card form-card-items">
+    <div class="form-card-header">
+      <span class="form-card-title">Items</span>
+      <button type="button" onclick="addItem()" class="btn btn-outline btn-sm">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Item
+      </button>
+    </div>
+
+    <!-- Desktop table -->
+    <div class="table-scroll" style="overflow: visible;">
+      <table class="items-table" id="itemsTable">
         <thead>
-            <tr>
-                <th>Item Name *</th>
-                <th>Purity</th>
-                <th>Weight (g)</th>
-                <th>Rate/gram (₹)</th>
-                <th>Amount (₹)</th>
-                <th>Making Charges</th>
-                <th>GST %</th>
-                <th>Line Total</th>
-                <th></th>
-            </tr>
+          <tr>
+            <th style="min-width:160px">Item Name <span class="req">*</span></th>
+            <th style="width:70px">Purity</th>
+            <th style="width:100px">Weight (g)</th>
+            <th style="width:110px">Rate/gram (₹)</th>
+            <th style="width:100px">Amount (₹)</th>
+            <th style="width:110px">Making (₹)</th>
+            <th style="width:80px">GST %</th>
+            <th style="width:110px">Line Total</th>
+            <th style="width:40px"></th>
+          </tr>
         </thead>
         <tbody id="itemsBody"></tbody>
-    </table>
+      </table>
+    </div>
+    <p class="items-empty-hint" id="itemsEmptyHint" style="display:none">No items added yet. Click "Add Item" to start.</p>
+  </div>
 
-    <!-- Totals -->
-    <div class="totals-section">
-        <div class="form-row">
-            <div class="form-group">
-                <label>Old Gold / Silver Value (₹)</label>
-                <input type="number" name="old_gold_value" id="oldGoldValue" value="0" min="0" step="0.01"
-                    oninput="recalcTotals()">
-            </div>
-            <div class="form-group" style="align-self:flex-end">
-                <!-- FIX 7: checkbox toggles detail fields -->
-                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:normal">
-                    <input type="checkbox" id="oldGoldDetailed" onchange="toggleOldGoldDetails()"
-                           style="width:auto;margin:0">
-                    Add weight / purity details
-                </label>
-                <small style="color:#888;font-size:11px">
-                    Check to record in Old Gold Register
-                </small>
-            </div>
-        </div>
+  <!-- ── Section: Totals & Payment ── -->
+  <div class="form-card-row">
 
-        <!-- FIX 7: old gold detail fields — hidden by default (Mode A), shown when checkbox checked (Mode B) -->
-        <div class="form-row" id="oldGoldDetailFields" style="display:none;flex-wrap:wrap;gap:12px">
-            <div class="form-group">
-                <label>Metal Type</label>
-                <select name="old_gold_metal_type">
-                    <option value="gold">Gold</option>
-                    <option value="silver">Silver</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Purity</label>
-                <input type="text" name="old_gold_purity" placeholder="e.g. 22K, 18K">
-            </div>
-            <div class="form-group">
-                <label>Weight (g)</label>
-                <input type="number" name="old_gold_weight" step="0.001" min="0" placeholder="0.000"
-                       oninput="calcOldGoldValue()">
-            </div>
-            <div class="form-group">
-                <label>Rate/gram (₹)</label>
-                <input type="number" name="old_gold_rate" step="0.01" min="0" placeholder="0.00"
-                       oninput="calcOldGoldValue()">
-            </div>
-        </div>
+    <!-- Left: Deductions & payment -->
+    <div class="form-card form-card-payment">
+      <div class="form-card-header">
+        <span class="form-card-title">Deductions & Payment</span>
+      </div>
 
-        <div class="form-row">
-            <div class="form-group">
-                <label>Discount (₹)</label>
-                <input type="number" name="discount" id="discount" value="0" min="0" step="0.01"
-                    oninput="recalcTotals()">
-            </div>
-            <div class="form-group">
-                <label>Payment Mode</label>
-                <select name="payment_mode">
-                    <option value="">-- Select --</option>
-                    <option value="cash">Cash</option>
-                    <option value="upi">UPI</option>
-                    <option value="card">Card</option>
-                    <option value="cheque">Cheque</option>
-                    <option value="neft">NEFT</option>
-                    <option value="rtgs">RTGS</option>
-                    <option value="mixed">Mixed</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Amount Paid (₹)</label>
-                <input type="number" id="amountPaid" value="0" min="0" step="0.01" oninput="onAmountPaidInput()"
-                    placeholder="Cannot exceed grand total">
-                <small style="color:#888;font-size:11px">Max = grand total</small>
-            </div>
-        </div>
+      <!-- Old gold -->
+      <div class="field-group">
+        <label class="field-label">Old Gold / Silver Value (₹)</label>
+        <input class="field-input" type="number" name="old_gold_value" id="oldGoldValue" value="0" min="0" step="0.01" oninput="recalcTotals()">
+      </div>
+      <div class="field-group">
+        <label class="field-label field-label-inline">
+          <input type="checkbox" id="oldGoldDetailed" onchange="toggleOldGoldDetails()" class="field-checkbox">
+          Record old gold weight/purity details
+        </label>
+        <span class="field-hint">Check to save entry in Old Gold Register</span>
+      </div>
 
-        <div class="totals-box">
-            <div class="total-row"><span>Subtotal</span><span id="tSubtotal">₹0.00</span></div>
-            <div class="total-row"><span>CGST</span><span id="tCgst">₹0.00</span></div>
-            <div class="total-row"><span>SGST</span><span id="tSgst">₹0.00</span></div>
-            <div class="total-row"><span>Making Charges</span><span id="tMaking">₹0.00</span></div>
-            <div class="total-row"><span>Making GST</span><span id="tMakingGst">₹0.00</span></div>
-            <div class="total-row"><span>Old Gold / Silver Deduction</span><span id="tOldGold">₹0.00</span></div>
-            <div class="total-row"><span>Discount</span><span id="tDiscount">₹0.00</span></div>
-            <div class="total-row total-grand"><span>Grand Total</span><span id="tGrandTotal">₹0.00</span></div>
-            <div class="total-row"><span>Amount Paid</span><span id="tAmountPaid">₹0.00</span></div>
-            <div class="total-row total-due"><span>Amount Due</span><span id="tAmountDue">₹0.00</span></div>
+      <!-- Old gold detail fields -->
+      <div id="oldGoldDetailFields" style="display:none">
+        <div class="form-grid form-grid-2">
+          <div class="field-group">
+            <label class="field-label">Metal Type</label>
+            <div class="field-select-wrap">
+              <select class="field-select" name="old_gold_metal_type">
+                <option value="gold">Gold</option>
+                <option value="silver">Silver</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Purity</label>
+            <input class="field-input" type="text" name="old_gold_purity" placeholder="e.g. 22K, 18K">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Weight (g)</label>
+            <input class="field-input" type="number" name="old_gold_weight" step="0.001" min="0" placeholder="0.000" oninput="calcOldGoldValue()">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Rate/gram (₹)</label>
+            <input class="field-input" type="number" name="old_gold_rate" step="0.01" min="0" placeholder="0.00" oninput="calcOldGoldValue()">
+          </div>
         </div>
+      </div>
+
+      <div class="field-divider"></div>
+
+      <div class="field-group">
+        <label class="field-label">Discount (₹)</label>
+        <input class="field-input" type="number" name="discount" id="discount" value="0" min="0" step="0.01" oninput="recalcTotals()">
+      </div>
+
+      <div class="form-grid form-grid-2">
+        <div class="field-group">
+          <label class="field-label">Payment Mode</label>
+          <div class="field-select-wrap">
+            <select class="field-select" name="payment_mode">
+              <option value="">— Select —</option>
+              <option value="cash">Cash</option>
+              <option value="upi">UPI</option>
+              <option value="card">Card</option>
+              <option value="cheque">Cheque</option>
+              <option value="neft">NEFT</option>
+              <option value="rtgs">RTGS</option>
+              <option value="mixed">Mixed</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Amount Paid (₹)</label>
+          <input class="field-input" type="number" id="amountPaid" value="0" min="0" step="0.01" oninput="onAmountPaidInput()" placeholder="0.00">
+          <span class="field-hint">Cannot exceed grand total</span>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Notes</label>
+        <textarea class="field-textarea" name="notes" rows="2" placeholder="Any remarks for this bill…"></textarea>
+      </div>
     </div>
 
-    <div class="form-group">
-        <label>Notes</label>
-        <textarea name="notes" rows="2" placeholder="Any remarks for this bill..."></textarea>
+    <!-- Right: Totals summary -->
+    <div class="totals-card">
+      <div class="totals-card-header">Bill Summary</div>
+      <div class="totals-list">
+        <div class="totals-row"><span>Subtotal</span><span id="tSubtotal">₹0.00</span></div>
+        <div class="totals-row"><span>CGST</span><span id="tCgst">₹0.00</span></div>
+        <div class="totals-row"><span>SGST</span><span id="tSgst">₹0.00</span></div>
+        <div class="totals-row"><span>Making Charges</span><span id="tMaking">₹0.00</span></div>
+        <div class="totals-row"><span>Making GST (18%)</span><span id="tMakingGst">₹0.00</span></div>
+        <div class="totals-row totals-row-deduct"><span>Old Gold Deduction</span><span id="tOldGold">— ₹0.00</span></div>
+        <div class="totals-row totals-row-deduct"><span>Discount</span><span id="tDiscount">— ₹0.00</span></div>
+        <div class="totals-row totals-row-grand"><span>Grand Total</span><span id="tGrandTotal">₹0.00</span></div>
+        <div class="totals-divider"></div>
+        <div class="totals-row"><span>Amount Paid</span><span id="tAmountPaid">₹0.00</span></div>
+        <div class="totals-row totals-row-due"><span>Amount Due</span><span id="tAmountDue">₹0.00</span></div>
+      </div>
+
+      <div class="totals-actions">
+        <button type="button" onclick="submitBill()" class="btn btn-gold btn-full" id="saveBillBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Save Bill
+        </button>
+        <a href="/invoices" class="btn btn-ghost btn-full">Cancel</a>
+      </div>
     </div>
 
-    <div class="form-actions">
-        <button type="button" onclick="submitBill()" class="btn-primary btn-large">Save Bill</button>
-        <a href="/invoices" class="btn-ghost">Cancel</a>
-    </div>
+  </div>
 </form>
 {% endblock %}
 
 {% block scripts %}
 <script src="/static/js/invoice.js"></script>
 <script>
-    window.onload = () => addItem();
+window.addEventListener('load', () => { addItem(); updateItemsEmptyHint(); });
 
-    fetch("/rates/today")
-        .then(r => r.json())
-        .then(data => {
-            if (data.found) {
-                const hint = document.getElementById("todayRateHint");
-                hint.textContent = `Today: 22K ₹${data.gold_22k}/g` +
-                    (data.gold_18k ? `, 18K ₹${data.gold_18k}/g` : "") +
-                    (data.silver   ? `, Silver ₹${data.silver}/g` : "");
-                window.todayRate = data;
-            }
-        });
+fetch("/rates/today")
+  .then(r => r.json())
+  .then(data => {
+    if (data.found) {
+      const hint = document.getElementById("todayRateHint");
+      let t = `22K ₹${data.gold_22k}/g`;
+      if (data.gold_18k) t += `  ·  18K ₹${data.gold_18k}/g`;
+      if (data.silver)   t += `  ·  Silver ₹${data.silver}/g`;
+      hint.textContent = t;
+      hint.style.display = 'inline-flex';
+      window.todayRate = data;
+    }
+  });
 
-    (function (){
-        const params = new URLSearchParams(window.location.search);
-        if (!params.has("from_scan")) return;
+function updateItemsEmptyHint() {
+  const rows = document.querySelectorAll('#itemsBody tr').length;
+  document.getElementById('itemsEmptyHint').style.display = rows === 0 ? 'block' : 'none';
+}
 
-        const raw = sessionStorage.getItem("scanPrefill");
-        if (!raw) return;
+// Wrap original addItem to update hint
+const _origAddItem = typeof addItem === 'function' ? addItem : null;
+// (invoice.js defines addItem — we patch after it loads)
+document.addEventListener('DOMContentLoaded', function() {
+  const origRemove = window.removeItem;
+  if (origRemove) {
+    window.removeItem = function(n) {
+      origRemove(n);
+      updateItemsEmptyHint();
+    };
+  }
+});
 
-        let data ;
-        try{ data = JSON.parse(raw);}
-        catch(e){ return;}
+// ── Scan prefill ──────────────────────────────────────────────────────────
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  if (!params.has("from_scan")) return;
+  const raw = sessionStorage.getItem("scanPrefill");
+  if (!raw) return;
+  let data;
+  try { data = JSON.parse(raw); } catch(e) { return; }
+  sessionStorage.removeItem("scanPrefill");
 
-        sessionStorage.removeItem("scanPrefill");
-        
-        setTimeout(function(){
-            if (data.invoice_date){
-                const dateInput = document.querySelector('[name="invoice_date"]');
-                if(dateInput) dateInput.value = data.invoice_date;
-            }
+  setTimeout(function() {
+    if (data.invoice_date) {
+      const d = document.querySelector('[name="invoice_date"]');
+      if (d) d.value = data.invoice_date;
+    }
+    if (data.invoice_type) {
+      const t = document.getElementById("invoiceType");
+      if (t) { t.value = data.invoice_type; onBillTypeChange(); }
+    }
+    if (data.payment_mode) {
+      const m = document.querySelector('[name="payment_mode"]');
+      if (m) for (let o of m.options) if (o.value === data.payment_mode) { o.selected = true; break; }
+    }
+    if (data.amount_paid != null) {
+      const p = document.getElementById("amountPaid");
+      if (p) { p.value = data.amount_paid; onAmountPaidInput(); }
+    }
+    if (data.old_gold_value != null && data.old_gold_value > 0) {
+      const og = document.getElementById("oldGoldValue");
+      if (og) og.value = data.old_gold_value;
+    }
+    if (data.discount != null && data.discount > 0) {
+      const di = document.getElementById("discount");
+      if (di) di.value = data.discount;
+    }
+    if (data.party_name) {
+      const ms = document.getElementById("partyMode");
+      if (ms) { ms.value = "walkin"; togglePartyMode(); }
+      const ni = document.getElementById("walkinName");
+      if (ni) ni.value = data.party_name;
+      if (data.party_phone) {
+        const pi = document.getElementById("walkinPhone");
+        if (pi) pi.value = data.party_phone;
+      }
+    }
+    if (data.notes) {
+      const no = document.querySelector('[name="notes"]');
+      if (no) no.value = data.notes;
+    }
+    if (data.items && data.items.length > 0) {
+      const tbody = document.getElementById("itemsBody");
+      tbody.innerHTML = "";
+      itemCount = 0;
+      data.items.forEach(function(item) {
+        addItem();
+        const n = itemCount;
+        const row = document.getElementById("item-row-" + n);
+        if (!row) return;
+        if (item.item_name)      row.querySelector('[name="item_name"]').value      = item.item_name;
+        if (item.purity)         row.querySelector('[name="purity"]').value         = item.purity;
+        if (item.weight_grams != null) row.querySelector('[name="weight_grams"]').value = item.weight_grams;
+        if (item.rate_per_gram != null) row.querySelector('[name="rate_per_gram"]').value = item.rate_per_gram;
+        if (item.making_charges != null) row.querySelector('[name="making_charges"]').value = item.making_charges;
+        const gs = row.querySelector('[name="gst_rate"]');
+        if (gs) for (let o of gs.options) if (o.value === "3.0") { o.selected = true; break; }
+        calcRow(n);
+      });
+    }
+    recalcTotals();
+    updateItemsEmptyHint();
 
-            if (data.invoice_type){
-                const typeSelect = document.getElementById("invoiceType");
-                if (typeSelect){
-                    typeSelect.value = data.invoice_type;
-                    onBillTypeChange();
-                }
-            }
-
-            if (data.payment_mode){
-                const modeSelect = document.querySelector('[name="payment_mode"]');
-                if(modeSelect){
-                    for(let opt of modeSelect.options){
-                        if(opt.value === data.payment_mode){opt.selected = true; break;}
-                    }
-                }
-            }
-
-            if(data.amount_paid != null){
-                const paidInput = document.getElementById("amountPaid");
-                if(paidInput){
-                    paidInput.value = data.amount_paid;
-                    onAmountPaidInput();
-                }
-            }
-
-            if (data.old_gold_value != null && data.old_gold_value > 0){
-                const ogInput = document.getElementById("oldGoldValue");
-                if(ogInput) ogInput.value = data.old_gold_value;
-            }
-
-            if(data.discount != null && data.discount > 0){
-                const discInput = document.getElementById("discount");
-                if(discInput) discInput.value = data.discount;
-            }
-
-            if(data.party_name){
-                const modeSelect = document.getElementById("partyMode");
-                if(modeSelect){
-                    modeSelect.value = "walkin";
-                    togglePartyMode();
-                }
-
-                const nameInput = document.getElementById("walkinName");
-                if(nameInput) nameInput.value = data.party_name;
-
-                if (data.party_phone){
-                    const phoneInput = document.getElementById("walkinPhone");
-                    if(phoneInput) phoneInput.value = data.party_phone;
-                }
-            }
-
-            if(data.notes){
-                const notesInput = document.querySelector('[name="notes"]');
-                if(notesInput) notesInput.value = data.notes;
-            }
-
-            if(data.items && data.items.length > 0){
-                const tbody = document.getElementById("itemsBody");
-                tbody.innerHTML = "";
-                itemCount = 0;
-
-                data.items.forEach(function(item){
-                    addItem();
-                    const n = itemCount;
-                    const row = document.getElementById("item-row-" + n);
-                    if(!row) return;
-
-                    if(item.item_name){
-                        row.querySelector('[name="item_name"]').value = item.item_name;
-                    }
-
-                    if(item.purity){
-                        row.querySelector('[name="purity"]').value = item.purity;
-                    }
-                    if(item.weight_grams != null){
-                        row.querySelector('[name="weight_grams"]').value = item.weight_grams;
-                    }
-                    if(item.rate_per_gram != null){
-                        row.querySelector('[name="rate_per_gram"]').value = item.rate_per_gram;
-                    }
-                    if(item.making_charges != null){
-                        row.querySelector('[name="making_charges"]').value = item.making_charges;
-                    }
-                    const gstSel = row.querySelector('[name="gst_rate"]');
-                    if(gstSel){
-                        for(let opt of gstSel.options){
-                            if (opt.value === "3.0"){opt.selected = true; break;}
-                        }
-                    }
-                    calcRow(n);
-
-                });
-            }
-            recalcTotals();
-
-            const banner = document.createElement("div");
-            banner.className = "alert alert-warning";
-            banner.style.cssText = "margin-bottom:16px";
-            banner.innerHTML = "📷 <strong>Form pre-filled from scanned bill.</strong>"+"Please review all fields carefully before saving.";
-            document.getElementById("billForm").insertAdjacentElement("beforebegin", banner);
-        }, 300);
-    })();
+    const banner = document.createElement("div");
+    banner.className = "alert alert-warning";
+    banner.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/></svg> <strong>Form pre-filled from scanned bill.</strong> Please review all fields carefully before saving.';
+    document.getElementById("billForm").insertAdjacentElement("beforebegin", banner);
+  }, 300);
+})();
 </script>
 {% endblock %}

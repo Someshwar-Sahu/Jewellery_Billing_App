@@ -3,71 +3,141 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login — Jewellery Billing</title>
+    <title>Sign In — JewelBill</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/style.css">
-    <style>
-        body { display:flex; justify-content:center; align-items:center; min-height:100vh; background:#f5f5f5; }
-        .auth-box { background:#fff; border-radius:12px; padding:40px; width:100%; max-width:380px; box-shadow:0 4px 20px rgba(0,0,0,0.1); }
-        .auth-box h1 { font-size:22px; margin-bottom:4px; color:#1a237e; }
-        .auth-box p.sub { color:#888; font-size:13px; margin-bottom:28px; }
-        .error-msg { background:#fdecea; color:#c62828; padding:10px 14px; border-radius:6px; font-size:13px; margin-bottom:16px; display:none; }
-    </style>
 </head>
-<body>
-<div class="auth-box">
-    <h1>💎 Jewellery Billing</h1>
-    <p class="sub">Sign in to continue</p>
+<body class="auth-body">
 
-    <div class="error-msg" id="errMsg"></div>
+<div class="auth-page">
 
-    <div class="form-group" style="margin-bottom:14px">
-        <label>Username</label>
-        <input type="text" id="username" placeholder="Enter username" autocomplete="username">
+    <!-- Left panel — decorative -->
+    <div class="auth-panel-left">
+        <div class="auth-panel-brand">
+            <div class="auth-brand-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+            </div>
+            <span class="auth-brand-name">JewelBill</span>
+        </div>
+        <div class="auth-panel-content">
+            <h2 class="auth-panel-headline">Crafted for jewellers,<br>built for precision.</h2>
+            <p class="auth-panel-sub">GST billing, stock, payments, and reports — all in one place.</p>
+        </div>
+        <div class="auth-panel-decoration">
+            <div class="auth-deco-ring auth-deco-ring-1"></div>
+            <div class="auth-deco-ring auth-deco-ring-2"></div>
+            <div class="auth-deco-ring auth-deco-ring-3"></div>
+        </div>
     </div>
-    <div class="form-group" style="margin-bottom:24px">
-        <label>Password</label>
-        <input type="password" id="password" placeholder="Enter password" autocomplete="current-password">
+
+    <!-- Right panel — form -->
+    <div class="auth-panel-right">
+        <div class="auth-form-wrap">
+
+            <div class="auth-form-header">
+                <h1 class="auth-form-title">Welcome back</h1>
+                <p class="auth-form-sub">Sign in to your billing dashboard</p>
+            </div>
+
+            <div class="auth-error" id="errMsg"></div>
+
+            <div class="field-group">
+                <label class="field-label" for="username">Username</label>
+                <div class="field-input-wrap">
+                    <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                    <input class="field-input" type="text" id="username" placeholder="Enter username" autocomplete="username">
+                </div>
+            </div>
+
+            <div class="field-group">
+                <label class="field-label" for="password">Password</label>
+                <div class="field-input-wrap">
+                    <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    <input class="field-input" type="password" id="password" placeholder="Enter password" autocomplete="current-password">
+                    <button type="button" class="field-eye-btn" onclick="togglePwd('password', this)" tabindex="-1">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <button onclick="doLogin()" class="btn btn-gold btn-full btn-lg" id="loginBtn">
+                Sign In
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                    <polyline points="12 5 19 12 12 19"/>
+                </svg>
+            </button>
+
+            <p class="auth-form-note">Forgot password? Contact your system administrator.</p>
+
+        </div>
     </div>
 
-    <button onclick="doLogin()" class="btn-primary btn-large" style="width:100%">Sign In →</button>
-
-    <p style="margin-top:20px;font-size:12px;color:#aaa;text-align:center">
-        Forgot password? Ask your system administrator to reset it.
-    </p>
 </div>
 
 <script>
-const NEXT = "{{ next }}";
+const NEXT = {{ next|tojson }};
+
+function togglePwd(id, btn) {
+    const inp = document.getElementById(id);
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+}
 
 async function doLogin() {
-    const err = document.getElementById("errMsg");
-    err.style.display = "none";
+    const err = document.getElementById('errMsg');
+    const btn = document.getElementById('loginBtn');
+    err.style.display = 'none';
 
-    const username = document.getElementById("username").value.trim();
-    const password = document.getElementById("password").value.trim();
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
 
     if (!username || !password) {
-        err.textContent   = "Please enter username and password.";
-        err.style.display = "block";
+        err.textContent = 'Please enter both username and password.';
+        err.style.display = 'flex';
         return;
     }
 
-    const res  = await fetch("/auth/login", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({username, password, next: NEXT}),
-    });
-    const data = await res.json();
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.textContent = 'Signing in…';
 
-    if (data.success) {
-        window.location.href = data.redirect || "/invoices";
-    } else {
-        err.textContent   = data.error;
-        err.style.display = "block";
+    try {
+        const res = await fetch('/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password, next: NEXT }),
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            window.location.href = data.redirect || '/invoices';
+            return;
+        }
+        err.textContent = data.error || 'Unable to sign in.';
+        err.style.display = 'flex';
+    } catch (_) {
+        err.textContent = 'Network error. Please try again.';
+        err.style.display = 'flex';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Sign In <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
     }
 }
 
-document.addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 </script>
 </body>
 </html>

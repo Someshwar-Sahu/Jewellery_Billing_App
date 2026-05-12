@@ -1,67 +1,174 @@
 {% extends "base.html" %}
 {% block title %}Excel Exports{% endblock %}
+{% block nav_exports %}active{% endblock %}
+
+{% block page_title %}Exports{% endblock %}
+
 {% block content %}
 
 <div class="page-header">
-    <h1>⬇ Excel Exports</h1>
+    <div class="page-header-left">
+        <h1 class="page-title">Excel Exports</h1>
+        <p class="page-subtitle">All exports download as .xlsx files</p>
+    </div>
 </div>
 
-<p style="color:#888;font-size:13px;margin-bottom:24px">
-    All exports download as <strong>.xlsx</strong> files.
-    Use month filter on Sales/Expense exports by adding <code>?month=2024-04</code> to the URL.
-</p>
+<div class="export-grid">
 
-<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">
-
-    <div class="detail-card">
-        <h3>Sales Register</h3>
-        <p style="color:#888;font-size:12px;margin-bottom:8px">All sale bills with GST breakdown</p>
-        <select id="salesFySelect"
-            style="width:100%;padding:6px;border-radius:6px;border:1px solid #ddd;margin-bottom:10px;font-size:13px">
-            <option value="">Active FY (default)</option>
-            <!-- populated by JS below -->
-        </select>
-        <a id="salesDownloadBtn" href="/exports/sales-register" class="btn-primary">⬇ Download</a>
-    </div>
-
-    <div class="detail-card">
-        <h3>Purchase Register</h3>
-        <p style="color:#888;font-size:12px;margin-bottom:8px">All purchase bills</p>
-        <select id="purchaseFySelect"
-            style="width:100%;padding:6px;border-radius:6px;border:1px solid #ddd;margin-bottom:10px;font-size:13px">
-            <option value="">Active FY (default)</option>
-        </select>
-        <a id="purchaseDownloadBtn" href="/exports/purchase-register" class="btn-primary">⬇ Download</a>
-    </div>
-
-    <div class="detail-card">
-        <h3>Expense Register</h3>
-        <p style="color:#888;font-size:12px;margin-bottom:12px">All expenses with ITC summary</p>
-        <a href="/exports/expenses" class="btn-primary">⬇ Download All</a>
-    </div>
-
-    <div class="detail-card">
-        <h3>Old Gold Register</h3>
-        <p style="color:#888;font-size:12px;margin-bottom:12px">All old gold / silver transactions</p>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <a href="/exports/old-gold" class="btn-primary">⬇ All</a>
-            <a href="/exports/old-gold?metal=gold" class="btn-secondary">Gold Only</a>
-            <a href="/exports/old-gold?metal=silver" class="btn-secondary">Silver Only</a>
+    <!-- Sales Register -->
+    <div class="export-card">
+        <div class="export-card-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+        </div>
+        <div class="export-card-body">
+            <h3 class="export-card-title">Sales Register</h3>
+            <p class="export-card-desc">All sale bills with GST breakdown</p>
+            <div class="export-card-controls">
+                <select id="salesFySelect" class="field-select field-select-sm">
+                    <option value="">Active FY (default)</option>
+                </select>
+                <a id="salesDownloadBtn" href="/exports/sales-register" class="btn btn-gold btn-sm">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Download
+                </a>
+            </div>
         </div>
     </div>
 
-    <div class="detail-card">
-        <h3>Stock Register</h3>
-        <p style="color:#888;font-size:12px;margin-bottom:12px">All products with current balance</p>
-        <a href="/exports/stock" class="btn-primary">⬇ Download</a>
+    <!-- Purchase Register -->
+    <div class="export-card">
+        <div class="export-card-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+            </svg>
+        </div>
+        <div class="export-card-body">
+            <h3 class="export-card-title">Purchase Register</h3>
+            <p class="export-card-desc">All purchase bills</p>
+            <div class="export-card-controls">
+                <select id="purchaseFySelect" class="field-select field-select-sm">
+                    <option value="">Active FY (default)</option>
+                </select>
+                <a id="purchaseDownloadBtn" href="/exports/purchase-register" class="btn btn-gold btn-sm">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Download
+                </a>
+            </div>
+        </div>
     </div>
 
-    <div class="detail-card">
-        <h3>Party Ledger</h3>
-        <p style="color:#888;font-size:12px;margin-bottom:12px">
-            Go to a party's detail page and click <strong>⬇ Export Ledger</strong>
-        </p>
-        <a href="/parties" class="btn-secondary">Go to Parties →</a>
+    <!-- Expense Register -->
+    <div class="export-card">
+        <div class="export-card-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                <line x1="1" y1="10" x2="23" y2="10"/>
+            </svg>
+        </div>
+        <div class="export-card-body">
+            <h3 class="export-card-title">Expense Register</h3>
+            <p class="export-card-desc">All expenses with ITC summary</p>
+            <div class="export-card-controls">
+                <a href="/exports/expenses" class="btn btn-gold btn-sm">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Download All
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Old Gold Register -->
+    <div class="export-card">
+        <div class="export-card-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <circle cx="12" cy="12" r="5"/>
+                <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+            </svg>
+        </div>
+        <div class="export-card-body">
+            <h3 class="export-card-title">Old Gold Register</h3>
+            <p class="export-card-desc">All old gold / silver transactions</p>
+            <div class="export-card-controls export-card-controls-multi">
+                <a href="/exports/old-gold" class="btn btn-gold btn-sm">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    All
+                </a>
+                <a href="/exports/old-gold?metal=gold" class="btn btn-outline btn-sm">Gold Only</a>
+                <a href="/exports/old-gold?metal=silver" class="btn btn-outline btn-sm">Silver Only</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stock Register -->
+    <div class="export-card">
+        <div class="export-card-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+                <line x1="8" y1="18" x2="21" y2="18"/>
+                <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/>
+                <line x1="3" y1="18" x2="3.01" y2="18"/>
+            </svg>
+        </div>
+        <div class="export-card-body">
+            <h3 class="export-card-title">Stock Register</h3>
+            <p class="export-card-desc">All products with current balance</p>
+            <div class="export-card-controls">
+                <a href="/exports/stock" class="btn btn-gold btn-sm">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Download
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Party Ledger -->
+    <div class="export-card export-card-secondary">
+        <div class="export-card-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+        </div>
+        <div class="export-card-body">
+            <h3 class="export-card-title">Party Ledger</h3>
+            <p class="export-card-desc">Go to a party's detail page and click Export Ledger</p>
+            <div class="export-card-controls">
+                <a href="/parties" class="btn btn-outline btn-sm">
+                    Go to Parties
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                        <polyline points="12 5 19 12 12 19"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
     </div>
 
 </div>
@@ -70,10 +177,13 @@
 
 {% block scripts %}
 <script>
-// Fetch all FYs and populate dropdowns, then update download links
-fetch("/settings/all-fy")
-    .then(r => r.json())
-    .then(fys => {
+async function loadFyOptions() {
+    try {
+        const res = await fetch("/settings/all-fy");
+        if (!res.ok) throw new Error("FY list request failed");
+        const fys = await res.json();
+        if (!Array.isArray(fys)) throw new Error("Invalid FY response");
+
         ["salesFySelect", "purchaseFySelect"].forEach(id => {
             const sel = document.getElementById(id);
             if (!sel) return;
@@ -84,8 +194,13 @@ fetch("/settings/all-fy")
                 sel.appendChild(opt);
             });
         });
-    })
-    .catch(() => {});   // silently skip if endpoint not available
+    } catch (_) {
+        if (window.showToast) {
+            showToast("Could not load FY list. Export will use active FY by default.", "warning", 5000);
+        }
+    }
+}
+loadFyOptions();
 
 function updateLink(selectId, btnId, base) {
     const sel = document.getElementById(selectId);

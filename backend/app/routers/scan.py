@@ -128,7 +128,6 @@ EXTRACTION LOGIC:
                 else:
                     raise e
 
-        # Strip any accidental markdown fences
         if raw.startswith("```"):
             raw = raw.split("```")[1]
             if raw.startswith("json"):

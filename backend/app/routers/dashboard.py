@@ -31,7 +31,6 @@ def dashboard_home(request: Request, session: Session = Depends(get_session)):
     fy_end      = active_fy.end_date   if active_fy else date(today.year + 1, 3, 31)
     month_start = today.replace(day=1)
 
-    # ── TODAY'S SALES ──────────────────────────────────────────────────────
     today_bills = session.exec(
         select(Invoice)
         .where(Invoice.invoice_type == "sale")
@@ -43,7 +42,6 @@ def dashboard_home(request: Request, session: Session = Depends(get_session)):
     today_sale_total  = round(sum(b.grand_total for b in today_bills), 2)
     today_sale_paid   = round(sum(b.amount_paid  for b in today_bills), 2)
 
-    # ── THIS MONTH'S SALES ─────────────────────────────────────────────────
     month_bills = session.exec(
         select(Invoice)
         .where(Invoice.invoice_type == "sale")
@@ -54,7 +52,6 @@ def dashboard_home(request: Request, session: Session = Depends(get_session)):
     month_sale_count = len(month_bills)
     month_sale_total = round(sum(b.grand_total for b in month_bills), 2)
 
-    # ── PAYMENT MODE BREAKDOWN (this month) ────────────────────────────────
     mode_totals = defaultdict(float)
     for b in month_bills:
         mode = b.payment_mode or "cash"
@@ -64,7 +61,6 @@ def dashboard_home(request: Request, session: Session = Depends(get_session)):
         for m, v in sorted(mode_totals.items(), key=lambda x: -x[1])
     ]
 
-    # ── TOP 5 CUSTOMERS (this month, by grand_total) ───────────────────────
     customer_totals = defaultdict(float)
     party_ids_needed = {b.party_id for b in month_bills if b.party_id}
     parties_map = {}
@@ -81,7 +77,6 @@ def dashboard_home(request: Request, session: Session = Depends(get_session)):
         key=lambda x: -x["total"]
     )[:5]
 
-    # ── PENDING PAYMENTS ───────────────────────────────────────────────────
     pending_bills = session.exec(
         select(Invoice)
         .where(Invoice.is_cancelled == False)
@@ -90,13 +85,11 @@ def dashboard_home(request: Request, session: Session = Depends(get_session)):
     pending_count = len(pending_bills)
     pending_total = round(sum(b.amount_due for b in pending_bills), 2)
 
-    # ── ADVANCE BALANCE ────────────────────────────────────────────────────
     open_advances = session.exec(
         select(Advance).where(Advance.status == "open")
     ).all()
     advance_balance = round(sum(a.amount - a.adjusted_amount for a in open_advances), 2)
 
-    # ── LOW STOCK COUNT ────────────────────────────────────────────────────
     products_all = session.exec(
         select(Product).where(Product.is_active == True)
     ).all()
@@ -113,10 +106,8 @@ def dashboard_home(request: Request, session: Session = Depends(get_session)):
         if balance <= product.low_stock_alert:
             low_stock_count += 1
 
-    # ── LAST 6 MONTHS TREND ────────────────────────────────────────────────
     trend = []
     for i in range(5, -1, -1):
-        # walk back i months from today
         ref    = today.replace(day=1) - timedelta(days=i * 28)
         ref    = ref.replace(day=1)
         y, m   = ref.year, ref.month
@@ -138,8 +129,6 @@ def dashboard_home(request: Request, session: Session = Depends(get_session)):
             "count": len(mn_bills),
         })
 
-    # ── MONTH LOCK STATUS ──────────────────────────────────────────────────
-    # Check current month and the 2 months before it
     lock_status = []
     for i in range(2, -1, -1):
         ref = (today.replace(day=1) - timedelta(days=i * 28)).replace(day=1)
@@ -158,7 +147,6 @@ def dashboard_home(request: Request, session: Session = Depends(get_session)):
             "lock_id":   lock.id        if lock else None,
         })
 
-    # ── ACTIVE ALERTS ─────────────────────────────────────────────────────
     from datetime import datetime
     now = datetime.utcnow()
     alerts = session.exec(
@@ -169,13 +157,11 @@ def dashboard_home(request: Request, session: Session = Depends(get_session)):
         .where(AppAlert.dismissed_at == None)
     ).all()
 
-    # ── 5-DAY WARNING: auto-create alert if within 5 days of month end ────
     import calendar as _cal2
     last_day_this_month = _cal2.monthrange(today.year, today.month)[1]
     days_to_month_end   = last_day_this_month - today.day
     show_lock_warning   = (days_to_month_end <= 5)
 
-    # Check if current month is already locked
     current_lock = session.exec(
         select(MonthLock)
         .where(MonthLock.year  == today.year)
@@ -189,16 +175,13 @@ def dashboard_home(request: Request, session: Session = Depends(get_session)):
         name="dashboard/index.html",
         context={
             "today":              today,
-            # Today
             "today_sale_count":   today_sale_count,
             "today_sale_total":   today_sale_total,
             "today_sale_paid":    today_sale_paid,
-            # Month
             "month_sale_count":   month_sale_count,
             "month_sale_total":   month_sale_total,
             "payment_modes":      payment_modes,
             "top_customers":      top_customers,
-            # Alerts
             "pending_count":      pending_count,
             "pending_total":      pending_total,
             "advance_balance":    advance_balance,

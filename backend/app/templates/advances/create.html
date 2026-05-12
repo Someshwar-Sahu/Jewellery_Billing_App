@@ -1,95 +1,145 @@
 {% extends "base.html" %}
 {% block title %}Record Advance{% endblock %}
+{% block nav_advances %}active{% endblock %}
+
+{% block page_title %}Advances{% endblock %}
+
 {% block content %}
 
 <div class="page-header">
-    <h1>Record Advance Payment</h1>
-    <a href="/advances" class="btn-ghost">← Back</a>
+    <div class="page-header-left">
+        <a href="/advances" class="back-link">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+            </svg>
+            Advances
+        </a>
+        <h1 class="page-title">Record Advance Payment</h1>
+    </div>
 </div>
 
-<div class="alert alert-warning">
-    An advance is money received from a customer <strong>before</strong> the sale bill is created.
-    When you later create a bill for this customer, the available advance will be shown
-    and you can apply it to reduce the amount due.
+<div class="alert alert-info" style="margin-bottom: 24px;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+    <span>An advance is money received from a customer <strong>before</strong> the sale bill is created. When you later create a bill for this customer, the available advance will be shown and can be applied to reduce the amount due.</span>
 </div>
 
-<form id="advanceForm" style="background:#fff;padding:24px;border-radius:8px;max-width:500px">
+<div class="form-page-layout form-page-layout-narrow">
+<div class="form-card">
 
-    <div class="form-row">
-        <div class="form-group">
-            <label>Date *</label>
-            <input type="date" name="advance_date" value="{{ today }}" required>
-        </div>
-        <div class="form-group" style="flex:2">
-            <label>Customer *</label>
-            <select name="party_id" required>
-                <option value="">-- Select Customer --</option>
-                {% for p in parties %}
-                <option value="{{ p.id }}">
-                    {{ p.name }}{% if p.phone %} ({{ p.phone }}){% endif %}
-                </option>
-                {% endfor %}
-            </select>
+    <div class="form-section">
+        <h2 class="form-section-title">Customer & Date</h2>
+
+        <div class="field-row">
+            <div class="field-group">
+                <label class="field-label" for="advance_date">Date <span class="field-required">*</span></label>
+                <input class="field-input" type="date" id="advance_date" name="advance_date" value="{{ today }}">
+            </div>
+            <div class="field-group field-group-grow">
+                <label class="field-label" for="party_id">Customer <span class="field-required">*</span></label>
+                <select class="field-select" id="party_id" name="party_id">
+                    <option value="">— Select Customer —</option>
+                    {% for p in parties %}
+                    <option value="{{ p.id }}">
+                        {{ p.name }}{% if p.phone %} — {{ p.phone }}{% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
     </div>
 
-    <div class="form-row">
-        <div class="form-group">
-            <label>Amount (₹) *</label>
-            <input type="number" name="amount" step="0.01" min="0"
-                   placeholder="0.00" required>
-        </div>
-        <div class="form-group">
-            <label>Payment Mode *</label>
-            <select name="mode">
-                {% for m in ["cash","upi","cheque","neft","rtgs","card"] %}
-                <option value="{{ m }}">{{ m | upper }}</option>
-                {% endfor %}
-            </select>
-        </div>
-    </div>
+    <div class="form-section-divider"></div>
 
-    <div class="form-group" style="margin-bottom:20px">
-        <label>Notes</label>
-        <input type="text" name="notes"
-               placeholder="e.g. Advance for gold necklace order">
+    <div class="form-section">
+        <h2 class="form-section-title">Payment Details</h2>
+
+        <div class="field-row">
+            <div class="field-group">
+                <label class="field-label" for="amount">Amount (₹) <span class="field-required">*</span></label>
+                <div class="field-input-wrap">
+                    <span class="field-prefix">₹</span>
+                    <input class="field-input field-input-prefixed" type="number"
+                           id="amount" name="amount" step="0.01" min="0" placeholder="0.00">
+                </div>
+            </div>
+            <div class="field-group">
+                <label class="field-label" for="mode">Payment Mode <span class="field-required">*</span></label>
+                <select class="field-select" id="mode" name="mode">
+                    {% for m in ["cash","upi","cheque","neft","rtgs","card"] %}
+                    <option value="{{ m }}">{{ m | upper }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="field-group">
+            <label class="field-label" for="notes">Notes</label>
+            <input class="field-input" type="text" id="notes" name="notes"
+                   placeholder="e.g. Advance for gold necklace order">
+        </div>
     </div>
 
     <div class="form-actions">
-        <button type="button" onclick="saveAdvance()"
-                class="btn-primary btn-large">Save Advance</button>
-        <a href="/advances" class="btn-ghost">Cancel</a>
+        <button type="button" onclick="saveAdvance()" class="btn btn-gold btn-lg" id="saveAdvanceBtn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+            </svg>
+            Save Advance
+        </button>
+        <a href="/advances" class="btn btn-ghost">Cancel</a>
     </div>
-</form>
+
+</div>
+</div>
 
 {% endblock %}
 
 {% block scripts %}
 <script>
+let _savingAdvance = false;
+
 async function saveAdvance() {
-    const form   = document.getElementById("advanceForm");
-    const party  = form.querySelector('[name="party_id"]').value;
-    const amount = form.querySelector('[name="amount"]').value;
-    if (!party)  { alert("Please select a customer."); return; }
-    if (!amount) { alert("Please enter an amount."); return; }
+    if (_savingAdvance) return;
+    const party  = document.getElementById("party_id").value;
+    const amount = document.getElementById("amount").value;
+    if (!party)  { if (window.showToast) showToast("Please select a customer", "error"); else alert("Select a customer."); return; }
+    if (!amount) { if (window.showToast) showToast("Please enter an amount", "error"); else alert("Enter an amount."); return; }
 
     const payload = {
         party_id:     party,
-        advance_date: form.querySelector('[name="advance_date"]').value,
+        advance_date: document.getElementById("advance_date").value,
         amount,
-        mode:         form.querySelector('[name="mode"]').value,
-        notes:        form.querySelector('[name="notes"]').value || null,
+        mode:         document.getElementById("mode").value,
+        notes:        document.getElementById("notes").value || null,
     };
 
-    const res  = await fetch("/advances/create", {
-        method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (data.success) {
-        window.location.href = "/advances";
-    } else {
-        alert("Error: " + data.error);
+    const btn = document.getElementById("saveAdvanceBtn");
+    if (btn) { btn.disabled = true; }
+    _savingAdvance = true;
+    try {
+        const res  = await fetch("/advances/create", {
+            method: "POST", headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            window.location.href = "/advances";
+            return;
+        }
+        const msg = data.error || "Unable to save advance";
+        if (window.showToast) showToast("Error: " + msg, "error");
+        else alert("Error: " + msg);
+    } catch (_) {
+        if (window.showToast) showToast("Network error while saving advance", "error");
+        else alert("Network error while saving advance.");
+    } finally {
+        _savingAdvance = false;
+        if (btn) { btn.disabled = false; }
     }
 }
 </script>

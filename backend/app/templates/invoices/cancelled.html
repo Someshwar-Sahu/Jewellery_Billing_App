@@ -1,49 +1,82 @@
 {% extends "base.html" %}
 {% block title %}Cancelled Bills{% endblock %}
+{% block nav_cancelled %}active{% endblock %}
+{% block page_title %}Cancelled Bills{% endblock %}
+
 {% block content %}
+
 <div class="page-header">
-    <h1>Cancelled Bills</h1>
-    <a href="/invoices" class="btn-secondary">← Back to Bills</a>
+  <div>
+    <h1 class="page-title">Cancelled Bills</h1>
+    <p class="page-sub">Cancelled invoices — can be recovered if needed</p>
+  </div>
+  <a href="/invoices" class="btn btn-outline">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+    All Bills
+  </a>
 </div>
 
-<table class="table">
-    <thead>
+<div class="table-card">
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
         <tr>
-            <th>Invoice No.</th>
-            <th>Customer</th>
-            <th>Total</th>
-            <th>Cancelled On</th>
-            <th>Reason</th>
-            <th>Actions</th>
+          <th>Invoice No.</th>
+          <th>Party</th>
+          <th class="text-right">Total</th>
+          <th>Cancelled On</th>
+          <th>Reason</th>
+          <th class="text-center">Actions</th>
         </tr>
-    </thead>
-    <tbody>
+      </thead>
+      <tbody>
         {% for inv in invoices %}
         <tr>
-            <td>{{ inv.invoice_number }}</td>
-            <td>{{ parties[inv.party_id].name if inv.party_id in parties else "—" }}</td>
-            <td>₹{{ "%.2f" | format(inv.grand_total) }}</td>
-            <td>{{ inv.cancelled_at.strftime("%d %b %Y") if inv.cancelled_at else "—" }}</td>
-            <td>{{ inv.cancelled_reason or "—" }}</td>
-            <td>
-                <button onclick="recoverBill({{ inv.id }})" class="btn-secondary btn-sm">Recover</button>
-                <a href="/invoices/{{ inv.id }}" class="btn-ghost btn-sm">View</a>
-            </td>
+          <td>
+            <a href="/invoices/{{ inv.id }}" class="table-link table-link--mono">
+              {{ inv.invoice_number }}
+            </a>
+          </td>
+          <td>{{ parties[inv.party_id].name if inv.party_id in parties else "—" }}</td>
+          <td class="text-right font-medium">₹{{ "%.2f" | format(inv.grand_total) }}</td>
+          <td class="text-muted">{{ inv.cancelled_at.strftime("%d %b %Y") if inv.cancelled_at else "—" }}</td>
+          <td class="text-muted text-sm">{{ inv.cancelled_reason or "—" }}</td>
+          <td class="text-center">
+            <div class="row-actions">
+              <button onclick="recoverBill({{ inv.id }})" class="btn btn-outline btn-sm">Recover</button>
+              <a href="/invoices/{{ inv.id }}" class="btn btn-ghost btn-sm">View</a>
+            </div>
+          </td>
         </tr>
         {% else %}
-        <tr><td colspan="6">No cancelled bills.</td></tr>
+        <tr>
+          <td colspan="6">
+            <div class="table-empty">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+              <span>No cancelled bills.</span>
+            </div>
+          </td>
+        </tr>
         {% endfor %}
-    </tbody>
-</table>
+      </tbody>
+    </table>
+  </div>
+</div>
+
 {% endblock %}
+
 {% block scripts %}
 <script>
 async function recoverBill(id) {
     if (!confirm("Recover this bill?")) return;
-    const res = await fetch(`/invoices/${id}/recover`, {method: "POST"});
-    const data = await res.json();
-    if (data.success) { location.reload(); }
-    else { alert("Error: " + data.error); }
+    try {
+        const res  = await fetch(`/invoices/${id}/recover`, {method: "POST"});
+        const data = await res.json();
+        if (res.ok && data.success) location.reload();
+        else alert("Error: " + (data.error || "Unable to recover bill"));
+    } catch (_) {
+        alert("Network error while recovering bill.");
+    }
 }
 </script>
 {% endblock %}

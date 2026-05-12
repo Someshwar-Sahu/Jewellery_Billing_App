@@ -1,88 +1,142 @@
 {% extends "base.html" %}
 {% block title %}All Bills{% endblock %}
+{% block nav_invoices %}active{% endblock %}
+{% block bnav_invoices %}active{% endblock %}
+{% block page_title %}All Bills{% endblock %}
+
 {% block content %}
+
 <div class="page-header">
-    <h1>Bills</h1>
-    <div style="display:flex;gap:8px">
-        <a href="/invoices/create" class="btn-primary">+ New Bill</a>
-        <a href="/exports/sales-register" class="btn-secondary">⬇ Sales Register</a>
-        <a href="/exports/purchase-register" class="btn-secondary">⬇ Purchase Register</a>
-    </div>
+  <div>
+    <h1 class="page-title">All Bills</h1>
+    <p class="page-sub">Invoice register for the selected financial year</p>
+  </div>
+  <div class="page-header__actions">
+    <a href="/exports/sales-register" class="btn btn-outline btn-sm">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Sales Reg.
+    </a>
+    <a href="/exports/purchase-register" class="btn btn-outline btn-sm">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Purchase Reg.
+    </a>
+    <a href="/invoices/create" class="btn btn-gold">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New Bill
+    </a>
+  </div>
 </div>
 
-<!-- FY SWITCHER -->
+{# ── FY Switcher ── #}
 {% if all_fys|length > 1 %}
-<div
-    style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:10px 14px;background:#f5f5f5;border-radius:8px">
-    <span style="font-size:13px;color:#555;font-weight:600">Financial Year:</span>
+<div class="fy-switcher">
+  <span class="fy-switcher__label">Financial Year</span>
+  <div class="fy-switcher__pills">
     {% for fy in all_fys %}
-    <a href="/invoices?fy_id={{ fy.id }}" style="padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;
-              background:{{ '#1a1a2e' if fy.id == selected_fy.id else '#fff' }};
-              color:{{ '#fff' if fy.id == selected_fy.id else '#555' }};
-              border:1px solid {{ '#1a1a2e' if fy.id == selected_fy.id else '#ddd' }}">
-        {{ fy.label }}
-        {% if fy.is_active %}<span style="font-size:10px;opacity:0.8"> ●</span>{% endif %}
+    <a href="/invoices?fy_id={{ fy.id }}{% if gst_filter %}&amp;gst={{ gst_filter }}{% endif %}"
+       class="fy-pill {% if fy.id == selected_fy.id %}fy-pill--active{% endif %}">
+      {{ fy.label }}
+      {% if fy.is_active %}<span class="fy-pill__dot"></span>{% endif %}
     </a>
     {% endfor %}
-    {% if selected_fy and not selected_fy.is_active %}
-    <span style="font-size:12px;color:#e57373;font-weight:600">📖 View only — historical year</span>
-    {% endif %}
+  </div>
+  {% if selected_fy and not selected_fy.is_active %}
+  <span class="fy-readonly-badge">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+    View only — historical year
+  </span>
+  {% endif %}
 </div>
 {% endif %}
 
-<table class="table">
-    <thead>
+{# ── GST quick filter (non-cancelled bills only) ── #}
+<div class="filter-bar filter-bar--compact">
+  <span class="field-label">GST filter</span>
+  <div class="filter-chip-row">
+    <a href="/invoices{% if selected_fy %}?fy_id={{ selected_fy.id }}{% endif %}"
+       class="filter-chip {% if not gst_filter %}filter-chip--active{% endif %}">All bills</a>
+    <a href="/invoices?{% if selected_fy %}fy_id={{ selected_fy.id }}&amp;{% endif %}gst=ready"
+       class="filter-chip {% if gst_filter == 'ready' %}filter-chip--active{% endif %}">GST-ready / locked</a>
+    <a href="/invoices?{% if selected_fy %}fy_id={{ selected_fy.id }}&amp;{% endif %}gst=pending"
+       class="filter-chip {% if gst_filter == 'pending' %}filter-chip--active{% endif %}">Pending review</a>
+  </div>
+  <span class="text-muted-sm">{{ invoices|length }} bill{{ 's' if invoices|length != 1 else '' }}</span>
+</div>
+
+{# ── Table ── #}
+<div class="table-card">
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead>
         <tr>
-            <th>Invoice No.</th>
-            <th>Date</th>
-            <th>Party</th>
-            <th>Sale / Purchase</th>
-            <th>Payment Type</th>
-            <th>Total</th>
-            <th>Payment</th>
-            <th>GST</th>
-            <th>Actions</th>
+          <th>Invoice No.</th>
+          <th>Date</th>
+          <th>Party</th>
+          <th>Type</th>
+          <th>Payment</th>
+          <th class="text-right">Total</th>
+          <th>Status</th>
+          <th>GST</th>
+          <th class="text-center">Actions</th>
         </tr>
-    </thead>
-    <tbody>
+      </thead>
+      <tbody>
         {% for inv in invoices %}
-        <tr>
-            <td><a href="/invoices/{{ inv.id }}">{{ inv.invoice_number }}</a></td>
-            <td>{{ inv.invoice_date }}</td>
-            <td>{{ parties[inv.party_id].name if inv.party_id in parties else "Walk-in" }}</td>
-            <td>
-                <span class="badge badge-{{ inv.invoice_type }}">
-                    {{ inv.invoice_type | upper }}
-                </span>
-            </td>
-            <td>
-                {% if inv.bill_category == "credit" %}
-                <span class="badge badge-unpaid">CREDIT</span>
-                {% else %}
-                <span style="color:#888;font-size:12px">Cash</span>
-                {% endif %}
-            </td>
-            <td>₹{{ "%.2f" | format(inv.grand_total) }}</td>
-            <td>
-                <span class="badge badge-{{ inv.payment_status }}">
-                    {{ inv.payment_status | upper }}
-                </span>
-            </td>
-            <td>
-                <span class="badge badge-gst-{{ inv.gst_status }}">
-                    {{ inv.gst_status | replace("_", " ") | upper }}
-                </span>
-            </td>
-            <td>
-                <a href="/invoices/{{ inv.id }}">View</a> |
-                <a href="/invoices/{{ inv.id }}/print" target="_blank">Print</a>
-            </td>
+        <tr class="{% if inv.gst_status in ['gst_ready', 'locked'] %}table-row--gst-marked{% endif %}">
+          <td>
+            <a href="/invoices/{{ inv.id }}" class="table-link table-link--mono">
+              {{ inv.invoice_number }}
+            </a>
+            {% if inv.gst_status in ['gst_ready', 'locked'] %}
+            <span class="gst-mark-pill" title="Included in GSTR reports when in range">GSTR</span>
+            {% endif %}
+          </td>
+          <td class="text-muted">{{ inv.invoice_date }}</td>
+          <td>{{ parties[inv.party_id].name if inv.party_id in parties else "Walk-in" }}</td>
+          <td>
+            <span class="badge badge--{{ inv.invoice_type }}">{{ inv.invoice_type | upper }}</span>
+          </td>
+          <td>
+            {% if inv.bill_category == "credit" %}
+            <span class="badge badge--credit">CREDIT</span>
+            {% else %}
+            <span class="text-muted text-sm">Cash</span>
+            {% endif %}
+          </td>
+          <td class="text-right font-medium">₹{{ "%.2f" | format(inv.grand_total) }}</td>
+          <td>
+            <span class="badge badge--{{ inv.payment_status }}">{{ inv.payment_status | upper }}</span>
+          </td>
+          <td>
+            <span class="badge badge--gst-{{ inv.gst_status }}">
+              {{ inv.gst_status | replace("_", " ") | upper }}
+            </span>
+          </td>
+          <td class="text-center">
+            <div class="row-actions">
+              <a href="/invoices/{{ inv.id }}" class="row-action-btn" title="View">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </a>
+              <a href="/invoices/{{ inv.id }}/print" target="_blank" class="row-action-btn" title="Print">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              </a>
+            </div>
+          </td>
         </tr>
         {% else %}
         <tr>
-            <td colspan="9">No bills yet. <a href="/invoices/create">Create your first bill.</a></td>
+          <td colspan="9">
+            <div class="table-empty">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <span>No bills yet.</span>
+              <a href="/invoices/create" class="btn btn-gold btn-sm">Create your first bill</a>
+            </div>
+          </td>
         </tr>
         {% endfor %}
-    </tbody>
-</table>
+      </tbody>
+    </table>
+  </div>
+</div>
+
 {% endblock %}

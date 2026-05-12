@@ -1,69 +1,109 @@
 {% extends "base.html" %}
 {% block title %}Advances{% endblock %}
+{% block nav_advances %}active{% endblock %}
+
+{% block page_title %}Advances{% endblock %}
+
 {% block content %}
 
 <div class="page-header">
-    <h1>Advance Payments</h1>
-    <a href="/advances/create" class="btn-primary">+ Record Advance</a>
+    <div class="page-header-left">
+        <h1 class="page-title">Advance Payments</h1>
+        <p class="page-subtitle">Customer advances applied against future bills</p>
+    </div>
+    <div class="page-header-actions">
+        <a href="/advances/create" class="btn btn-gold">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Record Advance
+        </a>
+    </div>
 </div>
 
-<div style="display:flex;gap:16px;margin-bottom:20px">
-    <div class="detail-card" style="flex:1;min-width:180px">
-        <h3>Total Open Balance</h3>
-        <p style="font-size:20px;font-weight:600;color:#185FA5">
-            ₹{{ "%.2f"|format(total_open) }}
-        </p>
-        <small style="color:#888;font-size:11px">Across all customers</small>
+<!-- Summary -->
+<div class="stats-row">
+    <div class="stat-card stat-card-highlight">
+        <div class="stat-card-icon stat-icon-primary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                <polyline points="17 6 23 6 23 12"/>
+            </svg>
+        </div>
+        <div class="stat-card-body">
+            <span class="stat-card-label">Total Open Balance</span>
+            <span class="stat-card-value">₹{{ "%.2f"|format(total_open) }}</span>
+            <span class="stat-card-sub">Across all customers</span>
+        </div>
     </div>
 </div>
 
 {% if not advances %}
-<div class="empty-state">No advances recorded yet.</div>
+<div class="empty-state">
+    <div class="empty-state-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+            <polyline points="17 6 23 6 23 12"/>
+        </svg>
+    </div>
+    <h3 class="empty-state-title">No advances recorded yet</h3>
+    <p class="empty-state-desc">Record advance payments received from customers before a bill is created</p>
+    <a href="/advances/create" class="btn btn-gold">Record Advance</a>
+</div>
+
 {% else %}
-<table class="table">
-    <thead>
-        <tr>
-            <th>Date</th>
-            <th>Customer</th>
-            <th>Amount (₹)</th>
-            <th>Used (₹)</th>
-            <th>Balance (₹)</th>
-            <th>Mode</th>
-            <th>Status</th>
-            <th>Notes</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for a in advances %}
-        {% set balance = a.amount - a.adjusted_amount %}
-        <tr>
-            <td>{{ a.advance_date }}</td>
-            <td>
-                {% if a.party_id in parties %}
-                <a href="/parties/{{ a.party_id }}">{{ parties[a.party_id].name }}</a>
-                {% else %}—{% endif %}
-            </td>
-            <td>₹{{ "%.2f"|format(a.amount) }}</td>
-            <td>₹{{ "%.2f"|format(a.adjusted_amount) }}</td>
-            <td>
-                <strong style="color:{% if balance > 0 %}#185FA5{% else %}#888{% endif %}">
-                    ₹{{ "%.2f"|format(balance) }}
-                </strong>
-            </td>
-            <td>{{ a.mode | upper }}</td>
-            <td>
-                {% if a.status == "open" %}
-                <span class="badge badge-partial">OPEN</span>
-                {% else %}
-                <span class="badge badge-paid">USED</span>
-                {% endif %}
-            </td>
-            <td style="font-size:12px;color:#888">{{ a.notes or "—" }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-<p style="color:#888;font-size:12px;margin-top:8px">{{ advances|length }} records</p>
+<div class="table-wrap">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Customer</th>
+                <th>Amount</th>
+                <th>Used</th>
+                <th>Balance</th>
+                <th>Mode</th>
+                <th>Status</th>
+                <th>Notes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in advances %}
+            {% set balance = a.amount - a.adjusted_amount %}
+            <tr>
+                <td><span class="date-cell">{{ a.advance_date }}</span></td>
+                <td>
+                    {% if a.party_id in parties %}
+                    <a href="/parties/{{ a.party_id }}" class="table-link">{{ parties[a.party_id].name }}</a>
+                    {% else %}<span class="text-muted">—</span>{% endif %}
+                </td>
+                <td><span class="amount-cell">₹{{ "%.2f"|format(a.amount) }}</span></td>
+                <td>
+                    {% if a.adjusted_amount > 0 %}
+                    <span class="amount-cell amount-muted">₹{{ "%.2f"|format(a.adjusted_amount) }}</span>
+                    {% else %}<span class="text-muted">—</span>{% endif %}
+                </td>
+                <td>
+                    {% if balance > 0 %}
+                    <span class="amount-cell amount-positive">₹{{ "%.2f"|format(balance) }}</span>
+                    {% else %}
+                    <span class="text-muted">₹0.00</span>
+                    {% endif %}
+                </td>
+                <td><span class="mode-tag">{{ a.mode | upper }}</span></td>
+                <td>
+                    {% if a.status == "open" %}
+                    <span class="badge badge-warning">Open</span>
+                    {% else %}
+                    <span class="badge badge-neutral">Used</span>
+                    {% endif %}
+                </td>
+                <td><span class="text-muted-sm">{{ a.notes or "—" }}</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<p class="table-footer-note">{{ advances|length }} records</p>
 {% endif %}
 
 {% endblock %}

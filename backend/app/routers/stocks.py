@@ -13,6 +13,18 @@ router    = APIRouter(prefix="/stock", tags=["Stock"])
 templates = Jinja2Templates(directory="app/templates")
 
 
+def _is_system_generated_reversal(entry: StockLedger) -> bool:
+    """
+    Identify stock rows auto-created by cancel/recover flows.
+    Keep these rows for audit/history and balance math, but exclude from
+    business summary cards (Total In / Total Out) to avoid inflation.
+    """
+    notes = (entry.notes or "").strip().lower()
+    if not notes:
+        return False
+    return notes.startswith("reversal: bill ") or notes.startswith("re-applied: bill ")
+
+
 def get_summary(session: Session) -> list:
     """
     For each product with stock ledger entries compute balance and low-stock flag.
@@ -32,9 +44,10 @@ def get_summary(session: Session) -> list:
         if not entries:
             continue
 
-        total_in  = round(sum(e.quantity_in  for e in entries), 3)
-        total_out = round(sum(e.quantity_out for e in entries), 3)
-        balance   = round(total_in - total_out, 3)
+        effective_entries = [e for e in entries if not _is_system_generated_reversal(e)]
+        total_in  = round(sum(e.quantity_in  for e in effective_entries), 3)
+        total_out = round(sum(e.quantity_out for e in effective_entries), 3)
+        balance   = round(sum(e.quantity_in - e.quantity_out for e in entries), 3)
         last_date = entries[0].stock_date if entries else None
         is_low    = product.low_stock_alert is not None and balance <= product.low_stock_alert
 
@@ -81,9 +94,10 @@ def product_stock(product_id: int, request: Request, session: Session = Depends(
         select(Invoice).where(Invoice.id.in_(invoice_ids))
     ).all()} if invoice_ids else {}
 
-    total_in  = round(sum(e.quantity_in  for e in entries), 3)
-    total_out = round(sum(e.quantity_out for e in entries), 3)
-    balance   = round(total_in - total_out, 3)
+    effective_entries = [e for e in entries if not _is_system_generated_reversal(e)]
+    total_in  = round(sum(e.quantity_in  for e in effective_entries), 3)
+    total_out = round(sum(e.quantity_out for e in effective_entries), 3)
+    balance   = round(sum(e.quantity_in - e.quantity_out for e in entries), 3)
 
     return templates.TemplateResponse(
         request=request, name="stock/list.html",
@@ -109,7 +123,7 @@ async def adjust_stock(product_id: int, request: Request, session: Session = Dep
     product = session.get(Product, product_id)
 
     if not product:
-        raise HTTPException(status_code=404, detail="Product not found")   # FIX 5: was wrong message + wrong status
+        raise HTTPException(status_code=404, detail="Product not found")   
 
     try:
         from datetime import date as date_type
@@ -151,4 +165,4 @@ async def adjust_stock(product_id: int, request: Request, session: Session = Dep
         session.commit()
         return {"success": True}
     except Exception as e:
-        return JSONResponse(status_code=400, content={"success": False, "error": str(e)})  # FIX 4: was raise JSONResponse
+        return JSONResponse(status_code=400, content={"success": False, "error": str(e)}) 

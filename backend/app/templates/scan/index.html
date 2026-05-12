@@ -1,95 +1,122 @@
 {% extends "base.html" %}
 {% block title %}Scan Bill{% endblock %}
+{% block nav_scan %}active{% endblock %}
+
+{% block page_title %}Scan Bill{% endblock %}
+
 {% block content %}
 
 <div class="page-header">
-    <h1>📷 Scan a Bill</h1>
-    <p style="color: #666;font-size: 13px;margin-top: 4px">
-        Take a photo of any paper bill - the app will read it and pre-fill the create form for you.
-        You can review and correct everything before saving.
-    </p>
+    <div class="page-header-left">
+        <h1 class="page-title">Scan a Bill</h1>
+        <p class="page-subtitle">Photograph any paper bill — AI extracts the data and pre-fills the create form</p>
+    </div>
 </div>
 
-<div id="stepUpload" class="detail-card" style="margin-bottom: 20px;">
-    <h2 style="margin-bottom: 16px;">Step 1: Choose Image</h2>
-    <div style="display: flex;gap: 12px;flex-wrap: wrap;margin-bottom: 16px;">
-        <label class="btn-primary" style="cursor: pointer;display: inline-flex;align-items: center;gap: 6px;">
-            📷 Use Camera
-            <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;"
-                onchange="handleFileSelect(this)">
-        </label>
+<!-- Step 1: Upload -->
+<div class="scan-card" id="stepUpload">
+    <div class="scan-step-header">
+        <span class="scan-step-num">1</span>
+        <h2 class="scan-step-title">Choose Image</h2>
+    </div>
 
-        <label class="btn-secondary" style="cursor: pointer;display: inline-flex;align-items: center;gap: 6px;">
-            📷 Upload Image
-            <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleFileSelect(this)">
+    <div class="scan-upload-actions">
+        <label class="btn btn-gold scan-upload-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+            </svg>
+            Use Camera
+            <input type="file" id="cameraInput" accept="image/*" capture="environment"
+                   style="display:none;" onchange="handleFileSelect(this)">
+        </label>
+        <label class="btn btn-outline scan-upload-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            Upload Image
+            <input type="file" id="fileInput" accept="image/*"
+                   style="display:none;" onchange="handleFileSelect(this)">
         </label>
     </div>
 
-    <div id="previewBox" style="display: none;">
-        <img id="previewImg"
-            style="max-width: 100%; max-height: 400px;border: 1px solid #ddd; border-radius: 8px;display: block;margin-bottom: 12px;">
-        <div style="display: flex;gap: 10px;align-items: center;">
-            <button type="button" onclick="extractBill()" class="btn-primary btn-large" id="extractBtn">
-                🔍 Read Bill
+    <div id="dropZone" class="scan-drop-zone"
+         ondragover="event.preventDefault(); this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
+         ondrop="handleDrop(event)">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/>
+        </svg>
+        <p>Drag &amp; drop a bill image here, or use the buttons above</p>
+        <span class="scan-drop-hint">JPG, PNG, HEIC supported</span>
+    </div>
+
+    <div id="previewBox" style="display:none;">
+        <div class="scan-preview-wrap">
+            <img id="previewImg" class="scan-preview-img" alt="Bill preview">
+        </div>
+        <div class="scan-preview-actions">
+            <button type="button" onclick="extractBill()" class="btn btn-gold btn-lg" id="extractBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                Read Bill
             </button>
-            <button type="button" onclick="resetScan()" class="btn-ghost">
-                ❌ Change Image
-            </button>
-            <span id="extractStatus" style="font-size: 13px; color: #666;"></span>
+            <button type="button" onclick="resetScan()" class="btn btn-ghost">Change Image</button>
+            <span id="extractStatus" class="scan-status"></span>
         </div>
     </div>
-    <div id="dropZone"
-        style="border: 2px dashed #ccc;border-radius: 8px;padding: 32px;text-align: center;color: #aaa;font-size: 14px;cursor: pointer;transition: border-color 0.2s;"
-        ondragover="event.preventDefault();this.style.borderColor='#1a237e'" ondragleave="this.style.borderColor='#ccc'"
-        ondrop="handleDrop(event)">
-        <div style="font-size: 32px;margin-bottom: 8px;">📄</div>
-        Drag & drop a bill image here, or use the buttons above
-    </div>
 </div>
 
-<div id="stepReview" class="detail-card" style="display: none;margin-bottom: 20px;">
-    <div style="display: flex;justify-content: space-between;align-items: center;margin-bottom: 16px;">
-        <h2>Step 2 - Review Extracted Data</h2>
-        <span style="font-size: 12px;color: #888;">
-            ✏️ Correct anything that was misread before proceeding
-        </span>
+<!-- Step 2: Review -->
+<div id="stepReview" class="scan-card" style="display:none;">
+    <div class="scan-step-header">
+        <span class="scan-step-num scan-step-num-done">2</span>
+        <h2 class="scan-step-title">Review Extracted Data</h2>
+        <span class="scan-step-note">Correct anything misread before proceeding</span>
     </div>
 
-    <div class="alert alert-warning" id="confidenceNote" style="display: none;margin-bottom: 12px;">
-        ⚠️ Some fields could not be read clearly. They aree left blank - please fille then in on the next page.
+    <div class="alert alert-warning" id="confidenceNote" style="display:none; margin-bottom: 16px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        Some fields could not be read clearly — they are left blank. Fill them in on the next page.
     </div>
 
-    <div id="extractedPreview" style="display: grid;grid-template-columns: 1fr 1fr;gap: 12px;margin-bottom: 16px;">
-        <!-- filled by js -->
+    <div id="extractedPreview" class="scan-fields-grid"></div>
+
+    <div id="itemsPreview" class="scan-items-section">
+        <h3 class="scan-items-title">Items Read</h3>
+        <div class="table-wrap">
+            <table class="data-table data-table-sm">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Purity</th>
+                        <th>Weight (g)</th>
+                        <th>Rate/g</th>
+                        <th>Making</th>
+                        <th>Amount</th>
+                    </tr>
+                </thead>
+                <tbody id="itemsPreviewBody"></tbody>
+            </table>
+        </div>
     </div>
 
-    <!-- Items preview table -->
-    <div id="itemsPreview" style="margin-bottom: 16px;">
-        <h3 style="margin-bottom: 8px;">Items Read</h3>
-        <table style="width: 100%;border-collapse: collapse;font-size: 12px;">
-            <thead>
-                <tr style="background: #f5f5f5;">
-                    <th style="padding: 6px 8px;border: 1px solid #ddd;text-align: left;">Item</th>
-                    <th style="padding: 6px 8px;border: 1px solid #ddd;">Purity</th>
-                    <th style="padding: 6px 8px;border: 1px solid #ddd;">Weight (g)</th>
-                    <th style="padding: 6px 8px;border: 1px solid #ddd;">Rate/g</th>
-                    <th style="padding: 6px 8px;border: 1px solid #ddd;">Making</th>
-                    <th style="padding: 6px 8px;border: 1px solid #ddd;">Amount</th>
-                </tr>
-            </thead>
-            <tbody id="itemsPreviewBody">
-                <!-- filled by js -->
-            </tbody>
-        </table>
-    </div>
-
-    <div style="display: flex;gap: 10px;">
-        <button type="button" onclick="proceedToCreate()" class="btn-primary btn-large">
-            ✔️ Looks Good - Fill Create Form
+    <div class="scan-review-actions">
+        <button type="button" onclick="proceedToCreate()" class="btn btn-gold btn-lg">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Looks Good — Fill Create Form
         </button>
-        <button type="button" onclick="resetScan()" class="btn-ghost">
-            ⬅ Start Over
-        </button>
+        <button type="button" onclick="resetScan()" class="btn btn-ghost">Start Over</button>
     </div>
 </div>
 
@@ -97,162 +124,155 @@
 
 {% block scripts %}
 <script>
-    let scannedImageB64 = null;
-    let scannedMediaType = null;
-    let extractedData = null;
+let scannedImageB64  = null;
+let scannedMediaType = null;
+let extractedData    = null;
 
-    function handleFileSelect(input) {
-        const file = input.files[0];
-        if (!file) return;
-        loadImageFile(file);
+function escHtml(value) {
+    return String(value == null ? "" : value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+function handleFileSelect(input) {
+    const file = input.files[0];
+    if (!file) return;
+    loadImageFile(file);
+}
+
+function handleDrop(event) {
+    event.preventDefault();
+    document.getElementById("dropZone").classList.remove("drag-over");
+    const file = event.dataTransfer.files[0];
+    if (!file || !file.type.startsWith("image/")) {
+        if (window.showToast) showToast("Please drop an image file", "error");
+        else alert("Please drop an image file.");
+        return;
     }
+    loadImageFile(file);
+}
 
-    function handleDrop(event) {
-        event.preventDefault();
-        document.getElementById("dropZone").style.borderColor = '#ccc';
-        const file = event.dataTransfer.files[0];
-        if (!file || !file.type.startsWith("image/")) {
-            alert("Please drop an image file.");
+function loadImageFile(file) {
+    scannedMediaType = file.type || "image/jpeg";
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const fullDataUrl    = e.target.result;
+        scannedImageB64      = fullDataUrl.split(",")[1];
+        document.getElementById("previewImg").src          = fullDataUrl;
+        document.getElementById("previewBox").style.display  = "block";
+        document.getElementById("dropZone").style.display    = "none";
+        document.getElementById("stepReview").style.display  = "none";
+        document.getElementById("extractBtn").disabled       = false;
+        document.getElementById("extractStatus").textContent = "";
+    };
+    reader.readAsDataURL(file);
+}
+
+function resetScan() {
+    scannedImageB64  = null;
+    scannedMediaType = null;
+    extractedData    = null;
+    document.getElementById("previewBox").style.display   = "none";
+    document.getElementById("dropZone").style.display     = "block";
+    document.getElementById("stepReview").style.display   = "none";
+    document.getElementById("cameraInput").value          = "";
+    document.getElementById("fileInput").value            = "";
+    document.getElementById("extractStatus").textContent  = "";
+    document.getElementById("extractStatus").className    = "scan-status";
+}
+
+async function extractBill() {
+    if (!scannedImageB64) return;
+    const btn    = document.getElementById("extractBtn");
+    const status = document.getElementById("extractStatus");
+
+    btn.disabled      = true;
+    btn.innerHTML     = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Reading…`;
+    status.textContent = "Sending to AI — this takes a few seconds…";
+    status.className   = "scan-status scan-status-loading";
+
+    try {
+        const res    = await fetch("/scan/extract", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({image: scannedImageB64, media_type: scannedMediaType}),
+        });
+        const result = await res.json();
+
+        if (!result.success) {
+            status.textContent = "Error: " + result.error;
+            status.className   = "scan-status scan-status-error";
+            btn.disabled       = false;
+            btn.innerHTML      = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Read Bill`;
             return;
         }
-        loadImageFile(file);
+
+        extractedData = result.data;
+        showReview(extractedData);
+        btn.innerHTML  = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Done`;
+        status.textContent = "";
+    } catch (err) {
+        status.textContent = "Network Error: " + err.message;
+        status.className   = "scan-status scan-status-error";
+        btn.disabled       = false;
+        btn.innerHTML      = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Read Bill`;
     }
+}
 
-    function loadImageFile(file) {
-        scannedMediaType = file.type || "image/jpeg";
+function showReview(data) {
+    const hasNull = !data.party_name || !data.invoice_date || (data.items || []).length === 0;
+    document.getElementById("confidenceNote").style.display = hasNull ? "flex" : "none";
 
-        const reader = new FileReader();
-        reader.onload = function (e) {
-            const fullDataUrl = e.target.result;
-            //Strip the data:image/...;base64, prefix - API needs raw base64
-            scannedImageB64 = fullDataUrl.split(",")[1];
-            document.getElementById("previewImg").src = fullDataUrl;
-            document.getElementById("previewBox").style.display = "block";
-            document.getElementById("dropZone").style.display = "none";
-            document.getElementById("stepReview").style.display = "none";
-            document.getElementById("extractBtn").disabled = false;
-            document.getElementById("extractStatus").textContent = "";
-        };
-        reader.readAsDataURL(file);
-    }
+    const fields = [
+        {label: "Bill Date",          value: data.invoice_date},
+        {label: "Bill Type",          value: data.invoice_type},
+        {label: "Customer/Supplier",  value: data.party_name},
+        {label: "Phone",              value: data.party_phone},
+        {label: "Address",            value: data.party_address},
+        {label: "GSTIN",              value: data.party_gstin},
+        {label: "Payment Mode",       value: data.payment_mode},
+        {label: "Old Gold (₹)",       value: data.old_gold_value},
+        {label: "Discount (₹)",       value: data.discount},
+        {label: "Grand Total",        value: data.grand_total},
+        {label: "Amount Paid",        value: data.amount_paid},
+        {label: "Notes",              value: data.notes},
+    ];
 
-    function resetScan() {
-        scannedImageB64 = null;
-        scannedMediaType = null;
-        extractedData = null;
+    document.getElementById("extractedPreview").innerHTML = fields.map(f => `
+        <div class="scan-field-card ${f.value ? 'scan-field-found' : 'scan-field-missing'}">
+            <div class="scan-field-label">${escHtml(f.label)}</div>
+            <div class="scan-field-value">${f.value !== null && f.value !== undefined ? escHtml(f.value) : '— not found —'}</div>
+        </div>
+    `).join("");
 
-        document.getElementById("previewBox").style.display = "none";
-        document.getElementById("dropZone").style.display = "block";
-        document.getElementById("stepReview").style.display = "none";
-        document.getElementById("cameraInput").value = "";
-        document.getElementById("fileInput").value = "";
-        document.getElementById("extractStatus").textContent = "";
-    }
-
-    async function extractBill() {
-        if (!scannedImageB64) return;
-
-        const btn = document.getElementById("extractBtn");
-        const status = document.getElementById("extractStatus");
-
-        btn.disabled = true;
-        btn.textContent = "⏳ Reading...";
-        status.textContent = "Sending to AI - this takes a few seconds...";
-        status.style.color = "#666";
-
-        try {
-            const res = await fetch("/scan/extract", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: scannedImageB64, media_type: scannedMediaType }), });
-
-            const result = await res.json();
-
-            if (!result.success) {
-                status.textContent = "❌ Error: " + result.error;
-                status.style.color = "#dc3545";
-                btn.disabled = false;
-                btn.textContent = "🔍 Read Bill";
-                return;
-            }
-
-            extractedData = result.data;
-            showReview(extractedData);
-
-            btn.textContent = " ✔️ Done";
-            status.textContent = "";
-        } catch (err) {
-            status.textContent = "❌ Network Error: " + err.message;
-            status.style.color = "#dc3545";
-            btn.disabled = false;
-            btn.textContent = "🔍 Read Bill";
-        }
-    }
-
-    function showReview(data) {
-        const hasNull = !data.party_name || !data.invoice_date || (data.items || []).length === 0;
-        document.getElementById("confidenceNote").style.display = hasNull ? "block" : "none";
-
-        const fields = [
-            { label: "Bill Date", value: data.invoice_date },
-            { label: "Bill Type", value: data.invoice_type },
-            { label: "Customer/Supplier", value: data.party_name },
-            { label: "Phone", value: data.party_phone },
-            { label: "Address", value: data.party_address },
-            { label: "GSTIN", value: data.party_gstin },
-            { label: "Payment Mode", value: data.payment_mode },
-            { label: "Old Gold (₹)", value: data.old_gold_value },
-            { label: "Discount (₹)", value: data.discount },
-            { label: "Grand Total", value: data.grand_total },
-            { label: "Amount Paid", value: data.amount_paid },
-            { label: "Notes", value: data.notes },
-        ];
-
-        const preiew = document.getElementById("extractedPreview");
-        preiew.innerHTML = fields.map(f => `     
-            <div style="background: #f8f9ff;border-radius: 6px;padding: 8px 12px;border-left: 3px solid ${f.value ? '#1a237e' : '#ccc'};">
-                <div style="font-size: 10px;color: #888;text-transform: uppercase;margin-bottom: 2px;">${f.label}</div>
-                <div style="font-size: 13px;font-weight: 600;color: ${f.value ? '#222' : '#bbb'};">
-                    ${f.value !== null && f.value !== undefined ? String(f.value) : '- not found -'}
-                </div>
-            </div>
+    const tbody = document.getElementById("itemsPreviewBody");
+    const items = data.items || [];
+    if (items.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="table-empty-cell">No items could be read from the image.</td></tr>`;
+    } else {
+        tbody.innerHTML = items.map((item, idx) => `
+            <tr>
+                <td>${item.item_name != null && item.item_name !== "" ? escHtml(item.item_name) : "—"}</td>
+                <td>${item.purity != null && item.purity !== "" ? escHtml(item.purity) : "—"}</td>
+                <td>${item.weight_grams != null ? escHtml(item.weight_grams) + "g" : "—"}</td>
+                <td>${item.rate_per_gram != null ? "₹" + escHtml(item.rate_per_gram) : "—"}</td>
+                <td>${item.making_charges != null ? "₹" + escHtml(item.making_charges) : "—"}</td>
+                <td>${item.amount != null ? "₹" + escHtml(item.amount) : "—"}</td>
+            </tr>
         `).join("");
-
-        const tbody = document.getElementById("itemsPreviewBody");
-        const items = data.items || [];
-        if ( items.length === 0){
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center;padding: 10px;color: #aaa;border: 1px solid #ddd;">No items could be read from the image.</td></tr>`;
-        } else {
-            tbody.innerHTML = items.map((item, idx) => `
-                <tr style="${idx % 2 === 0 ? '' : 'background: #f8f9ff'}">
-                    <td style="padding: 5px 8px;border: 1px solid #ddd;text-align: center;">
-                        ${item.item_name || '-'}
-                    </td>
-                    <td style="padding: 5px 8px;border: 1px solid #ddd;text-align: center;">
-                        ${item.purity || '-'}
-                    </td>
-                    <td style="padding: 5px 8px;border: 1px solid #ddd;text-align: center;">
-                        ${item.weight_grams != null ? item.weight_grams + ' g' : '-'}
-                    </td>
-                    <td style="padding: 5px 8px;border: 1px solid #ddd;text-align: center;">
-                        ${item.rate_per_gram != null ? '₹ ' + item.rate_per_gram : '-'}
-                    </td>
-                    <td style="padding: 5px 8px;border: 1px solid #ddd;text-align: center;">
-                        ${item.making_charges != null ? '₹ ' + item.making_charges : '-'}
-                    </td>
-                    <td style="padding: 5px 8px;border: 1px solid #ddd;text-align: center;">
-                        ${item.amount != null ? '₹ ' + item.amount : '-'}
-                    </td>
-                </tr>
-
-            `).join("");
-            
-        }
-            document.getElementById("stepReview").style.display = "block";
-            document.getElementById("stepReview").scrollIntoView({behavior: "smooth"});
     }
-    function proceedToCreate(){
-        if(!extractedData) return;
 
-        sessionStorage.setItem("scanPrefill", JSON.stringify(extractedData));
-        window.location.href = "/invoices/create?from_scan=1";
-    }
+    document.getElementById("stepReview").style.display = "block";
+    document.getElementById("stepReview").scrollIntoView({behavior: "smooth"});
+}
+
+function proceedToCreate() {
+    if (!extractedData) return;
+    sessionStorage.setItem("scanPrefill", JSON.stringify(extractedData));
+    window.location.href = "/invoices/create?from_scan=1";
+}
 </script>
 {% endblock %}

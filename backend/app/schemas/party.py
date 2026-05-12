@@ -14,7 +14,7 @@ class PartyCreate(BaseModel):
     credit_limit: Optional[float] = None
     credit_days: Optional[int] = None
     opening_balance: Optional[float] = None
-    opening_balance_type: Optional[str] = None  # debit / credit
+    opening_balance_type: Optional[str] = None 
     notes: Optional[str] = None
 
     @field_validator("type")
@@ -29,7 +29,6 @@ class PartyCreate(BaseModel):
     def gstin_format(cls, v):
         if v and v.strip():
             v = v.strip().upper()
-            # GSTIN: 15 chars — 2 digit state code + 10 char PAN + 1 entity + Z + 1 checksum
             if not re.match(r"^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$", v):
                 raise ValueError("Invalid GSTIN format. Example: 09ABCDE1234F1Z5")
             return v

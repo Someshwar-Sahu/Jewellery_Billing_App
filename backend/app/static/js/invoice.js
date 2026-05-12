@@ -1,4 +1,29 @@
 let itemCount = 0;
+let _savingBill = false;
+function _escHtml(value) {
+    return String(value == null ? "" : value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+function _setSaveBillLoading(loading) {
+    const btn = document.getElementById("saveBillBtn");
+    if (!btn) return;
+    if (loading) {
+        if (!btn.dataset.originalHtml) btn.dataset.originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = "Saving...";
+    } else {
+        btn.disabled = false;
+        if (btn.dataset.originalHtml) {
+            btn.innerHTML = btn.dataset.originalHtml;
+            delete btn.dataset.originalHtml;
+        }
+    }
+}
 
 // ── BILL TYPE CHANGE ──────────────────────────────────────────────────────────
 
@@ -42,8 +67,6 @@ function toggleCreditDate() {
     dateInput.required = cat === "credit";
 }
 
-// ── OLD GOLD DETAIL TOGGLE (FIX 7) ───────────────────────────────────────────
-
 function toggleOldGoldDetails() {
     const checked     = document.getElementById("oldGoldDetailed").checked;
     const detailBlock = document.getElementById("oldGoldDetailFields");
@@ -76,12 +99,12 @@ function addItem() {
     const row   = document.createElement("tr");
     row.id = `item-row-${n}`;
     row.innerHTML = `
-        <td style="position:relative">
+        <td class="item-name-cell" style="position:relative">
             <input type="text" name="item_name" placeholder="Type to search..."
                  autocomplete="off" style="width:150px"
                  oninput="searchProducts(${n}, this.value)"
                  onfocus="searchProducts(${n}, this.value)">
-            <div id="suggestions-${n}"
+            <div id="suggestions-${n}" class="item-suggestions"
                  style="display:none;position:absolute;top:100%;left:0;z-index:99;
                         background:#fff;border:1px solid #ccc;border-radius:6px;
                         min-width:220px;box-shadow:0 4px 12px rgba(0,0,0,0.1)">
@@ -117,6 +140,7 @@ let _searchTimer = null;
 function searchProducts(n, query) {
     clearTimeout(_searchTimer);
     const box = document.getElementById(`suggestions-${n}`);
+    if (!box) return;
 
     if (!query || query.length < 1) {
         box.style.display = "none";
@@ -124,22 +148,27 @@ function searchProducts(n, query) {
     }
 
     _searchTimer = setTimeout(async () => {
-        const res  = await fetch(`/products/search?q=${encodeURIComponent(query)}`);
-        const list = await res.json();
+        try {
+            const res  = await fetch(`/products/search?q=${encodeURIComponent(query)}`);
+            if (!res.ok) throw new Error("search_failed");
+            const list = await res.json();
 
-        if (!list.length) { box.style.display = "none"; return; }
+            if (!Array.isArray(list) || !list.length) { box.style.display = "none"; return; }
 
-        box.innerHTML = list.map(p => `
-            <div onclick="selectProduct(${n}, ${JSON.stringify(p).replace(/"/g, '&quot;')})"
-                 style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #eee"
-                 onmouseover="this.style.background='#f5f5f5'"
-                 onmouseout="this.style.background=''">
-                <strong>${p.name}</strong>
-                ${p.purity ? `<span style="color:#888;margin-left:6px">${p.purity}</span>` : ""}
-                <span style="color:#aaa;font-size:11px;margin-left:6px">${p.metal_type}</span>
-            </div>
-        `).join("");
-        box.style.display = "block";
+            box.innerHTML = list.map(p => `
+                <div onclick="selectProduct(${n}, ${JSON.stringify(p).replace(/"/g, '&quot;')})"
+                     style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #eee"
+                     onmouseover="this.style.background='#f5f5f5'"
+                     onmouseout="this.style.background=''">
+                    <strong>${_escHtml(p.name)}</strong>
+                    ${p.purity ? `<span style="color:#888;margin-left:6px">${_escHtml(p.purity)}</span>` : ""}
+                    <span style="color:#aaa;font-size:11px;margin-left:6px">${_escHtml(p.metal_type)}</span>
+                </div>
+            `).join("");
+            box.style.display = "block";
+        } catch (e) {
+            box.style.display = "none";
+        }
     }, 200);
 }
 
@@ -304,7 +333,7 @@ async function checkAdvance() {
             document.getElementById("advanceAmount").textContent = "₹" + data.available.toFixed(2);
             hint.style.display     = "block";
             hint.dataset.available = data.available;
-            hint.dataset.applied   = "0";   // FIX 6: reset applied amount when party changes
+            hint.dataset.applied   = "0";   
         } else {
             hint.style.display = "none";
         }
@@ -324,7 +353,6 @@ function applyAdvance() {
         paidInput.value = applyAmount.toFixed(2);
         onAmountPaidInput();
     }
-    // FIX 6: store the advance-applied amount separately so submitBill sends correct advance_used
     hint.dataset.applied   = applyAmount.toFixed(2);
     hint.dataset.wasApplied = "1";
     hint.style.display = "none";
@@ -332,7 +360,8 @@ function applyAdvance() {
 
 // ── SUBMIT ────────────────────────────────────────────────────────────────────
 
-async function  submitBill() {
+async function submitBill() {
+    if (_savingBill) return;
     const form     = document.getElementById("billForm");
     const billType = document.getElementById("invoiceType").value;
 
@@ -390,11 +419,8 @@ async function  submitBill() {
     let amountPaid   = parseFloat(document.getElementById("amountPaid").value) || 0;
     if (amountPaid > grandTotal) amountPaid = grandTotal;
 
-    // FIX 7: collect old gold detail fields
     const oldGoldDetailed = document.getElementById("oldGoldDetailed")?.checked || false;
 
-    // FIX 6: advance_used is the amount that came from advance (set by applyAdvance),
-    //        NOT the full amountPaid which may include other sources
     const hint        = document.getElementById("advanceHint");
     const wasApplied  = hint?.dataset?.wasApplied === "1";
     const available   = parseFloat(hint?.dataset?.available || 0);
@@ -404,7 +430,7 @@ async function  submitBill() {
         party_id,
         walkin_name,
         walkin_phone,
-        advance_used:    advanceUsed,   // FIX 6: only the advance-applied portion
+        advance_used:    advanceUsed,   
         invoice_date:    form.querySelector('[name="invoice_date"]').value,
         invoice_type:    billType,
         bill_category:   form.querySelector('[name="bill_category"]').value,
@@ -412,7 +438,6 @@ async function  submitBill() {
         payment_mode:    form.querySelector('[name="payment_mode"]').value || null,
         amount_paid:     amountPaid,
         old_gold_value:  parseFloat(form.querySelector('[name="old_gold_value"]').value) || 0,
-        // FIX 7: old gold detail fields — only sent when detailed mode is on
         old_gold_metal_type: oldGoldDetailed
             ? (form.querySelector('[name="old_gold_metal_type"]')?.value || "gold")
             : "gold",
@@ -430,16 +455,25 @@ async function  submitBill() {
         items,
     };
 
-    const res  = await fetch("/invoices/create", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(payload),
-    });
-    const data = await res.json();
+    _savingBill = true;
+    _setSaveBillLoading(true);
+    try {
+        const res  = await fetch("/invoices/create", {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify(payload),
+        });
+        const data = await res.json();
 
-    if (data.success) {
-        window.location.href = `/invoices/${data.invoice_id}`;
-    } else {
-        alert("Error saving bill:\n" + data.error);
+        if (res.ok && data.success) {
+            window.location.href = `/invoices/${data.invoice_id}`;
+            return;
+        }
+        alert("Error saving bill:\n" + (data.error || "Unable to save bill."));
+    } catch (e) {
+        alert("Network error while saving bill. Please try again.");
+    } finally {
+        _savingBill = false;
+        _setSaveBillLoading(false);
     }
 }

@@ -1,124 +1,177 @@
 {% extends "base.html" %}
 {% block title %}Add Party{% endblock %}
+{% block nav_parties %}active{% endblock %}
+{% block bnav_parties %}active{% endblock %}
+{% block page_title %}Add Party{% endblock %}
+
 {% block content %}
 
 <div class="page-header">
-    <h1>Add New Party</h1>
-    <a href="/parties" class="btn-ghost">← Back</a>
+    <div class="page-header-left">
+        <a href="/parties" class="page-back-link">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            Parties
+        </a>
+        <h1 class="page-title">Add New Party</h1>
+    </div>
 </div>
 
-<form id="partyForm" style="background:#fff;padding:24px;border-radius:8px;max-width:700px">
+<div class="form-page-layout">
+<div class="form-card" id="partyForm">
 
-    <div class="form-row">
-        <div class="form-group">
-            <label>Party Type *</label>
-            <select name="type" id="partyType">
-                <option value="customer" {{ 'selected' if prefill_type == 'customer' else '' }}>Customer</option>
-                <option value="supplier" {{ 'selected' if prefill_type == 'supplier' else '' }}>Supplier</option>
-                <option value="both" {{ 'selected' if prefill_type == 'both' else '' }}>Both</option>
-            </select>
-        </div>
-        <div class="form-group" style="flex:2">
-            <label>Full Name *</label>
-            <input type="text" name="name" placeholder="e.g. Ramesh Kumar / Kumar Jewellers" required>
+    <!-- Section: Identity -->
+    <div class="form-section">
+        <div class="form-section-title">Basic Information</div>
+        <div class="form-grid form-grid-3">
+            <div class="field-group">
+                <label class="field-label" for="partyType">Party Type <span class="field-req">*</span></label>
+                <select class="field-select" name="type" id="partyType">
+                    <option value="customer" {{ 'selected' if prefill_type == 'customer' else '' }}>Customer</option>
+                    <option value="supplier" {{ 'selected' if prefill_type == 'supplier' else '' }}>Supplier</option>
+                    <option value="both" {{ 'selected' if prefill_type == 'both' else '' }}>Both</option>
+                </select>
+            </div>
+            <div class="field-group col-span-2">
+                <label class="field-label" for="partyName">Full Name <span class="field-req">*</span></label>
+                <input class="field-input" type="text" id="partyName" name="name" placeholder="e.g. Ramesh Kumar / Kumar Jewellers">
+            </div>
         </div>
     </div>
 
-    <div class="form-row">
-        <div class="form-group">
-            <label>Phone</label>
-            <input type="text" name="phone" placeholder="9876543210">
+    <!-- Section: Contact -->
+    <div class="form-section">
+        <div class="form-section-title">Contact Details</div>
+        <div class="form-grid form-grid-3">
+            <div class="field-group">
+                <label class="field-label">Phone</label>
+                <div class="field-input-wrap">
+                    <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.55 3h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.5a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.5 17l.41-.08z"/></svg>
+                    <input class="field-input" type="text" name="phone" placeholder="9876543210">
+                </div>
+            </div>
+            <div class="field-group">
+                <label class="field-label">Email</label>
+                <div class="field-input-wrap">
+                    <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    <input class="field-input" type="email" name="email" placeholder="optional">
+                </div>
+            </div>
+            <div class="field-group">
+                <label class="field-label">City</label>
+                <input class="field-input" type="text" name="city" placeholder="e.g. Varanasi">
+            </div>
         </div>
-        <div class="form-group">
-            <label>Email</label>
-            <input type="email" name="email" placeholder="optional">
-        </div>
-        <div class="form-group">
-            <label>City</label>
-            <input type="text" name="city" placeholder="e.g. Varanasi">
-        </div>
-    </div>
-
-    <div class="form-row">
-        <div class="form-group" style="flex:2">
-            <label>Address</label>
-            <input type="text" name="address" placeholder="Street / area">
-        </div>
-        <div class="form-group">
-            <label>State</label>
-            <input type="text" name="state" value="Uttar Pradesh">
-        </div>
-    </div>
-
-    <div class="form-row">
-        <div class="form-group" style="flex:2">
-            <label>GSTIN</label>
-            <input type="text" name="gstin" id="gstinInput" placeholder="09ABCDE1234F1Z5"
-                   maxlength="15" style="text-transform:uppercase"
-                   oninput="this.value=this.value.toUpperCase();validateGSTIN(this.value)">
-            <small id="gstinMsg" style="font-size:11px;color:#888">15 characters — leave blank if no GST</small>
-        </div>
-    </div>
-
-    <!-- Credit settings — mostly relevant for suppliers and b2b customers -->
-    <div class="form-row">
-        <div class="form-group">
-            <label>Credit Limit (₹)</label>
-            <input type="number" name="credit_limit" placeholder="0 = no limit" min="0" step="100">
-        </div>
-        <div class="form-group">
-            <label>Credit Days</label>
-            <input type="number" name="credit_days" placeholder="e.g. 30" min="0">
+        <div class="form-grid form-grid-3">
+            <div class="field-group col-span-2">
+                <label class="field-label">Address</label>
+                <input class="field-input" type="text" name="address" placeholder="Street / area">
+            </div>
+            <div class="field-group">
+                <label class="field-label">State</label>
+                <input class="field-input" type="text" name="state" value="Uttar Pradesh">
+            </div>
         </div>
     </div>
 
-    <div class="form-row">
-        <div class="form-group">
-            <label>Opening Balance (₹)</label>
-            <input type="number" name="opening_balance" placeholder="0.00" min="0" step="0.01">
-        </div>
-        <div class="form-group">
-            <label>Balance Type</label>
-            <select name="opening_balance_type">
-                <option value="">— None —</option>
-                <option value="debit">Debit (they owe you)</option>
-                <option value="credit">Credit (you owe them)</option>
-            </select>
+    <!-- Section: GST -->
+    <div class="form-section">
+        <div class="form-section-title">GST Information</div>
+        <div class="form-grid form-grid-2">
+            <div class="field-group">
+                <label class="field-label">GSTIN</label>
+                <input class="field-input field-mono" type="text" name="gstin" id="gstinInput"
+                       placeholder="09ABCDE1234F1Z5" maxlength="15"
+                       style="text-transform:uppercase"
+                       oninput="this.value=this.value.toUpperCase();validateGSTIN(this.value)">
+                <span class="field-hint" id="gstinMsg">15 characters — leave blank if unregistered</span>
+            </div>
         </div>
     </div>
 
-    <div class="form-group" style="margin-bottom:20px">
-        <label>Notes</label>
-        <textarea name="notes" rows="2" placeholder="Any extra information..."></textarea>
+    <!-- Section: Credit -->
+    <div class="form-section">
+        <div class="form-section-title">Credit Settings</div>
+        <div class="form-grid form-grid-4">
+            <div class="field-group">
+                <label class="field-label">Credit Limit (₹)</label>
+                <input class="field-input" type="number" name="credit_limit" placeholder="0 = no limit" min="0" step="100">
+            </div>
+            <div class="field-group">
+                <label class="field-label">Credit Days</label>
+                <input class="field-input" type="number" name="credit_days" placeholder="e.g. 30" min="0">
+            </div>
+            <div class="field-group">
+                <label class="field-label">Opening Balance (₹)</label>
+                <input class="field-input" type="number" name="opening_balance" placeholder="0.00" min="0" step="0.01">
+            </div>
+            <div class="field-group">
+                <label class="field-label">Balance Type</label>
+                <select class="field-select" name="opening_balance_type">
+                    <option value="">— None —</option>
+                    <option value="debit">Debit (they owe you)</option>
+                    <option value="credit">Credit (you owe them)</option>
+                </select>
+            </div>
+        </div>
     </div>
 
+    <!-- Section: Notes -->
+    <div class="form-section">
+        <div class="form-section-title">Additional Notes</div>
+        <div class="field-group">
+            <textarea class="field-textarea" name="notes" rows="3" placeholder="Any extra information about this party…"></textarea>
+        </div>
+    </div>
+
+    <!-- Actions -->
     <div class="form-actions">
-        <button type="button" onclick="submitParty()" class="btn-primary btn-large">Save Party</button>
-        <a href="/parties" class="btn-ghost">Cancel</a>
+        <button type="button" onclick="submitParty()" class="btn btn-gold btn-lg">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"/></svg>
+            Save Party
+        </button>
+        <a href="/parties" class="btn btn-ghost">Cancel</a>
     </div>
-</form>
+
+</div>
+</div>
 
 {% endblock %}
 
 {% block scripts %}
 <script>
+let _submittingParty = false;
+
+async function _requestJson(url, options) {
+    try {
+        const res = await fetch(url, options);
+        let data = {};
+        try { data = await res.json(); } catch (_) {}
+        if (!res.ok) {
+            return { ok: false, data, error: data.error || data.detail || data.message || "Request failed" };
+        }
+        return { ok: true, data };
+    } catch (_) {
+        return { ok: false, data: null, error: "Network error. Please try again." };
+    }
+}
+
 function validateGSTIN(val) {
     const msg = document.getElementById("gstinMsg");
-    if (!val) { msg.textContent = "15 characters — leave blank if no GST"; msg.style.color = "#888"; return; }
+    if (!val) { msg.textContent = "15 characters — leave blank if unregistered"; msg.className = "field-hint"; return; }
     const re = /^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$/;
     if (val.length === 15 && re.test(val)) {
-        msg.textContent = "✓ Valid GSTIN format";
-        msg.style.color = "#28a745";
+        msg.textContent = "✓ Valid GSTIN format"; msg.className = "field-hint field-hint-success";
     } else {
         msg.textContent = val.length < 15 ? `${val.length}/15 characters` : "✗ Invalid format";
-        msg.style.color = val.length < 15 ? "#888" : "#dc3545";
+        msg.className = val.length < 15 ? "field-hint" : "field-hint field-hint-error";
     }
 }
 
 async function submitParty() {
+    if (_submittingParty) return;
     const form = document.getElementById("partyForm");
     const name = form.querySelector('[name="name"]').value.trim();
-    if (!name) { alert("Party name is required."); return; }
+    if (!name) { showToast("Party name is required.", "error"); return; }
 
     const payload = {
         type:                 form.querySelector('[name="type"]').value,
@@ -136,15 +189,24 @@ async function submitParty() {
         notes:                form.querySelector('[name="notes"]').value           || null,
     };
 
-    const res  = await fetch("/parties/create", {
-        method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (data.success) {
-        window.location.href = "/parties/" + data.party_id;
-    } else {
-        alert("Error: " + data.error);
+    const btn = document.querySelector('button[onclick="submitParty()"]');
+    if (btn) btn.disabled = true;
+    _submittingParty = true;
+    try {
+        const out = await _requestJson("/parties/create", {
+            method: "POST", headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload),
+        });
+        const data = out.data || {};
+        if (out.ok && data.success) {
+            window.location.href = "/parties/" + data.party_id;
+            return;
+        }
+        const msg = out.error || data.error || "Unable to create party";
+        showToast("Error: " + msg, "error");
+    } finally {
+        _submittingParty = false;
+        if (btn) btn.disabled = false;
     }
 }
 </script>

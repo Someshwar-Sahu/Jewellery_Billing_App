@@ -1,87 +1,174 @@
 {% extends "base.html" %}
-{% block title %}Enter Gold Rate{% endblock %}
+{% block title %}{% if today_rate %}Edit{% else %}Enter{% endif %} Gold Rate{% endblock %}
+{% block nav_rates %}active{% endblock %}
+
+{% block page_title %}Gold Rates{% endblock %}
+
 {% block content %}
 
 <div class="page-header">
-    <h1>{% if today_rate %}Edit{% else %}Enter{% endif %} Today's Rate</h1>
-    <a href="/rates" class="btn-ghost">← Back</a>
+    <div class="page-header-left">
+        <a href="/rates" class="back-link">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+            </svg>
+            Gold Rates
+        </a>
+        <h1 class="page-title">{% if today_rate %}Edit{% else %}Enter{% endif %} Today's Rate</h1>
+    </div>
 </div>
 
 {% if today_rate %}
-<div class="alert alert-warning">
+<div class="alert alert-info" style="margin-bottom: 24px;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
     Today's rate is already entered. Saving will update it.
 </div>
 {% endif %}
 
-<form id="rateForm" style="background:#fff;padding:24px;border-radius:8px;max-width:500px">
+<div class="form-page-layout form-page-layout-narrow">
+<div class="form-card">
 
-    <div class="form-group" style="margin-bottom:16px">
-        <label>Date *</label>
-        <input type="date" name="rate_date" value="{{ today }}" required>
-        <small style="color:#888;font-size:11px">You can enter past dates to fill missing history</small>
-    </div>
-
-    <div class="form-row">
-        <div class="form-group">
-            <label>Gold 22K (₹ per gram)</label>
-            <input type="number" name="gold_22k" step="0.01" min="0"
-                   value="{{ today_rate.gold_22k_per_gram if today_rate else (last_rate.gold_22k_per_gram if last_rate else '') }}"
-                   placeholder="e.g. 6800.00">
-        </div>
-        <div class="form-group">
-            <label>Gold 18K (₹ per gram)</label>
-            <input type="number" name="gold_18k" step="0.01" min="0"
-                   value="{{ today_rate.gold_18k_per_gram if today_rate else (last_rate.gold_18k_per_gram if last_rate else '') }}"
-                   placeholder="e.g. 5560.00">
+    <div class="form-section">
+        <h2 class="form-section-title">Rate Date</h2>
+        <div class="field-group" style="max-width: 240px;">
+            <label class="field-label" for="rate_date">Date <span class="field-required">*</span></label>
+            <input class="field-input" type="date" id="rate_date" name="rate_date" value="{{ today }}">
+            <span class="field-hint">You can enter past dates to fill missing history</span>
         </div>
     </div>
 
-    <div class="form-row">
-        <div class="form-group">
-            <label>Silver (₹ per gram)</label>
-            <input type="number" name="silver" step="0.01" min="0"
-                   value="{{ today_rate.silver_per_gram if today_rate else (last_rate.silver_per_gram if last_rate else '') }}"
-                   placeholder="e.g. 85.00">
+    <div class="form-section-divider"></div>
+
+    <div class="form-section">
+        <h2 class="form-section-title">Gold Rates</h2>
+
+        <div class="field-row">
+            <div class="field-group">
+                <label class="field-label" for="gold_22k">Gold 22K (₹ per gram)</label>
+                <div class="field-input-wrap">
+                    <span class="field-prefix">₹</span>
+                    <input class="field-input field-input-prefixed" type="number"
+                           id="gold_22k" name="gold_22k"
+                           step="0.01" min="0"
+                           value="{{ today_rate.gold_22k_per_gram if today_rate else (last_rate.gold_22k_per_gram if last_rate else '') }}"
+                           placeholder="e.g. 6800.00">
+                </div>
+            </div>
+            <div class="field-group">
+                <label class="field-label" for="gold_18k">Gold 18K (₹ per gram)</label>
+                <div class="field-input-wrap">
+                    <span class="field-prefix">₹</span>
+                    <input class="field-input field-input-prefixed" type="number"
+                           id="gold_18k" name="gold_18k"
+                           step="0.01" min="0"
+                           value="{{ today_rate.gold_18k_per_gram if today_rate else (last_rate.gold_18k_per_gram if last_rate else '') }}"
+                           placeholder="e.g. 5560.00">
+                </div>
+            </div>
         </div>
     </div>
 
-    {% if last_rate and not today_rate %}
-    <p style="font-size:12px;color:#888;margin-bottom:16px">
-        Pre-filled from last entry ({{ last_rate.rate_date }}). Update to today's market rate.
-    </p>
-    {% endif %}
+    <div class="form-section-divider"></div>
+
+    <div class="form-section">
+        <h2 class="form-section-title">Silver Rate</h2>
+
+        <div class="field-row">
+            <div class="field-group" style="max-width: 260px;">
+                <label class="field-label" for="silver">Silver (₹ per gram)</label>
+                <div class="field-input-wrap">
+                    <span class="field-prefix">₹</span>
+                    <input class="field-input field-input-prefixed" type="number"
+                           id="silver" name="silver"
+                           step="0.01" min="0"
+                           value="{{ today_rate.silver_per_gram if today_rate else (last_rate.silver_per_gram if last_rate else '') }}"
+                           placeholder="e.g. 85.00">
+                </div>
+            </div>
+        </div>
+
+        {% if last_rate and not today_rate %}
+        <div class="form-info-note">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            Pre-filled from last entry ({{ last_rate.rate_date }}). Update to today's market rate.
+        </div>
+        {% endif %}
+    </div>
 
     <div class="form-actions">
-        <button type="button" onclick="saveRate()" class="btn-primary btn-large">Save Rate</button>
-        <a href="/rates" class="btn-ghost">Cancel</a>
+        <button type="button" onclick="saveRate()" class="btn btn-gold btn-lg">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+            </svg>
+            Save Rate
+        </button>
+        <a href="/rates" class="btn btn-ghost">Cancel</a>
     </div>
-</form>
+
+</div>
+</div>
 
 {% endblock %}
 
 {% block scripts %}
 <script>
+let _savingRate = false;
+
+async function _requestJson(url, options) {
+    try {
+        const res = await fetch(url, options);
+        let data = {};
+        try { data = await res.json(); } catch (_) {}
+        if (!res.ok) {
+            return { ok: false, data, error: data.error || data.detail || data.message || "Request failed" };
+        }
+        return { ok: true, data };
+    } catch (_) {
+        return { ok: false, data: null, error: "Network error. Please try again." };
+    }
+}
+
 async function saveRate() {
-    const form = document.getElementById("rateForm");
+    if (_savingRate) return;
     const payload = {
-        rate_date: form.querySelector('[name="rate_date"]').value,
-        gold_22k:  form.querySelector('[name="gold_22k"]').value  || null,
-        gold_18k:  form.querySelector('[name="gold_18k"]').value  || null,
-        silver:    form.querySelector('[name="silver"]').value    || null,
+        rate_date: document.getElementById("rate_date").value,
+        gold_22k:  document.getElementById("gold_22k").value  || null,
+        gold_18k:  document.getElementById("gold_18k").value  || null,
+        silver:    document.getElementById("silver").value    || null,
     };
     if (!payload.gold_22k && !payload.gold_18k && !payload.silver) {
-        alert("Enter at least one rate.");
+        if (window.showToast) showToast("Enter at least one rate", "error");
+        else alert("Enter at least one rate.");
         return;
     }
-    const res  = await fetch("/rates/create", {
-        method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (data.success) {
-        window.location.href = "/rates";
-    } else {
-        alert("Error: " + data.error);
+
+    const btn = document.querySelector('button[onclick="saveRate()"]');
+    if (btn) btn.disabled = true;
+    _savingRate = true;
+    try {
+        const out = await _requestJson("/rates/create", {
+            method: "POST", headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload),
+        });
+        const data = out.data || {};
+        if (out.ok && data.success) {
+            window.location.href = "/rates";
+            return;
+        }
+        const msg = out.error || data.error || "Unable to save rate";
+        if (window.showToast) showToast("Error: " + msg, "error");
+        else alert("Error: " + msg);
+    } finally {
+        _savingRate = false;
+        if (btn) btn.disabled = false;
     }
 }
 </script>

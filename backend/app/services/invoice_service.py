@@ -12,6 +12,8 @@ from decimal import Decimal, ROUND_HALF_UP
 from app.models.payments import Advance
 from sqlalchemy.exc import IntegrityError
 
+CANCEL_GST_SNAPSHOT = "cancel_gst_snapshot"
+
 
 def _d(value) -> Decimal:
     return Decimal(str(value if value is not None else 0))
@@ -60,9 +62,10 @@ def calculate_item(item_data) -> dict:
     amount      = _money(_d(weight) * _d(rate)) if (weight and rate) else 0.0
     cgst_rate   = _d(gst_rate) / _d(2)
     cgst_amount = _money(_d(amount) * cgst_rate / _d(100))
-    sgst_amount = cgst_amount   # always equal — intrastate only
+    sgst_amount = cgst_amount   
 
-    making_cgst = _money(_d(making) * _d(9) / _d(100)) if making else 0.0
+    making_gst_rate = getattr(item_data, 'making_gst_rate', 18.0) or 18.0
+    making_cgst = _money(_d(making) * (_d(making_gst_rate) / _d(2)) / _d(100)) if making else 0.0
     making_sgst = making_cgst
 
     line_total = _money(
@@ -166,16 +169,27 @@ def create_invoice(session: Session, data: InvoiceCreate) -> Invoice:
         calc = calculate_item(item_data)
         calculated_items.append((item_data, calc))
 
+    effective_paid = (data.amount_paid or 0) + (data.advance_used or 0)
+
     totals = _build_totals(
         calculated_items,
         data.items,
         data.old_gold_value,
         data.discount,
-        data.amount_paid or 0,
+        effective_paid,
     )
 
-    amount_paid = min(data.amount_paid or 0, totals["grand_total"])
-    amount_due = max(0.0, _money(_d(totals["grand_total"]) - _d(amount_paid)))
+    if _d(effective_paid) > _d(totals["grand_total"]) + _d("0.01"):
+        raise HTTPException(
+            status_code=400,
+            detail="Total settlement exceeds invoice amount."
+        )
+
+    amount_paid = _money(_d(data.amount_paid or 0))
+    amount_due = max(
+        0.0,
+        _money(_d(totals["grand_total"]) - _d(effective_paid))
+    )
 
     for attempt in range(3):
         try:
@@ -297,7 +311,6 @@ def create_invoice(session: Session, data: InvoiceCreate) -> Invoice:
                 )
                 session.add(stock_entry)
 
-            # Keep invoice + advance adjustment atomic in one transaction.
             advance_used = float(data.advance_used or 0)
 
             if advance_used > 0 and data.party_id:
@@ -327,6 +340,17 @@ def create_invoice(session: Session, data: InvoiceCreate) -> Invoice:
                     session.add(adv)
 
                     remaining = _money(_d(remaining) - _d(use))
+
+                actually_deducted = _money(_d(advance_used) - _d(remaining))
+
+                if actually_deducted < advance_used - 0.01:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            f"Insufficient advance balance. "
+                            f"Only ₹{actually_deducted:.2f} available."
+                        )
+                    )
 
             session.commit()
             session.refresh(invoice)
@@ -360,7 +384,6 @@ def update_invoice(session: Session, invoice_id: int, data: InvoiceUpdate) -> In
         select(InvoiceItem).where(InvoiceItem.invoice_id == invoice_id)
     ).all()
 
-    # Snapshot captures state BEFORE any changes
     snapshot = {
         "invoice_number": invoice.invoice_number,
         "grand_total":    invoice.grand_total,
@@ -410,7 +433,6 @@ def update_invoice(session: Session, invoice_id: int, data: InvoiceUpdate) -> In
             log_change(field, str_old, str_new)
             setattr(invoice, field, value)
 
-    # Replace items if new ones provided
     if data.items is not None and len(data.items) > 0:
         for old_item in current_items:
             session.delete(old_item)
@@ -455,7 +477,21 @@ def update_invoice(session: Session, invoice_id: int, data: InvoiceUpdate) -> In
     old_gold = data.old_gold_value if data.old_gold_value is not None else invoice.old_gold_value
     discount  = data.discount      if data.discount      is not None else invoice.discount
 
-    totals = _build_totals(calculated_items, items_to_calc, old_gold, discount, invoice.amount_paid or 0)
+    totals = _build_totals(
+        calculated_items,
+        items_to_calc,
+        old_gold,
+        discount,
+        invoice.amount_paid or 0
+    )
+
+    effective_paid = _d(invoice.amount_paid or 0)
+
+    if effective_paid > _d(totals["grand_total"]) + _d("0.01"):
+        raise HTTPException(
+            status_code=400,
+            detail="Existing payment exceeds updated invoice total."
+        )
 
     log_change("grand_total", str(invoice.grand_total), str(totals["grand_total"]))
 
@@ -534,7 +570,7 @@ def duplicate_invoice(session: Session, invoice_id: int) -> Invoice:
 
 
 def cancel_invoice(session: Session, invoice_id: int, reason: str = None) -> Invoice:
-    """Cancel a bill — never hard delete. FIX 10: reverses stock ledger entries."""
+    """Cancel a bill — never hard delete."""
     invoice = session.get(Invoice, invoice_id)
     if not invoice:
         raise HTTPException(status_code=404, detail="Bill not found")
@@ -552,7 +588,6 @@ def cancel_invoice(session: Session, invoice_id: int, reason: str = None) -> Inv
     for item in items:
         if not item.product_id:
             continue
-        # Reverse: if original was sale (qty_out), add a qty_in reversal; vice versa
         reversal_qty = item.weight_grams if item.weight_grams else (item.quantity or 1.0)
         reversal = StockLedger(
             product_id       = item.product_id,
@@ -566,6 +601,19 @@ def cancel_invoice(session: Session, invoice_id: int, reason: str = None) -> Inv
             notes            = f"Reversal: bill {invoice.invoice_number} cancelled",
         )
         session.add(reversal)
+
+    prev_gst = invoice.gst_status
+    if prev_gst in ("gst_ready", "locked"):
+        session.add(
+            InvoiceEditLog(
+                invoice_id=invoice_id,
+                field_changed=CANCEL_GST_SNAPSHOT,
+                old_value=prev_gst,
+                new_value="pending_review",
+                reason=reason,
+            )
+        )
+        invoice.gst_status = "pending_review"
 
     invoice.is_cancelled     = True
     invoice.cancelled_at     = datetime.utcnow()
@@ -582,12 +630,21 @@ def recover_invoice(session: Session, invoice_id: int) -> Invoice:
     if not invoice:
         raise HTTPException(status_code=404, detail="Bill not found")
 
-    # BUG 5 FIX: only allow recovery if actually cancelled
     if not invoice.is_cancelled:
         raise HTTPException(status_code=400, detail="Bill is not cancelled.")
 
     _ensure_date_in_active_fy(session, invoice.invoice_date)
     _ensure_month_unlocked(session, invoice.invoice_date, "recover invoice")
+
+    snap = session.exec(
+        select(InvoiceEditLog)
+        .where(InvoiceEditLog.invoice_id == invoice_id)
+        .where(InvoiceEditLog.field_changed == CANCEL_GST_SNAPSHOT)
+        .order_by(InvoiceEditLog.edited_at.desc())
+    ).first()
+    if snap:
+        session.delete(snap)
+    invoice.gst_status = "pending_review"
 
     items = session.exec(
         select(InvoiceItem).where(InvoiceItem.invoice_id == invoice_id)

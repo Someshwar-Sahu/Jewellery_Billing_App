@@ -1,349 +1,442 @@
 {% extends "base.html" %}
 {% block title %}Shop Settings{% endblock %}
+{% block nav_settings %}active{% endblock %}
+
+{% block page_title %}Settings{% endblock %}
+
 {% block content %}
 
 <div class="page-header">
-    <h1>Shop Settings</h1>
+    <div class="page-header-left">
+        <h1 class="page-title">Shop Settings</h1>
+        <p class="page-subtitle">Shop profile, billing preferences, financial year management</p>
+    </div>
 </div>
 
 {% if not shop %}
-<div class="alert alert-warning">
-    ⚠️ Shop details not set yet. Fill this form before printing any bills —
-    your shop name and GSTIN must appear on every bill.
+<div class="alert alert-warning" style="margin-bottom: 24px;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+    Shop details not set yet. Fill this form before printing bills — your shop name and GSTIN must appear on every bill.
 </div>
 {% endif %}
 
-<!-- ── SHOP DETAILS ─────────────────────────────────────────────────────── -->
-<form id="shopForm" style="background:#fff;border-radius:8px;padding:24px;margin-bottom:24px">
-    <h2 style="margin-bottom:16px">Shop Details</h2>
-
-    <div class="form-row">
-        <div class="form-group" style="flex:2">
-            <label>Shop Name *</label>
-            <input type="text" name="shop_name"
-                   value="{{ shop.shop_name if shop else '' }}"
-                   placeholder="e.g. Someshwar Jwellers" required>
+<!-- ══ SHOP DETAILS ══════════════════════════════════════════ -->
+<div class="settings-section" id="shopForm-wrap">
+    <div class="settings-section-header">
+        <div class="settings-section-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
         </div>
-        <div class="form-group">
-            <label>GST Number</label>
-            <input type="text" name="gstin"
-                   value="{{ shop.gstin if shop else '' }}"
-                   placeholder="15-character GSTIN" maxlength="15"
-                   style="text-transform:uppercase"
-                   oninput="this.value=this.value.toUpperCase()">
-        </div>
-    </div>
-
-    <div class="form-row">
-        <div class="form-group" style="flex:2">
-            <label>Address</label>
-            <input type="text" name="address"
-                   value="{{ shop.address if shop else '' }}"
-                   placeholder="e.g. Urdu Bazar Chauraha">
-        </div>
-        <div class="form-group">
-            <label>City</label>
-            <input type="text" name="city"
-                   value="{{ shop.city if shop else '' }}"
-                   placeholder="e.g. Jaunpur">
-        </div>
-    </div>
-
-    <div class="form-row">
-        <div class="form-group">
-            <label>State</label>
-            <input type="text" name="state"
-                   value="{{ shop.state if shop else 'Uttar Pradesh' }}">
-        </div>
-        <div class="form-group">
-            <label>State Code</label>
-            <input type="text" name="state_code"
-                   value="{{ shop.state_code if shop else '09' }}"
-                   placeholder="09" maxlength="2" style="width:70px">
-        </div>
-        <div class="form-group">
-            <label>Phone / Mobile</label>
-            <input type="text" name="phone"
-                   value="{{ shop.phone if shop else '' }}"
-                   placeholder="10-digit number">
-        </div>
-        <div class="form-group">
-            <label>Email</label>
-            <input type="email" name="email"
-                   value="{{ shop.email if shop else '' }}"
-                   placeholder="optional">
-        </div>
-    </div>
-
-    <!-- Bill Template -->
-    <div class="form-row" style="margin-top:8px">
-        <div class="form-group" style="flex:2">
-            <label>Bill Print Template</label>
-            <select name="bill_template">
-                <option value="template_dad"
-                    {{ 'selected' if shop and shop.bill_template == 'template_dad' else '' }}>
-                    Someshwar Jwellers Format (matches your printed bill)
-                </option>
-                <option value="template_a4"
-                    {{ 'selected' if shop and shop.bill_template == 'template_a4' else '' }}>
-                    Clean A4 Modern Format
-                </option>
-            </select>
-            <small style="color:#888;font-size:11px">
-                This controls how the bill looks when you click Print
-            </small>
-        </div>
-    </div>
-
-    <!-- Bank Details -->
-    <h2 style="margin:20px 0 12px">Bank Details <span style="font-size:13px;font-weight:normal;color:#888">(shown on printed bill)</span></h2>
-    <div class="form-row">
-        <div class="form-group">
-            <label>Bank Name</label>
-            <input type="text" name="bank_name"
-                   value="{{ shop.bank_name if shop else '' }}"
-                   placeholder="e.g. Punjab National Bank">
-        </div>
-        <div class="form-group">
-            <label>Account Number</label>
-            <input type="text" name="bank_account_no"
-                   value="{{ shop.bank_account_no if shop else '' }}"
-                   placeholder="e.g. 2207002100070733">
-        </div>
-        <div class="form-group">
-            <label>IFSC Code</label>
-            <input type="text" name="bank_ifsc"
-                   value="{{ shop.bank_ifsc if shop else '' }}"
-                   placeholder="e.g. PUNB0220700"
-                   style="text-transform:uppercase"
-                   oninput="this.value=this.value.toUpperCase()">
-        </div>
-    </div>
-
-    <!-- Terms & Conditions -->
-    <h2 style="margin:20px 0 12px">Terms & Conditions <span style="font-size:13px;font-weight:normal;color:#888">(printed at bottom of bill)</span></h2>
-    <div class="form-row">
-        <div class="form-group" style="flex:1">
-            <label>Line 1</label>
-            <input type="text" name="terms_line1"
-                   value="{{ shop.terms_line1 if shop else 'Goods once sold will not be taken back.' }}">
-        </div>
-    </div>
-    <div class="form-row">
-        <div class="form-group" style="flex:1">
-            <label>Line 2</label>
-            <input type="text" name="terms_line2"
-                   value="{{ shop.terms_line2 if shop else 'All disputes subject to Jaunpur Jurisdiction only.' }}">
-        </div>
-    </div>
-
-    <div class="form-actions" style="margin-top:20px">
-        <button type="button" onclick="saveShop()" class="btn-primary btn-large">
-            Save Shop Details
-        </button>
-        <span id="shopSaveMsg" style="color:#28a745;font-size:13px;display:none">
-            ✓ Saved successfully
-        </span>
-    </div>
-</form>
-
-<!-- ── FINANCIAL YEAR ────────────────────────────────────────────────────── -->
-<div style="background:#fff;border-radius:8px;padding:24px;margin-bottom:24px">
-    <h2 style="margin-bottom:4px">Financial Year</h2>
-    <p style="color:#888;font-size:13px;margin-bottom:16px">
-        The active financial year controls invoice numbering (e.g. S/25-26/0001).
-        Change this at the start of each April.
-    </p>
-
-    {% if fy %}
-    <div style="background:#d4edda;border:1px solid #c3e6cb;border-radius:6px;
-                padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:16px">
         <div>
-            <strong>Active FY: {{ fy.label }}</strong>
-            <span style="color:#555;font-size:12px;margin-left:8px">
-                {{ fy.start_date }} → {{ fy.end_date }}
+            <h2 class="settings-section-title">Shop Details</h2>
+            <p class="settings-section-sub">Appears on every printed bill</p>
+        </div>
+    </div>
+
+    <form id="shopForm" class="settings-form">
+        <div class="field-row">
+            <div class="field-group field-group-grow">
+                <label class="field-label" for="shop_name">Shop Name <span class="field-required">*</span></label>
+                <input class="field-input" type="text" id="shop_name" name="shop_name"
+                       value="{{ shop.shop_name if shop else '' }}"
+                       placeholder="e.g. Your Shop Name">
+            </div>
+            <div class="field-group">
+                <label class="field-label" for="gstin">GST Number</label>
+                <input class="field-input text-mono" type="text" id="gstin" name="gstin"
+                       value="{{ shop.gstin if shop else '' }}"
+                       placeholder="15-character GSTIN" maxlength="15"
+                       oninput="this.value=this.value.toUpperCase()">
+            </div>
+        </div>
+
+        <div class="field-row">
+            <div class="field-group field-group-grow">
+                <label class="field-label" for="address">Address</label>
+                <input class="field-input" type="text" id="address" name="address"
+                       value="{{ shop.address if shop else '' }}"
+                       placeholder="Street address">
+            </div>
+            <div class="field-group">
+                <label class="field-label" for="city">City</label>
+                <input class="field-input" type="text" id="city" name="city"
+                       value="{{ shop.city if shop else '' }}" placeholder="City">
+            </div>
+        </div>
+
+        <div class="field-row">
+            <div class="field-group field-group-grow">
+                <label class="field-label" for="state">State</label>
+                <input class="field-input" type="text" id="state" name="state"
+                       value="{{ shop.state if shop else 'Uttar Pradesh' }}">
+            </div>
+            <div class="field-group" style="max-width: 100px;">
+                <label class="field-label" for="state_code">State Code</label>
+                <input class="field-input" type="text" id="state_code" name="state_code"
+                       value="{{ shop.state_code if shop else '09' }}"
+                       placeholder="09" maxlength="2">
+            </div>
+            <div class="field-group">
+                <label class="field-label" for="phone">Phone / Mobile</label>
+                <input class="field-input" type="text" id="phone" name="phone"
+                       value="{{ shop.phone if shop else '' }}" placeholder="10-digit number">
+            </div>
+            <div class="field-group">
+                <label class="field-label" for="email">Email</label>
+                <input class="field-input" type="email" id="email" name="email"
+                       value="{{ shop.email if shop else '' }}" placeholder="Optional">
+            </div>
+        </div>
+
+        <div class="field-row">
+            <div class="field-group field-group-grow">
+                <label class="field-label" for="bill_template">Bill Print Template</label>
+                <select class="field-select" id="bill_template" name="bill_template">
+                    <option value="template_dad"
+                        {{ 'selected' if shop and shop.bill_template == 'template_dad' else '' }}>
+                        Your Shop Format (matches your printed bill)
+                    </option>
+                    <option value="template_a4"
+                        {{ 'selected' if shop and shop.bill_template == 'template_a4' else '' }}>
+                        Clean A4 Modern Format
+                    </option>
+                </select>
+                <span class="field-hint">Controls how the bill looks when you click Print</span>
+            </div>
+        </div>
+
+        <div class="settings-sub-section">
+            <h3 class="settings-sub-title">
+                Bank Details
+                <span class="settings-sub-note">shown on printed bill</span>
+            </h3>
+            <div class="field-row">
+                <div class="field-group">
+                    <label class="field-label" for="bank_name">Bank Name</label>
+                    <input class="field-input" type="text" id="bank_name" name="bank_name"
+                           value="{{ shop.bank_name if shop else '' }}"
+                           placeholder="e.g. Punjab National Bank">
+                </div>
+                <div class="field-group">
+                    <label class="field-label" for="bank_account_no">Account Number</label>
+                    <input class="field-input text-mono" type="text" id="bank_account_no" name="bank_account_no"
+                           value="{{ shop.bank_account_no if shop else '' }}"
+                           placeholder="Account number">
+                </div>
+                <div class="field-group">
+                    <label class="field-label" for="bank_ifsc">IFSC Code</label>
+                    <input class="field-input text-mono" type="text" id="bank_ifsc" name="bank_ifsc"
+                           value="{{ shop.bank_ifsc if shop else '' }}"
+                           placeholder="IFSC code"
+                           oninput="this.value=this.value.toUpperCase()">
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-sub-section">
+            <h3 class="settings-sub-title">
+                Terms &amp; Conditions
+                <span class="settings-sub-note">printed at bottom of bill</span>
+            </h3>
+            <div class="field-group" style="margin-bottom: 10px;">
+                <label class="field-label" for="terms_line1">Line 1</label>
+                <input class="field-input" type="text" id="terms_line1" name="terms_line1"
+                       value="{{ shop.terms_line1 if shop else 'Goods once sold will not be taken back.' }}">
+            </div>
+            <div class="field-group">
+                <label class="field-label" for="terms_line2">Line 2</label>
+                <input class="field-input" type="text" id="terms_line2" name="terms_line2"
+                       value="{{ shop.terms_line2 if shop else 'All disputes subject to Jaunpur Jurisdiction only.' }}">
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="button" onclick="saveShop()" class="btn btn-gold btn-lg">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                    <polyline points="17 21 17 13 7 13 7 21"/>
+                    <polyline points="7 3 7 8 15 8"/>
+                </svg>
+                Save Shop Details
+            </button>
+            <span id="shopSaveMsg" class="save-success-msg" style="display:none;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Saved successfully
             </span>
         </div>
-        <span class="badge badge-paid" style="margin-left:auto">ACTIVE</span>
+    </form>
+</div>
+
+<!-- ══ FINANCIAL YEAR ════════════════════════════════════════ -->
+<div class="settings-section">
+    <div class="settings-section-header">
+        <div class="settings-section-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+        </div>
+        <div>
+            <h2 class="settings-section-title">Financial Year</h2>
+            <p class="settings-section-sub">Controls invoice numbering (e.g. S/25-26/0001) — change at start of each April</p>
+        </div>
+    </div>
+
+    {% if fy %}
+    <div class="fy-active-banner">
+        <div class="fy-active-info">
+            <span class="fy-active-label">Active FY</span>
+            <strong>{{ fy.label }}</strong>
+            <span class="fy-active-dates">{{ fy.start_date }} → {{ fy.end_date }}</span>
+        </div>
+        <span class="badge badge-success">Active</span>
     </div>
     {% else %}
-    <div class="alert alert-warning">
-        ⚠️ No active financial year set. Invoice numbers will default to 24-25.
-        Set one below.
+    <div class="alert alert-warning" style="margin-bottom: 16px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        </svg>
+        No active financial year set. Invoice numbers will default to 24-25.
     </div>
     {% endif %}
 
     {% if all_fy %}
-    <p style="font-size:13px;color:#555;margin-bottom:12px">Switch to existing year:</p>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
-        {% for f in all_fy %}
-        <button onclick="switchFY('{{ f.label }}')"
-                class="{{ 'btn-primary' if f.is_active else 'btn-secondary' }} btn-sm">
-            {{ f.label }}{{ ' ✓' if f.is_active else '' }}
-        </button>
-        {% endfor %}
+    <div class="settings-sub-section">
+        <p class="settings-sub-note-standalone">Switch to existing year:</p>
+        <div class="fy-switch-btns">
+            {% for f in all_fy %}
+            <button onclick="switchFY({{ f.label|tojson }})"
+                    class="btn {{ 'btn-gold' if f.is_active else 'btn-outline' }} btn-sm">
+                {{ f.label }}
+                {% if f.is_active %}
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                {% endif %}
+            </button>
+            {% endfor %}
+        </div>
     </div>
     {% endif %}
 
-    <p style="font-size:13px;color:#555;margin-bottom:8px">Or create new financial year:</p>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
-        <div class="form-group">
-            <label>FY Label</label>
-            <input type="text" id="fyLabel" placeholder="e.g. 25-26" style="width:90px">
+    <div class="settings-sub-section">
+        <p class="settings-sub-note-standalone">Create new financial year:</p>
+        <div class="field-row" style="align-items: flex-end;">
+            <div class="field-group" style="max-width: 100px;">
+                <label class="field-label">FY Label</label>
+                <input class="field-input" type="text" id="fyLabel" placeholder="25-26">
+            </div>
+            <div class="field-group">
+                <label class="field-label">Start Date</label>
+                <input class="field-input" type="date" id="fyStart" value="{{ today[:4] }}-04-01">
+            </div>
+            <div class="field-group">
+                <label class="field-label">End Date</label>
+                <input class="field-input" type="date" id="fyEnd">
+            </div>
+            <div class="field-group" style="padding-top: 4px;">
+                <button type="button" onclick="createFY()" class="btn btn-gold">Create &amp; Activate</button>
+            </div>
         </div>
-        <div class="form-group">
-            <label>Start Date</label>
-            <input type="date" id="fyStart" value="{{ today[:4] }}-04-01">
-        </div>
-        <div class="form-group">
-            <label>End Date</label>
-            <input type="date" id="fyEnd">
-        </div>
-        <button type="button" onclick="createFY()" class="btn-primary">
-            Create & Activate
-        </button>
-        <span id="fySaveMsg" style="color:#28a745;font-size:13px;display:none">
-            ✓ Financial year activated
+        <span id="fySaveMsg" class="save-success-msg" style="display:none; margin-top: 8px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Financial year activated
         </span>
     </div>
 </div>
 
-<!-- ── CLOSE FINANCIAL YEAR ──────────────────────────────────────────────── -->
+<!-- ══ CLOSE FINANCIAL YEAR ══════════════════════════════════ -->
 {% if fy %}
-<div style="background:#fff;border-radius:8px;padding:24px;margin-bottom:24px;border-left:4px solid #e57373">
-    <h2 style="margin-bottom:4px;color:#c62828">Close Financial Year</h2>
-    <p style="color:#888;font-size:13px;margin-bottom:16px">
-        Closing <strong>FY {{ fy.label }}</strong> will permanently lock it.
-        It cannot be reactivated. A new FY will be created and activated in its place.
-        All pending credit bills and open advances will remain visible.
-    </p>
+<div class="settings-section settings-section-danger">
+    <div class="settings-section-header">
+        <div class="settings-section-icon settings-icon-danger">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+        </div>
+        <div>
+            <h2 class="settings-section-title settings-title-danger">Close Financial Year</h2>
+            <p class="settings-section-sub">Closing FY {{ fy.label }} will permanently lock it — this cannot be reversed</p>
+        </div>
+    </div>
 
-    <div id="closeFyWarningBox" style="display:none;background:#fff3cd;border:1px solid #ffc107;
-         border-radius:6px;padding:12px 16px;margin-bottom:14px">
-        <strong style="color:#856404">⚠ Review before closing:</strong>
-        <ul id="closeFyWarningList" style="margin:6px 0 0 16px;font-size:13px;color:#856404"></ul>
-        <div style="margin-top:12px;display:flex;gap:10px">
-            <button onclick="closeFY(true)" class="btn-danger btn-sm">Yes, Close FY {{ fy.label }}</button>
-            <button onclick="cancelCloseFY()" class="btn-secondary btn-sm">Cancel</button>
+    <div id="closeFyWarningBox" class="alert alert-warning" style="display:none; margin-bottom: 16px;">
+        <div>
+            <strong>Review before closing:</strong>
+            <ul id="closeFyWarningList" class="alert-list"></ul>
+            <div class="alert-actions" style="margin-top: 12px;">
+                <button onclick="closeFY(true)" class="btn btn-danger btn-sm">Yes, Close FY {{ fy.label }}</button>
+                <button onclick="cancelCloseFY()" class="btn btn-ghost btn-sm">Cancel</button>
+            </div>
         </div>
     </div>
 
     <div id="closeFyForm">
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
-            <div class="form-group">
-                <label>New FY Label</label>
-                <input type="text" id="newFyLabel" placeholder="e.g. 25-26" style="width:90px">
+        <div class="field-row" style="align-items: flex-end;">
+            <div class="field-group" style="max-width: 100px;">
+                <label class="field-label">New FY Label</label>
+                <input class="field-input" type="text" id="newFyLabel" placeholder="25-26">
             </div>
-            <div class="form-group">
-                <label>New Start Date</label>
-                <input type="date" id="newFyStart">
+            <div class="field-group">
+                <label class="field-label">New Start Date</label>
+                <input class="field-input" type="date" id="newFyStart">
             </div>
-            <div class="form-group">
-                <label>New End Date</label>
-                <input type="date" id="newFyEnd">
+            <div class="field-group">
+                <label class="field-label">New End Date</label>
+                <input class="field-input" type="date" id="newFyEnd">
             </div>
         </div>
-        <div id="closeFyMsg" style="display:none;padding:8px 12px;border-radius:6px;
-             font-size:13px;margin-bottom:10px"></div>
-        <button onclick="closeFY(false)" class="btn-danger">
-            🔒 Close FY {{ fy.label }} and Open New Year
+        <div id="closeFyMsg" class="settings-msg" style="display:none;"></div>
+        <button onclick="closeFY(false)" class="btn btn-danger" style="margin-top: 16px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            Close FY {{ fy.label }} and Open New Year
         </button>
     </div>
 </div>
 {% endif %}
 
-<div class="detail-card" style="margin-top:24px;max-width:400px">
-    <h3>Change Password</h3>
-    <div id="pwMsg" style="display:none;padding:8px 12px;border-radius:6px;font-size:13px;margin-bottom:12px"></div>
-    <div class="form-group" style="margin-bottom:12px">
-        <label>Current Password</label>
-        <input type="password" id="oldPw" placeholder="Current password">
+<!-- ══ CHANGE PASSWORD ════════════════════════════════════════ -->
+<div class="settings-section" style="max-width: 480px;">
+    <div class="settings-section-header">
+        <div class="settings-section-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+            </svg>
+        </div>
+        <div>
+            <h2 class="settings-section-title">Change Password</h2>
+        </div>
     </div>
-    <div class="form-group" style="margin-bottom:12px">
-        <label>New Password</label>
-        <input type="password" id="newPw" placeholder="At least 6 characters">
-    </div>
-    <div class="form-group" style="margin-bottom:16px">
-        <label>Confirm New Password</label>
-        <input type="password" id="confirmPw" placeholder="Repeat new password">
-    </div>
-    <button onclick="changePw()" class="btn-primary">Update Password</button>
-</div>
 
+    <div id="pwMsg" class="settings-msg" style="display:none;"></div>
+    <div class="settings-form">
+        <div class="field-group">
+            <label class="field-label" for="oldPw">Current Password</label>
+            <input class="field-input" type="password" id="oldPw" placeholder="Current password">
+        </div>
+        <div class="field-group">
+            <label class="field-label" for="newPw">New Password</label>
+            <input class="field-input" type="password" id="newPw" placeholder="At least 6 characters">
+        </div>
+        <div class="field-group">
+            <label class="field-label" for="confirmPw">Confirm New Password</label>
+            <input class="field-input" type="password" id="confirmPw" placeholder="Repeat new password">
+        </div>
+        <div class="form-actions">
+            <button onclick="changePw()" class="btn btn-gold">Update Password</button>
+        </div>
+    </div>
+</div>
 
 {% endblock %}
 
 {% block scripts %}
 <script>
+async function _requestJson(url, options) {
+    try {
+        const res = await fetch(url, options);
+        let data = null;
+        try { data = await res.json(); } catch (_) { data = {}; }
+        if (!res.ok) {
+            return { ok: false, data, error: data.error || data.detail || data.message || "Request failed" };
+        }
+        return { ok: true, data };
+    } catch (_) {
+        return { ok: false, data: null, error: "Network error. Please try again." };
+    }
+}
+
 async function saveShop() {
-    const form = document.getElementById("shopForm");
-    const name = form.querySelector('[name="shop_name"]').value.trim();
-    if (!name) { alert("Shop name is required."); return; }
+    const name = document.getElementById("shop_name").value.trim();
+    if (!name) { if (window.showToast) showToast("Shop name is required", "error"); else alert("Shop name is required."); return; }
 
     const payload = {
         shop_name:       name,
-        gstin:           form.querySelector('[name="gstin"]').value           || null,
-        address:         form.querySelector('[name="address"]').value         || null,
-        city:            form.querySelector('[name="city"]').value            || null,
-        state:           form.querySelector('[name="state"]').value           || "Uttar Pradesh",
-        state_code:      form.querySelector('[name="state_code"]').value      || "09",
-        phone:           form.querySelector('[name="phone"]').value           || null,
-        email:           form.querySelector('[name="email"]').value           || null,
-        bill_template:   form.querySelector('[name="bill_template"]').value,
-        bank_name:       form.querySelector('[name="bank_name"]').value       || null,
-        bank_account_no: form.querySelector('[name="bank_account_no"]').value || null,
-        bank_ifsc:       form.querySelector('[name="bank_ifsc"]').value       || null,
-        terms_line1:     form.querySelector('[name="terms_line1"]').value     || null,
-        terms_line2:     form.querySelector('[name="terms_line2"]').value     || null,
+        gstin:           document.getElementById("gstin").value           || null,
+        address:         document.getElementById("address").value         || null,
+        city:            document.getElementById("city").value            || null,
+        state:           document.getElementById("state").value           || "Uttar Pradesh",
+        state_code:      document.getElementById("state_code").value      || "09",
+        phone:           document.getElementById("phone").value           || null,
+        email:           document.getElementById("email").value           || null,
+        bill_template:   document.getElementById("bill_template").value,
+        bank_name:       document.getElementById("bank_name").value       || null,
+        bank_account_no: document.getElementById("bank_account_no").value || null,
+        bank_ifsc:       document.getElementById("bank_ifsc").value       || null,
+        terms_line1:     document.getElementById("terms_line1").value     || null,
+        terms_line2:     document.getElementById("terms_line2").value     || null,
     };
 
-    const res  = await fetch("/settings/shop", {
+    const out  = await _requestJson("/settings/shop", {
         method: "POST", headers: {"Content-Type": "application/json"},
         body: JSON.stringify(payload),
     });
-    const data = await res.json();
+    const data = out.data || {};
     if (data.success) {
         const msg = document.getElementById("shopSaveMsg");
-        msg.style.display = "inline";
+        msg.style.display = "inline-flex";
         setTimeout(() => msg.style.display = "none", 3000);
+        if (window.showToast) showToast("Shop details saved", "success");
     } else {
-        alert("Error: " + data.error);
+        const msg = out.error || data.error || "Unable to save shop details";
+        if (window.showToast) showToast("Error: " + msg, "error");
+        else alert("Error: " + msg);
     }
 }
 
 async function switchFY(label) {
-    const res  = await fetch("/settings/financial-year", {
+    const out  = await _requestJson("/settings/financial-year", {
         method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ label }),
+        body: JSON.stringify({label}),
     });
-    const data = await res.json();
+    const data = out.data || {};
     if (data.success) location.reload();
-    else alert("Error: " + data.error);
+    else {
+        const msg = out.error || data.error || "Unable to switch financial year";
+        if (window.showToast) showToast("Error: " + msg, "error");
+        else alert("Error: " + msg);
+    }
 }
 
 async function createFY() {
     const label = document.getElementById("fyLabel").value.trim();
     const start = document.getElementById("fyStart").value;
     const end   = document.getElementById("fyEnd").value;
-    if (!label) { alert("Enter a label like 25-26."); return; }
-    if (!start) { alert("Enter a start date."); return; }
-    if (!end)   { alert("Enter an end date."); return; }
+    if (!label) { if (window.showToast) showToast("Enter a label like 25-26", "error"); else alert("Enter a label like 25-26."); return; }
+    if (!start) { if (window.showToast) showToast("Enter a start date", "error"); else alert("Enter a start date."); return; }
+    if (!end)   { if (window.showToast) showToast("Enter an end date", "error"); else alert("Enter an end date."); return; }
 
-    const res  = await fetch("/settings/financial-year", {
+    const out  = await _requestJson("/settings/financial-year", {
         method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ label, start_date: start, end_date: end }),
+        body: JSON.stringify({label, start_date: start, end_date: end}),
     });
-    const data = await res.json();
+    const data = out.data || {};
     if (data.success) {
         location.reload();
     } else {
-        alert("Error: " + data.error);
+        const msg = out.error || data.error || "Unable to create financial year";
+        if (window.showToast) showToast("Error: " + msg, "error");
+        else alert("Error: " + msg);
     }
 }
 
 async function changePw() {
     const msg = document.getElementById("pwMsg");
-    const res = await fetch("/auth/change-password", {
+    const out = await _requestJson("/auth/change-password", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify({
@@ -352,45 +445,42 @@ async function changePw() {
             confirm:      document.getElementById("confirmPw").value,
         }),
     });
-    const data = await res.json();
+    const data = out.data || {};
     msg.style.display    = "block";
-    msg.style.background = data.success ? "#e8f5e9" : "#fdecea";
-    msg.style.color      = data.success ? "#2e7d32" : "#c62828";
-    msg.textContent      = data.success ? "✅ Password updated." : data.error;
-    if (data.success) { document.getElementById("oldPw").value = ""; document.getElementById("newPw").value = ""; document.getElementById("confirmPw").value = ""; }
+    msg.className        = "settings-msg " + (data.success ? "settings-msg-success" : "settings-msg-error");
+    msg.textContent      = data.success ? "Password updated successfully." : (out.error || data.error || "Unable to update password");
+    if (data.success) {
+        document.getElementById("oldPw").value     = "";
+        document.getElementById("newPw").value     = "";
+        document.getElementById("confirmPw").value = "";
+    }
 }
 
 async function closeFY(confirmed) {
     const label = document.getElementById("newFyLabel").value.trim();
     const start = document.getElementById("newFyStart").value;
     const end   = document.getElementById("newFyEnd").value;
-
     if (!label || !start || !end) {
-        alert("Please fill in new FY label, start date, and end date.");
+        if (window.showToast) showToast("Fill in new FY label, start date, and end date", "error");
+        else alert("Please fill in new FY label, start date, and end date.");
         return;
     }
 
-    const res  = await fetch("/settings/close-fy", {
+    const out  = await _requestJson("/settings/close-fy", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-            new_label:      label,
-            new_start_date: start,
-            new_end_date:   end,
-            confirmed:      confirmed,
-        }),
+        body: JSON.stringify({new_label: label, new_start_date: start, new_end_date: end, confirmed}),
     });
-    const data = await res.json();
+    const data = out.data || {};
 
     if (data.requires_confirmation) {
-        // Show warning box with items to review
-        const list = document.getElementById("closeFyWarningList");
+        const list  = document.getElementById("closeFyWarningList");
         const items = data.warnings.map(w => `<li>${w}</li>`);
         if (data.carry_forward_count > 0) {
             items.push(`<li><strong>${data.carry_forward_count} party balance(s)</strong> will be set as opening balances in the new year.</li>`);
         }
         list.innerHTML = items.join("");
-        document.getElementById("closeFyWarningBox").style.display = "block";
+        document.getElementById("closeFyWarningBox").style.display = "flex";
         document.getElementById("closeFyForm").style.display       = "none";
         return;
     }
@@ -398,14 +488,12 @@ async function closeFY(confirmed) {
     const msg = document.getElementById("closeFyMsg");
     msg.style.display = "block";
     if (data.success) {
-        msg.style.background = "#e8f5e9";
-        msg.style.color      = "#2e7d32";
-        msg.textContent      = `✅ FY ${data.closed_fy} closed. FY ${data.new_fy} is now active.`;
+        msg.className   = "settings-msg settings-msg-success";
+        msg.textContent = `FY ${data.closed_fy} closed. FY ${data.new_fy} is now active.`;
         setTimeout(() => location.reload(), 1500);
     } else {
-        msg.style.background = "#fdecea";
-        msg.style.color      = "#c62828";
-        msg.textContent      = "Error: " + data.error;
+        msg.className   = "settings-msg settings-msg-error";
+        msg.textContent = "Error: " + (out.error || data.error || "Unable to close FY");
     }
 }
 
@@ -413,6 +501,5 @@ function cancelCloseFY() {
     document.getElementById("closeFyWarningBox").style.display = "none";
     document.getElementById("closeFyForm").style.display       = "block";
 }
-
 </script>
 {% endblock %}

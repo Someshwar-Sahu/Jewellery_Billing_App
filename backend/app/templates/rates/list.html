@@ -1,65 +1,462 @@
 {% extends "base.html" %}
 {% block title %}Gold Rates{% endblock %}
+{% block nav_rates %}active{% endblock %}
+{% block page_title %}Gold Rates{% endblock %}
+
+{% block head %}
+<style>
+.rates-page-header{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:12px;
+    margin-bottom:24px
+}
+
+.rates-title-block{
+    display:flex;
+    align-items:center;
+    gap:14px
+}
+
+.rates-title-icon{
+    width:44px;
+    height:44px;
+    border-radius:var(--radius-sm);
+    background:var(--gold-muted2);
+    display:grid;
+    place-items:center;
+    color:var(--gold);
+    flex-shrink:0
+}
+
+.rates-title{
+    font-family:var(--font-display);
+    font-size:1.4rem;
+    color:var(--text-primary);
+    line-height:1.2
+}
+
+.rates-subtitle{
+    font-size:0.8rem;
+    color:var(--text-muted);
+    margin-top:2px
+}
+
+/* Warning banner */
+
+.rates-warning{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:var(--amber-bg);
+    border:1px solid var(--amber);
+    border-radius:var(--radius-sm);
+    padding:12px 16px;
+    font-size:0.85rem;
+    color:var(--amber);
+    margin-bottom:20px
+}
+
+.rates-warning-text{
+    flex:1
+}
+
+.rates-warning a{
+    color:var(--amber);
+    font-weight:600;
+    text-decoration:underline
+}
+
+/* Today card */
+
+.rates-today{
+    background:var(--navy);
+    border-radius:var(--radius-sm);
+    padding:20px 24px;
+    margin-bottom:24px;
+    position:relative;
+    overflow:hidden
+}
+
+.rates-today::before{
+    content:'';
+    position:absolute;
+    top:-30px;
+    right:-30px;
+    width:120px;
+    height:120px;
+    border-radius:50%;
+    background:rgba(200,150,60,0.08);
+    pointer-events:none
+}
+
+.rates-today-toprow{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:18px;
+    flex-wrap:wrap;
+    gap:8px
+}
+
+.rates-today-label{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-size:0.78rem;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:rgba(255,255,255,0.5)
+}
+
+.rates-live-dot{
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:var(--green);
+    box-shadow:0 0 0 2px rgba(21,128,61,0.3);
+    animation:pulse-dot 2s infinite
+}
+
+@keyframes pulse-dot{
+    0%,100%{
+        box-shadow:0 0 0 2px rgba(21,128,61,0.3)
+    }
+    50%{
+        box-shadow:0 0 0 5px rgba(21,128,61,0.15)
+    }
+}
+
+.rates-today-edit{
+    color:rgba(255,255,255,0.5);
+    font-size:0.78rem;
+    text-decoration:none;
+    display:flex;
+    align-items:center;
+    gap:4px
+}
+
+.rates-today-edit:hover{
+    color:rgba(255,255,255,0.85)
+}
+
+.rates-today-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+    gap:12px
+}
+
+.rates-today-item{
+    background:rgba(255,255,255,0.06);
+    border-radius:var(--radius-sm);
+    padding:14px 16px;
+    border:1px solid rgba(255,255,255,0.07)
+}
+
+.rates-today-metal{
+    font-size:0.72rem;
+    text-transform:uppercase;
+    letter-spacing:0.07em;
+    color:rgba(255,255,255,0.45);
+    margin-bottom:8px
+}
+
+.rates-today-value{
+    font-size:1.25rem;
+    font-weight:700;
+    color:var(--gold-light);
+    font-variant-numeric:tabular-nums;
+    font-family:var(--font-display)
+}
+
+.rates-today-value small{
+    font-size:0.7rem;
+    font-weight:400;
+    color:rgba(255,255,255,0.35);
+    margin-left:2px;
+    font-family:var(--font-ui)
+}
+
+/* History section */
+
+.rates-history-head{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    margin-bottom:14px;
+    flex-wrap:wrap;
+    gap:8px
+}
+
+.rates-history-title{
+    font-size:1rem;
+    font-weight:600;
+    color:var(--text-primary)
+}
+
+.rates-history-sub{
+    font-size:0.8rem;
+    color:var(--text-muted)
+}
+
+/* History table */
+
+.rates-table-wrap{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:var(--radius-sm);
+    overflow:hidden
+}
+
+.rates-table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:0.85rem
+}
+
+.rates-table thead th{
+    background:var(--bg-subtle);
+    color:var(--text-muted);
+    font-size:0.72rem;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    padding:10px 16px;
+    text-align:left;
+    border-bottom:1px solid var(--border)
+}
+
+.rates-table thead th.num{
+    text-align:right
+}
+
+.rates-table tbody tr{
+    border-bottom:1px solid var(--border);
+    transition:background 100ms
+}
+
+.rates-table tbody tr:hover{
+    background:var(--bg-subtle)
+}
+
+.rates-table tbody tr.row-today{
+    background:var(--gold-muted)
+}
+
+.rates-table tbody tr.row-today:hover{
+    background:rgba(200,150,60,0.18)
+}
+
+.rates-table tbody td{
+    padding:11px 16px;
+    color:var(--text-secondary);
+    vertical-align:middle
+}
+
+.rates-table tbody td.num{
+    text-align:right;
+    font-variant-numeric:tabular-nums;
+    font-weight:600;
+    color:var(--text-primary)
+}
+
+.rates-table tbody td.muted{
+    color:var(--text-muted);
+    text-align:right
+}
+
+.rates-date-cell{
+    display:flex;
+    align-items:center;
+    gap:8px
+}
+
+.rates-today-tag{
+    font-size:0.65rem;
+    font-weight:700;
+    padding:2px 7px;
+    border-radius:3px;
+    background:var(--gold-muted2);
+    color:var(--gold-dark);
+    letter-spacing:0.04em;
+    text-transform:uppercase
+}
+
+.rates-empty{
+    padding:36px;
+    text-align:center;
+    font-size:0.85rem;
+    color:var(--text-muted);
+    font-style:italic
+}
+</style>
+{% endblock %}
+
 {% block content %}
 
-<div class="page-header">
-    <h1>Gold &amp; Silver Rates</h1>
-    <a href="/rates/create" class="btn-primary">+ Enter Today's Rate</a>
+<!-- Page Header -->
+<div class="rates-page-header">
+  <div class="rates-title-block">
+    <div class="rates-title-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="1" x2="12" y2="23"/>
+        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+      </svg>
+    </div>
+
+    <div>
+      <div class="rates-title">Gold &amp; Silver Rates</div>
+      <div class="rates-subtitle">
+        Daily market rates — used for auto-calculation in bills
+      </div>
+    </div>
+  </div>
+
+  <a href="/rates/create" class="btn btn-gold">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="12" y1="5" x2="12" y2="19"/>
+      <line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+    Enter Today's Rate
+  </a>
 </div>
 
+<!-- Warning if no today's rate -->
 {% if not today_rate %}
-<div class="alert alert-warning">
-    ⚠️ Today's rate is not entered yet.
-    <a href="/rates/create">Enter now</a> — bill form will auto-suggest rates once entered.
+
+<div class="rates-warning">
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0">
+    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+    <line x1="12" y1="9" x2="12" y2="13"/>
+    <line x1="12" y1="17" x2="12.01" y2="17"/>
+  </svg>
+
+  <span class="rates-warning-text">
+    Today's rate is not entered yet. Bills will not auto-calculate gold value.
+  </span>
+
+  <a href="/rates/create">Enter Now →</a>
 </div>
+
 {% else %}
-<div style="background:#d4edda;border:1px solid #5dca8a;border-radius:8px;padding:14px;margin-bottom:20px;display:flex;gap:32px;flex-wrap:wrap">
-    <div><small style="color:#555">Today — Gold 22K</small><br>
-        <strong style="font-size:18px">₹{{ "%.2f"|format(today_rate.gold_22k_per_gram) }}/g</strong></div>
-    {% if today_rate.gold_18k_per_gram %}
-    <div><small style="color:#555">Gold 18K</small><br>
-        <strong style="font-size:18px">₹{{ "%.2f"|format(today_rate.gold_18k_per_gram) }}/g</strong></div>
-    {% endif %}
-    {% if today_rate.silver_per_gram %}
-    <div><small style="color:#555">Silver</small><br>
-        <strong style="font-size:18px">₹{{ "%.2f"|format(today_rate.silver_per_gram) }}/g</strong></div>
-    {% endif %}
-    <div style="margin-left:auto;align-self:center">
-        <a href="/rates/create" class="btn-secondary btn-sm">Edit Today's Rate</a>
+
+<!-- Today's Rate Card -->
+<div class="rates-today">
+
+  <div class="rates-today-toprow">
+    <div class="rates-today-label">
+      <span class="rates-live-dot"></span>
+      Today's Rates
     </div>
+
+    <a href="/rates/create" class="rates-today-edit">
+      Edit
+    </a>
+  </div>
+
+  <div class="rates-today-grid">
+
+    <div class="rates-today-item">
+      <div class="rates-today-metal">Gold 22K</div>
+      <div class="rates-today-value">
+        ₹{{ "%.2f"|format(today_rate.gold_22k_per_gram) }}
+        <small>/g</small>
+      </div>
+    </div>
+
+    {% if today_rate.gold_18k_per_gram %}
+    <div class="rates-today-item">
+      <div class="rates-today-metal">Gold 18K</div>
+      <div class="rates-today-value">
+        ₹{{ "%.2f"|format(today_rate.gold_18k_per_gram) }}
+        <small>/g</small>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if today_rate.silver_per_gram %}
+    <div class="rates-today-item">
+      <div class="rates-today-metal">Silver</div>
+      <div class="rates-today-value">
+        ₹{{ "%.2f"|format(today_rate.silver_per_gram) }}
+        <small>/g</small>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
 </div>
+
 {% endif %}
 
-<!-- Rate history table -->
-<h2 style="margin-bottom:12px">Rate History (Last 30 days)</h2>
+<!-- Rate History -->
+
+<div class="rates-history-head">
+  <span class="rates-history-title">Rate History</span>
+  <span class="rates-history-sub">Last 30 days</span>
+</div>
+
 {% if not rates %}
-<div class="empty-state">No rates entered yet.</div>
+
+<div class="rates-table-wrap">
+  <div class="rates-empty">No rates entered yet.</div>
+</div>
+
 {% else %}
-<table class="table">
+
+<div class="rates-table-wrap">
+
+  <table class="rates-table">
+
     <thead>
-        <tr>
-            <th>Date</th>
-            <th>Gold 22K (₹/g)</th>
-            <th>Gold 18K (₹/g)</th>
-            <th>Silver (₹/g)</th>
-        </tr>
+      <tr>
+        <th>Date</th>
+        <th class="num">Gold 22K (₹/g)</th>
+        <th class="num">Gold 18K (₹/g)</th>
+        <th class="num">Silver (₹/g)</th>
+      </tr>
     </thead>
+
     <tbody>
-        {% for r in rates %}
-        <tr {% if r.rate_date.isoformat() == today %}style="background:#f0fff4"{% endif %}>
-            <td>
-                {{ r.rate_date }}
-                {% if r.rate_date.isoformat() == today %}
-                <span class="badge badge-paid" style="margin-left:6px">TODAY</span>
-                {% endif %}
-            </td>
-            <td>{{ "₹%.2f"|format(r.gold_22k_per_gram) if r.gold_22k_per_gram else "—" }}</td>
-            <td>{{ "₹%.2f"|format(r.gold_18k_per_gram) if r.gold_18k_per_gram else "—" }}</td>
-            <td>{{ "₹%.2f"|format(r.silver_per_gram)   if r.silver_per_gram   else "—" }}</td>
-        </tr>
-        {% endfor %}
+
+      {% for r in rates %}
+
+      <tr class="{{ 'row-today' if r.rate_date.isoformat() == today else '' }}">
+
+        <td>
+          <div class="rates-date-cell">
+            <span>{{ r.rate_date.strftime('%d %b %Y') }}</span>
+
+            {% if r.rate_date.isoformat() == today %}
+            <span class="rates-today-tag">Today</span>
+            {% endif %}
+          </div>
+        </td>
+
+        <td class="{{ 'num' if r.gold_22k_per_gram else 'muted' }}">
+          {{ "₹%.2f"|format(r.gold_22k_per_gram) if r.gold_22k_per_gram else '—' }}
+        </td>
+
+        <td class="{{ 'num' if r.gold_18k_per_gram else 'muted' }}">
+          {{ "₹%.2f"|format(r.gold_18k_per_gram) if r.gold_18k_per_gram else '—' }}
+        </td>
+
+        <td class="{{ 'num' if r.silver_per_gram else 'muted' }}">
+          {{ "₹%.2f"|format(r.silver_per_gram) if r.silver_per_gram else '—' }}
+        </td>
+
+      </tr>
+
+      {% endfor %}
+
     </tbody>
-</table>
+
+  </table>
+
+</div>
+
 {% endif %}
 
 {% endblock %}

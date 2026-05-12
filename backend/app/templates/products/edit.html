@@ -1,130 +1,204 @@
 {% extends "base.html" %}
 {% block title %}Edit {{ product.name }}{% endblock %}
+{% block nav_products %}active{% endblock %}
+
+{% block page_title %}Edit Product{% endblock %}
+
 {% block content %}
 
 <div class="page-header">
-    <h1>Edit — {{ product.name }}</h1>
-    <a href="/products" class="btn-ghost">← Back</a>
+    <div class="page-header-left">
+        <a href="/products" class="back-link">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+            </svg>
+            Products
+        </a>
+        <h1 class="page-title">Edit — <span class="page-title-accent">{{ product.name }}</span></h1>
+    </div>
+    <div class="page-header-actions">
+        <a href="/stock/{{ product.id }}" class="btn btn-outline btn-sm">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+                <line x1="8" y1="18" x2="21" y2="18"/>
+                <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/>
+                <line x1="3" y1="18" x2="3.01" y2="18"/>
+            </svg>
+            View Stock Ledger
+        </a>
+    </div>
 </div>
 
-<form id="editForm" style="background:#fff;padding:24px;border-radius:8px;max-width:600px">
+<div class="form-page-layout">
+<div class="form-card">
 
-    <div class="form-row">
-        <div class="form-group" style="flex:2">
-            <label>Product Name *</label>
-            <input type="text" name="name" value="{{ product.name }}" required>
+    <div class="form-section">
+        <h2 class="form-section-title">Basic Information</h2>
+
+        <div class="field-row">
+            <div class="field-group field-group-grow">
+                <label class="field-label" for="name">Product Name <span class="field-required">*</span></label>
+                <input class="field-input" type="text" id="name" name="name"
+                       value="{{ product.name }}">
+            </div>
+            <div class="field-group">
+                <label class="field-label" for="metal_type">Metal Type</label>
+                <select class="field-select" id="metal_type" name="metal_type">
+                    {% for m in ["gold","silver","other"] %}
+                    <option value="{{ m }}" {{ 'selected' if product.metal_type==m else '' }}>
+                        {{ m | capitalize }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field-group">
+                <label class="field-label" for="is_active">Status</label>
+                <select class="field-select" id="is_active" name="is_active">
+                    <option value="true"  {{ 'selected' if product.is_active else '' }}>Active</option>
+                    <option value="false" {{ 'selected' if not product.is_active else '' }}>Inactive</option>
+                </select>
+            </div>
         </div>
-        <div class="form-group">
-            <label>Metal Type</label>
-            <select name="metal_type">
-                {% for m in ["gold","silver","other"] %}
-                <option value="{{ m }}" {{ 'selected' if product.metal_type==m else '' }}>
-                    {{ m | capitalize }}
-                </option>
-                {% endfor %}
-            </select>
+
+        <div class="field-row">
+            <div class="field-group">
+                <label class="field-label" for="purity">Purity</label>
+                <input class="field-input" type="text" id="purity" name="purity"
+                       value="{{ product.purity or '' }}" placeholder="e.g. 22K, 18K, 925">
+            </div>
+            <div class="field-group">
+                <label class="field-label" for="hsn_code">HSN Code</label>
+                <input class="field-input" type="text" id="hsn_code" name="hsn_code"
+                       value="{{ product.hsn_code }}">
+            </div>
+            <div class="field-group">
+                <label class="field-label" for="gst_rate">GST Rate</label>
+                <select class="field-select" id="gst_rate" name="gst_rate">
+                    {% for r in ["3.0","1.5","0","18.0"] %}
+                    <option value="{{ r }}" {{ 'selected' if product.gst_rate|string == r else '' }}>
+                        {{ r }}%
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
     </div>
 
-    <div class="form-row">
-        <div class="form-group">
-            <label>Purity</label>
-            <input type="text" name="purity" value="{{ product.purity or '' }}">
-        </div>
-        <div class="form-group">
-            <label>HSN Code</label>
-            <input type="text" name="hsn_code" value="{{ product.hsn_code }}">
-        </div>
-        <div class="form-group">
-            <label>GST Rate (%)</label>
-            <select name="gst_rate">
-                {% for r in ["3.0","1.5","0","18.0"] %}
-                <option value="{{ r }}"
-                    {{ 'selected' if product.gst_rate|string == r else '' }}>
-                    {{ r }}%
-                </option>
-                {% endfor %}
-            </select>
+    <div class="form-section-divider"></div>
+
+    <div class="form-section">
+        <h2 class="form-section-title">Pricing & Identity</h2>
+
+        <div class="field-row">
+            <div class="field-group">
+                <label class="field-label" for="making_charge_rate">Making Charge (₹/g)</label>
+                <div class="field-input-wrap">
+                    <span class="field-prefix">₹</span>
+                    <input class="field-input field-input-prefixed" type="number"
+                           id="making_charge_rate" name="making_charge_rate"
+                           step="0.01" min="0"
+                           value="{{ product.making_charge_rate or '' }}"
+                           placeholder="0.00">
+                </div>
+            </div>
+            <div class="field-group">
+                <label class="field-label" for="huid">HUID</label>
+                <input class="field-input text-mono" type="text" id="huid" name="huid"
+                       value="{{ product.huid or '' }}" placeholder="Hallmark ID">
+            </div>
         </div>
     </div>
 
-    <div class="form-row">
-        <div class="form-group">
-            <label>Making Charge Rate (₹/g)</label>
-            <input type="number" name="making_charge_rate" step="0.01" min="0"
-                   value="{{ product.making_charge_rate or '' }}">
-        </div>
-        <div class="form-group">
-            <label>HUID</label>
-            <input type="text" name="huid" value="{{ product.huid or '' }}">
-        </div>
-    </div>
+    <div class="form-section-divider"></div>
 
-    <div class="form-row">
-        <div class="form-group" style="flex:2">
-            <label>Group / Category</label>
-            <select name="group_id">
-                <option value="">-- No Group --</option>
-                {% for g in groups %}
-                <option value="{{ g.id }}"
-                    {{ 'selected' if product.group_id == g.id else '' }}>
-                    {{ g.name }}
-                </option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Status</label>
-            <select name="is_active">
-                <option value="true"  {{ 'selected' if product.is_active else '' }}>Active</option>
-                <option value="false" {{ 'selected' if not product.is_active else '' }}>Inactive</option>
-            </select>
-        </div>
-    </div>
+    <div class="form-section">
+        <h2 class="form-section-title">Category & Notes</h2>
 
-    <div class="form-group" style="margin-bottom:20px">
-        <label>Description</label>
-        <textarea name="description" rows="2">{{ product.description or '' }}</textarea>
+        <div class="field-row">
+            <div class="field-group field-group-grow">
+                <label class="field-label" for="group_id">Group / Category</label>
+                <select class="field-select" id="group_id" name="group_id">
+                    <option value="">— No Group —</option>
+                    {% for g in groups %}
+                    <option value="{{ g.id }}" {{ 'selected' if product.group_id == g.id else '' }}>
+                        {{ g.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="field-group">
+            <label class="field-label" for="description">Description</label>
+            <textarea class="field-textarea" id="description" name="description" rows="3">{{ product.description or '' }}</textarea>
+        </div>
     </div>
 
     <div class="form-actions">
-        <button type="button" onclick="saveEdit({{ product.id }})"
-                class="btn-primary btn-large">Save Changes</button>
-        <a href="/products" class="btn-ghost">Cancel</a>
+        <button type="button" onclick="saveEdit({{ product.id }})" class="btn btn-gold btn-lg" id="saveProductEditBtn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+            </svg>
+            Save Changes
+        </button>
+        <a href="/products" class="btn btn-ghost">Cancel</a>
     </div>
-</form>
+
+</div>
+</div>
 
 {% endblock %}
 
 {% block scripts %}
 <script>
+let _savingProductEdit = false;
+
 async function saveEdit(productId) {
-    const form = document.getElementById("editForm");
-    const name = form.querySelector('[name="name"]').value.trim();
-    if (!name) { alert("Name is required."); return; }
+    if (_savingProductEdit) return;
+    const name = document.getElementById("name").value.trim();
+    if (!name) {
+        if (window.showToast) showToast("Product name is required", "error");
+        else alert("Name is required.");
+        return;
+    }
 
     const payload = {
         name,
-        metal_type:         form.querySelector('[name="metal_type"]').value,
-        purity:             form.querySelector('[name="purity"]').value             || null,
-        hsn_code:           form.querySelector('[name="hsn_code"]').value           || "7113",
-        gst_rate:           form.querySelector('[name="gst_rate"]').value,
-        making_charge_rate: form.querySelector('[name="making_charge_rate"]').value || null,
-        huid:               form.querySelector('[name="huid"]').value               || null,
-        group_id:           form.querySelector('[name="group_id"]').value           || null,
-        description:        form.querySelector('[name="description"]').value        || null,
-        is_active:          form.querySelector('[name="is_active"]').value === "true",
+        metal_type:         document.getElementById("metal_type").value,
+        purity:             document.getElementById("purity").value             || null,
+        hsn_code:           document.getElementById("hsn_code").value           || "7113",
+        gst_rate:           document.getElementById("gst_rate").value,
+        making_charge_rate: document.getElementById("making_charge_rate").value || null,
+        huid:               document.getElementById("huid").value               || null,
+        group_id:           document.getElementById("group_id").value           || null,
+        description:        document.getElementById("description").value        || null,
+        is_active:          document.getElementById("is_active").value === "true",
     };
 
-    const res  = await fetch("/products/" + productId + "/edit", {
-        method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (data.success) {
-        window.location.href = "/products";
-    } else {
-        alert("Error: " + data.error);
+    const btn = document.getElementById("saveProductEditBtn");
+    if (btn) btn.disabled = true;
+    _savingProductEdit = true;
+    try {
+        const res  = await fetch("/products/" + productId + "/edit", {
+            method: "POST", headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            window.location.href = "/products";
+            return;
+        }
+        const msg = data.error || "Unable to save product changes";
+        if (window.showToast) showToast("Error: " + msg, "error");
+        else alert("Error: " + msg);
+    } catch (_) {
+        if (window.showToast) showToast("Network error while saving product", "error");
+        else alert("Network error while saving product.");
+    } finally {
+        _savingProductEdit = false;
+        if (btn) btn.disabled = false;
     }
 }
 </script>

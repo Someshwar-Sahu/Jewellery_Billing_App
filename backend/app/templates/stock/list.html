@@ -2,195 +2,289 @@
 {% block title %}
     {% if summary is none %}Stock — {{ product.name }}{% else %}Stock Ledger{% endif %}
 {% endblock %}
+{% block nav_stock %}active{% endblock %}
+
+{% block page_title %}Stock{% endblock %}
+
 {% block content %}
 
 {% if summary is not none %}
-<!-- ── OVERVIEW MODE ── -->
+<!-- ══════════════════════════════════════════
+     OVERVIEW MODE
+═══════════════════════════════════════════ -->
 
 <div class="page-header">
-    <h1>Stock Ledger</h1>
-    <div style="display:flex;gap:8px;align-items:center">
+    <div class="page-header-left">
+        <h1 class="page-title">Stock Ledger</h1>
+        <p class="page-subtitle">Auto-updated when bills are saved — only catalogued products appear here</p>
+    </div>
+    <div class="page-header-actions">
         {% if low_count %}
-        <span class="badge badge-overdue" style="padding:6px 14px;font-size:12px">
-            ⚠ {{ low_count }} low stock alert{{ 's' if low_count != 1 else '' }}
+        <span class="badge badge-danger badge-lg">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            {{ low_count }} Low Stock Alert{{ 's' if low_count != 1 else '' }}
         </span>
         {% endif %}
-        <a href="/exports/stock" class="btn-secondary">⬇ Export Excel</a>
+        <a href="/exports/stock" class="btn btn-outline btn-sm">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Export Excel
+        </a>
     </div>
 </div>
-
-<p style="color:#888;font-size:13px;margin-bottom:16px">
-    Stock is automatically updated when bills are saved.
-    Only products linked via product catalogue appear here.
-    Click a product to see its full history.
-</p>
 
 {% if not summary %}
 <div class="empty-state">
-    No stock entries yet. Stock is recorded automatically when you create bills
-    with items linked to a product from the catalogue.
+    <div class="empty-state-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+            <line x1="8" y1="18" x2="21" y2="18"/>
+            <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/>
+            <line x1="3" y1="18" x2="3.01" y2="18"/>
+        </svg>
+    </div>
+    <h3 class="empty-state-title">No stock entries yet</h3>
+    <p class="empty-state-desc">Stock is recorded automatically when you create bills with items linked to a product from the catalogue</p>
+    <a href="/products" class="btn btn-gold">Go to Products</a>
 </div>
 {% else %}
-<table class="table">
-    <thead>
-        <tr>
-            <th>Product</th>
-            <th>Purity</th>
-            <th>Total In (g)</th>
-            <th>Total Out (g)</th>
-            <th>Balance (g)</th>
-            <th>Last Movement</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for s in summary %}
-        <tr class="{{ 'row-overdue' if s.is_low else '' }}">
-            <td>
-                <strong>{{ s.product.name }}</strong>
-                {% if s.is_low %}
-                <span class="badge badge-overdue" style="margin-left:6px;font-size:9px">LOW</span>
-                {% endif %}
-            </td>
-            <td>{{ s.product.purity or "—" }}</td>
-            <td style="color:#28a745">{{ s.total_in }}g</td>
-            <td style="color:#dc3545">{{ s.total_out }}g</td>
-            <td>
-                <strong style="color:{% if s.balance <= 0 %}#dc3545{% else %}#333{% endif %}">
-                    {{ s.balance }}g
-                </strong>
-            </td>
-            <td style="font-size:12px;color:#888">{{ s.last_date or "—" }}</td>
-            <td>
-                <a href="/stock/{{ s.product.id }}" class="btn-ghost btn-sm">History</a>
-                <button onclick="openAdjust({{ s.product.id }}, '{{ s.product.name }}')"
-                        class="btn-secondary btn-sm">Adjust</button>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="table-wrap">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Purity</th>
+                <th>Total In</th>
+                <th>Total Out</th>
+                <th>Balance</th>
+                <th>Last Movement</th>
+                <th class="col-actions">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in summary %}
+            <tr class="{{ 'row-alert' if s.is_low else '' }}">
+                <td>
+                    <div class="cell-primary">
+                        {{ s.product.name }}
+                        {% if s.is_low %}
+                        <span class="badge badge-danger" style="margin-left: 6px; font-size: 9px;">LOW</span>
+                        {% endif %}
+                    </div>
+                </td>
+                <td>
+                    {% if s.product.purity %}
+                    <span class="purity-tag">{{ s.product.purity }}</span>
+                    {% else %}<span class="text-muted">—</span>{% endif %}
+                </td>
+                <td><span class="stock-in">{{ s.total_in }}g</span></td>
+                <td><span class="stock-out">{{ s.total_out }}g</span></td>
+                <td>
+                    {% if s.balance <= 0 %}
+                    <span class="stock-zero">{{ s.balance }}g</span>
+                    {% else %}
+                    <strong>{{ s.balance }}g</strong>
+                    {% endif %}
+                </td>
+                <td><span class="text-muted-sm">{{ s.last_date or "—" }}</span></td>
+                <td>
+                    <div class="action-btns">
+                        <a href="/stock/{{ s.product.id }}" class="btn btn-ghost btn-sm">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                            </svg>
+                            History
+                        </a>
+                        <button onclick="openAdjust({{ s.product.id }}, {{ s.product.name|tojson }})" class="btn btn-outline btn-sm">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                            </svg>
+                            Adjust
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 {% endif %}
 
 {% else %}
-<!-- ── PRODUCT DETAIL MODE ── -->
+<!-- ══════════════════════════════════════════
+     PRODUCT DETAIL MODE
+═══════════════════════════════════════════ -->
 
 <div class="page-header">
-    <div>
-        <h1>{{ product.name }}</h1>
-        <small style="color:#888">{{ product.purity or "" }} {{ product.metal_type | upper }}</small>
+    <div class="page-header-left">
+        <a href="/stock" class="back-link">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+            </svg>
+            All Stock
+        </a>
+        <div>
+            <h1 class="page-title">{{ product.name }}</h1>
+            <p class="page-subtitle">{{ product.purity or "" }} {{ product.metal_type | upper }}</p>
+        </div>
     </div>
-    <div style="display:flex;gap:8px">
-        <button onclick="openAdjust({{ product.id }}, '{{ product.name }}')"
-                class="btn-secondary">Manual Adjust</button>
-        <a href="/stock" class="btn-ghost">← All Stock</a>
+    <div class="page-header-actions">
+        <button onclick="openAdjust({{ product.id }}, {{ product.name|tojson }})" class="btn btn-outline btn-sm">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Manual Adjust
+        </button>
     </div>
 </div>
 
-<!-- Summary strip -->
-<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px">
-    <div class="detail-card" style="flex:1;min-width:140px">
-        <h3>Total In</h3>
-        <p style="font-size:20px;font-weight:600;color:#28a745">{{ total_in }}g</p>
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-card-icon stat-icon-success">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+            </svg>
+        </div>
+        <div class="stat-card-body">
+            <span class="stat-card-label">Total In</span>
+            <span class="stat-card-value stat-value-success">{{ total_in }}g</span>
+        </div>
     </div>
-    <div class="detail-card" style="flex:1;min-width:140px">
-        <h3>Total Out</h3>
-        <p style="font-size:20px;font-weight:600;color:#dc3545">{{ total_out }}g</p>
+    <div class="stat-card">
+        <div class="stat-card-icon stat-icon-danger">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/>
+            </svg>
+        </div>
+        <div class="stat-card-body">
+            <span class="stat-card-label">Total Out</span>
+            <span class="stat-card-value stat-value-danger">{{ total_out }}g</span>
+        </div>
     </div>
-    <div class="detail-card" style="flex:1;min-width:140px">
-        <h3>Current Balance</h3>
-        <p style="font-size:20px;font-weight:600;
-            color:{% if balance <= 0 %}#dc3545{% else %}#333{% endif %}">
-            {{ balance }}g
-        </p>
+    <div class="stat-card">
+        <div class="stat-card-icon {{ 'stat-icon-danger' if balance <= 0 else 'stat-icon-primary' }}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+                <line x1="8" y1="18" x2="21" y2="18"/>
+                <line x1="3" y1="6" x2="3.01" y2="6"/>
+            </svg>
+        </div>
+        <div class="stat-card-body">
+            <span class="stat-card-label">Current Balance</span>
+            <span class="stat-card-value {{ 'stat-value-danger' if balance <= 0 else '' }}">{{ balance }}g</span>
+        </div>
     </div>
 </div>
 
 {% if not entries %}
-<div class="empty-state">No stock entries yet for this product.</div>
+<div class="empty-state empty-state-sm">
+    <p>No stock entries yet for this product.</p>
+</div>
 {% else %}
-<table class="table">
-    <thead>
-        <tr>
-            <th>Date</th>
-            <th>Type</th>
-            <th>In (g)</th>
-            <th>Out (g)</th>
-            <th>Rate (₹/g)</th>
-            <th>Linked Bill</th>
-            <th>Notes</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for e in entries %}
-        <tr>
-            <td>{{ e.stock_date }}</td>
-            <td>
-                {% if e.transaction_type == "sale" %}
-                <span class="badge badge-sale">SALE</span>
-                {% elif e.transaction_type == "purchase" %}
-                <span class="badge badge-purchase">PURCHASE</span>
-                {% else %}
-                <span class="badge badge-partial">ADJUSTMENT</span>
-                {% endif %}
-            </td>
-            <td style="color:#28a745">
-                {{ e.quantity_in ~ "g" if e.quantity_in else "—" }}
-            </td>
-            <td style="color:#dc3545">
-                {{ e.quantity_out ~ "g" if e.quantity_out else "—" }}
-            </td>
-            <td>{{ "₹%.2f"|format(e.rate) if e.rate else "—" }}</td>
-            <td>
-                {% if e.invoice_id and e.invoice_id in invoices %}
-                <a href="/invoices/{{ e.invoice_id }}">
-                    {{ invoices[e.invoice_id].invoice_number }}
-                </a>
-                {% else %}—{% endif %}
-            </td>
-            <td style="font-size:12px;color:#888">{{ e.notes or "—" }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="table-wrap">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>In (g)</th>
+                <th>Out (g)</th>
+                <th>Rate (₹/g)</th>
+                <th>Linked Bill</th>
+                <th>Notes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for e in entries %}
+            <tr>
+                <td><span class="date-cell">{{ e.stock_date }}</span></td>
+                <td>
+                    {% if e.transaction_type == "sale" %}
+                    <span class="badge badge-info">Sale</span>
+                    {% elif e.transaction_type == "purchase" %}
+                    <span class="badge badge-warning">Purchase</span>
+                    {% else %}
+                    <span class="badge badge-neutral">Adjustment</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if e.quantity_in %}
+                    <span class="stock-in">{{ e.quantity_in }}g</span>
+                    {% else %}<span class="text-muted">—</span>{% endif %}
+                </td>
+                <td>
+                    {% if e.quantity_out %}
+                    <span class="stock-out">{{ e.quantity_out }}g</span>
+                    {% else %}<span class="text-muted">—</span>{% endif %}
+                </td>
+                <td><span class="rate-cell">{{ "₹%.2f"|format(e.rate) if e.rate else "—" }}</span></td>
+                <td>
+                    {% if e.invoice_id and e.invoice_id in invoices %}
+                    <a href="/invoices/{{ e.invoice_id }}" class="table-link">
+                        {{ invoices[e.invoice_id].invoice_number }}
+                    </a>
+                    {% else %}<span class="text-muted">—</span>{% endif %}
+                </td>
+                <td><span class="text-muted-sm">{{ e.notes or "—" }}</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 {% endif %}
 
 {% endif %}
 
-<!-- Manual Adjustment Modal -->
-<div id="adjustModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;
-     background:rgba(0,0,0,0.5);z-index:100;align-items:center;justify-content:center">
-    <div style="background:#fff;border-radius:12px;padding:24px;width:380px;max-width:90%;
-                box-shadow:0 4px 24px rgba(0,0,0,0.15)">
-        <h3 style="margin-bottom:16px;font-size:16px">Manual Stock Adjustment</h3>
-        <p id="adjustProductName" style="color:#888;font-size:13px;margin-bottom:12px"></p>
+<!-- ══════════════════════════════════════════
+     MANUAL ADJUSTMENT MODAL
+═══════════════════════════════════════════ -->
+<div id="adjustModal" class="modal-backdrop" style="display:none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">Manual Stock Adjustment</h3>
+            <button class="modal-close-btn" onclick="closeAdjust()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <p id="adjustProductName" class="modal-subtitle"></p>
         <input type="hidden" id="adjustProductId">
 
-        <div class="form-group" style="margin-bottom:12px">
-            <label>Type</label>
-            <select id="adjustType" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px">
-                <option value="in">Stock In (received / opening stock)</option>
-                <option value="out">Stock Out (lost / correction)</option>
-            </select>
+        <div class="modal-body">
+            <div class="field-group">
+                <label class="field-label">Type</label>
+                <select class="field-select" id="adjustType">
+                    <option value="in">Stock In (received / opening stock)</option>
+                    <option value="out">Stock Out (lost / correction)</option>
+                </select>
+            </div>
+            <div class="field-row">
+                <div class="field-group">
+                    <label class="field-label">Quantity (grams)</label>
+                    <input class="field-input" type="number" id="adjustQty" step="0.001" min="0" placeholder="0.000">
+                </div>
+                <div class="field-group">
+                    <label class="field-label">Date</label>
+                    <input class="field-input" type="date" id="adjustDate">
+                </div>
+            </div>
+            <div class="field-group">
+                <label class="field-label">Notes</label>
+                <input class="field-input" type="text" id="adjustNotes" placeholder="Reason for adjustment">
+            </div>
         </div>
-        <div class="form-group" style="margin-bottom:12px">
-            <label>Quantity (grams)</label>
-            <input type="number" id="adjustQty" step="0.001" min="0"
-                   style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px">
-        </div>
-        <div class="form-group" style="margin-bottom:12px">
-            <label>Date</label>
-            <input type="date" id="adjustDate"
-                   style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px">
-        </div>
-        <div class="form-group" style="margin-bottom:16px">
-            <label>Notes</label>
-            <input type="text" id="adjustNotes" placeholder="Reason for adjustment"
-                   style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px">
-        </div>
-        <div style="display:flex;gap:10px">
-            <button onclick="submitAdjust()" class="btn-primary">Save</button>
-            <button onclick="closeAdjust()" class="btn-ghost">Cancel</button>
+
+        <div class="modal-footer">
+            <button onclick="submitAdjust()" class="btn btn-gold">Save Adjustment</button>
+            <button onclick="closeAdjust()" class="btn btn-ghost">Cancel</button>
         </div>
     </div>
 </div>
@@ -200,37 +294,57 @@
 {% block scripts %}
 <script>
 function openAdjust(productId, productName) {
-    document.getElementById("adjustProductId").value   = productId;
+    document.getElementById("adjustProductId").value       = productId;
     document.getElementById("adjustProductName").textContent = productName;
-    document.getElementById("adjustDate").value        = new Date().toISOString().split("T")[0];
-    document.getElementById("adjustQty").value         = "";
-    document.getElementById("adjustNotes").value       = "";
-    document.getElementById("adjustModal").style.display = "flex";
+    document.getElementById("adjustDate").value            = new Date().toISOString().split("T")[0];
+    document.getElementById("adjustQty").value             = "";
+    document.getElementById("adjustNotes").value           = "";
+    document.getElementById("adjustModal").style.display   = "flex";
+    document.body.classList.add("modal-open");
 }
 
 function closeAdjust() {
     document.getElementById("adjustModal").style.display = "none";
+    document.body.classList.remove("modal-open");
 }
 
 async function submitAdjust() {
     const id  = document.getElementById("adjustProductId").value;
     const qty = document.getElementById("adjustQty").value;
-    if (!qty || parseFloat(qty) <= 0) { alert("Enter a valid quantity."); return; }
+    if (!qty || parseFloat(qty) <= 0) {
+        if (window.showToast) showToast("Enter a valid quantity", "error");
+        else alert("Enter a valid quantity.");
+        return;
+    }
 
     const payload = {
-        type:  document.getElementById("adjustType").value,
+        type:     document.getElementById("adjustType").value,
         quantity: qty,
-        date:  document.getElementById("adjustDate").value,
-        notes: document.getElementById("adjustNotes").value || null,
+        date:     document.getElementById("adjustDate").value,
+        notes:    document.getElementById("adjustNotes").value || null,
     };
 
-    const res  = await fetch(`/stock/${id}/adjust`, {
-        method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (data.success) { closeAdjust(); location.reload(); }
-    else alert("Error: " + data.error);
+    try {
+        const res  = await fetch(`/stock/${id}/adjust`, {
+            method: "POST", headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (res.ok && data.success) { closeAdjust(); location.reload(); }
+        else {
+            if (window.showToast) showToast("Error: " + (data.error || "Unable to save adjustment"), "error");
+            else alert("Error: " + (data.error || "Unable to save adjustment"));
+        }
+    } catch (e) {
+        if (window.showToast) showToast("Network error while saving adjustment", "error");
+        else alert("Network error while saving adjustment.");
+    }
 }
+
+document.addEventListener("keydown", function(e) {
+    if (e.key === "Escape" && document.getElementById("adjustModal")?.style.display === "flex") {
+        closeAdjust();
+    }
+});
 </script>
 {% endblock %}

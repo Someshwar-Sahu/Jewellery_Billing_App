@@ -1,13 +1,11 @@
 from fastapi.responses import RedirectResponse, FileResponse
-from fastapi import FastAPI, Depends, Request
+from fastapi import FastAPI, Depends
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
-from app.database import create_db_and_tables
 from app.models import *
-from app.routers import invoices, parties, rates, old_gold, products, expenses, stocks, advances, settings,scan, reports, exports, dashboard, auth
+from app.routers import invoices, parties, rates, old_gold, products, expenses, stocks, advances, settings, scan, reports, exports, dashboard, auth
 from app.dependencies import require_login, add_login_redirect_handler
 from app.config import settings as app_settings
-import os
 
 app = FastAPI(
     title="Jewellery Billing App",
@@ -55,14 +53,8 @@ for router in protected:
 
 @app.on_event("startup")
 def on_startup():
-    # Run all pending Alembic migrations automatically on every startup
-    # This means: deploy to prod, restart app — DB is always up to date
-    # from alembic.config import Config
-    # from alembic import command
-    # alembic_cfg = Config("alembic.ini")
-    # command.upgrade(alembic_cfg, "head")
-    print("✅ Database migrations applied")
+    pass
 
 @app.get("/")
 def root():
-    return RedirectResponse(url="/invoices")
+    return RedirectResponse(url="/dashboard")

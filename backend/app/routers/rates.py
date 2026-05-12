@@ -57,7 +57,6 @@ async def create_rate_submit(request: Request, session: Session = Depends(get_se
             gold_18k = float(data["gold_18k"]) if data.get("gold_18k") else None
             silver   = float(data["silver"])   if data.get("silver")   else None
 
-            # ADD:
             if gold_22k is not None and gold_22k <= 0:
                 return JSONResponse(status_code=400, content={"success": False, "error": "Gold 22K rate must be greater than zero."})
             if gold_18k is not None and gold_18k <= 0:

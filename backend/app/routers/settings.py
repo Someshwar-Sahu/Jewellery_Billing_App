@@ -40,14 +40,12 @@ async def save_shop(request: Request, session: Session = Depends(get_session)):
         shop = session.exec(select(ShopSettings)).first()
 
         if not shop:
-            # First time setup — create the row
             shop = ShopSettings(
                 shop_name = data.get("shop_name", "My Shop"),
             )
             session.add(shop)
             session.flush()
 
-        # Update all fields
         shop.shop_name       = data.get("shop_name")       or shop.shop_name
         shop.gstin           = data.get("gstin")           or None
         shop.address         = data.get("address")         or None
@@ -89,7 +87,6 @@ async def save_fy(request: Request, session: Session = Depends(get_session)):
         start_raw = data.get("start_date")
         end_raw = data.get("end_date")
 
-        # Date safety: always store date objects (PostgreSQL-compatible)
         if start_raw or end_raw:
             if not start_raw or not end_raw:
                 return JSONResponse(status_code=400, content={"success": False, "error": "Both start and end dates are required."})
@@ -104,7 +101,6 @@ async def save_fy(request: Request, session: Session = Depends(get_session)):
         if start_date > end_date:
             return JSONResponse(status_code=400, content={"success": False, "error": "Financial year start date cannot be after end date."})
 
-        # Overlap safety: no overlapping FY windows
         all_fy = session.exec(select(FinancialYear)).all()
         for fy in all_fy:
             if existing and fy.id == existing.id:
@@ -118,13 +114,11 @@ async def save_fy(request: Request, session: Session = Depends(get_session)):
                     },
                 )
 
-        # Single-active safety: deactivate all, then activate selected FY
         for fy in all_fy:
             fy.is_active = False
             session.add(fy)
 
         if existing:
-            # ADD THIS BLOCK:
             if existing.is_closed:
                 return JSONResponse(
                     status_code=400,
@@ -160,7 +154,7 @@ async def close_fy(request: Request, session: Session = Depends(get_session)):
     new_label      = (data.get("new_label")      or "").strip()
     new_start_raw  = (data.get("new_start_date") or "").strip()
     new_end_raw    = (data.get("new_end_date")   or "").strip()
-    confirmed      = data.get("confirmed", False)   # two-step: first call returns warnings
+    confirmed      = data.get("confirmed", False)  
 
     if not new_label or not new_start_raw or not new_end_raw:
         return JSONResponse(
@@ -177,14 +171,12 @@ async def close_fy(request: Request, session: Session = Depends(get_session)):
     if new_start > new_end:
         return JSONResponse(status_code=400, content={"success": False, "error": "Start date cannot be after end date."})
 
-    # Get current active FY
     active_fy = session.exec(
         select(FinancialYear).where(FinancialYear.is_active == True)
     ).first()
     if not active_fy:
         return JSONResponse(status_code=400, content={"success": False, "error": "No active financial year found."})
 
-    # Prevent creating a duplicate label
     duplicate = session.exec(
         select(FinancialYear).where(FinancialYear.label == new_label)
     ).first()
@@ -194,7 +186,6 @@ async def close_fy(request: Request, session: Session = Depends(get_session)):
             content={"success": False, "error": f"Financial year '{new_label}' already exists."}
         )
 
-    # Overlap check
     all_fys = session.exec(select(FinancialYear)).all()
     for fy in all_fys:
         if not (new_end < fy.start_date or new_start > fy.end_date):
@@ -203,7 +194,6 @@ async def close_fy(request: Request, session: Session = Depends(get_session)):
                 content={"success": False, "error": f"New FY period overlaps with existing FY '{fy.label}'."}
             )
 
-    # Build warnings about pending items in the FY being closed
     from app.models.invoices import Invoice
     from app.models.payments import Advance
 
@@ -231,7 +221,6 @@ async def close_fy(request: Request, session: Session = Depends(get_session)):
             f"{len(open_advances)} open advance(s) totalling ₹{total_adv:,.2f} will carry forward to the new FY."
         )
 
-    # First call (confirmed=False) — return warnings and ask for confirmation
     cf_preview_bills = session.exec(
         select(Invoice)
         .where(Invoice.is_cancelled == False)
@@ -250,7 +239,6 @@ async def close_fy(request: Request, session: Session = Depends(get_session)):
             "carry_forward_count":  len(cf_parties),
         }
 
-    # ── ATOMIC CLOSE + OPEN ───────────────────────────────────────────────
     try:
         active_fy.is_active = False
         active_fy.is_closed = True
@@ -266,7 +254,6 @@ async def close_fy(request: Request, session: Session = Depends(get_session)):
         session.add(new_fy)
         session.flush()   
 
-        # ── CARRY FORWARD ─────────────────────────────────────────────
         _carry_forward_party_balances(session, active_fy)
 
         session.commit()
@@ -294,8 +281,6 @@ def _carry_forward_party_balances(session: Session, closing_fy: FinancialYear) -
     - Idempotent: overwrites previous carry-forward value (type = "carried_forward").
     """
     
-
-    # Fetch all unpaid/partial bills in the closing FY
     bills = session.exec(
         select(Invoice)
         .where(Invoice.is_cancelled == False)
@@ -305,7 +290,6 @@ def _carry_forward_party_balances(session: Session, closing_fy: FinancialYear) -
         .where(Invoice.party_id != None)
     ).all()
 
-    # Group by party — net: sale dues (we receive) minus purchase dues (we pay)
     party_net: dict[int, Decimal] = {}
     for bill in bills:
         due = Decimal(str(bill.amount_due))
@@ -314,7 +298,6 @@ def _carry_forward_party_balances(session: Session, closing_fy: FinancialYear) -
         elif bill.invoice_type in ("purchase", "credit_note"):
             party_net[bill.party_id] = party_net.get(bill.party_id, Decimal("0")) - due
 
-    # Write to Party.opening_balance
     for party_id, net in party_net.items():
         if net == Decimal("0"):
             continue
@@ -322,7 +305,6 @@ def _carry_forward_party_balances(session: Session, closing_fy: FinancialYear) -
         if not party:
             continue
         party.opening_balance      = float(abs(net))
-        # debit = customer owes us (sale dues), credit = we owe supplier (purchase dues)
         party.opening_balance_type = "debit" if net > 0 else "credit"
         session.add(party)
 

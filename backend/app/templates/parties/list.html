@@ -1,76 +1,115 @@
 {% extends "base.html" %}
 {% block title %}Parties{% endblock %}
+{% block nav_parties %}active{% endblock %}
+{% block bnav_parties %}active{% endblock %}
+{% block page_title %}Parties{% endblock %}
+
 {% block content %}
 
 <div class="page-header">
-    <h1>Parties</h1>
-    <div style="display:flex;gap:8px">
-        <a href="/parties/create?type=customer" class="btn-primary">+ Add Customer</a>
-        <a href="/parties/create?type=supplier" class="btn-secondary">+ Add Supplier</a>
+    <div class="page-header-left">
+        <h1 class="page-title">Parties</h1>
+        <p class="page-subtitle">Manage customers &amp; suppliers</p>
+    </div>
+    <div class="page-header-actions">
+        <a href="/parties/create?type=customer" class="btn btn-gold">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Customer
+        </a>
+        <a href="/parties/create?type=supplier" class="btn btn-outline">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Supplier
+        </a>
     </div>
 </div>
 
-<!-- Search + filter bar -->
-<form method="get" action="/parties" style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap">
-    <div class="form-group" style="flex:1;min-width:200px">
-        <input type="text" name="q" value="{{ q }}" placeholder="Search name or phone..."
-               style="width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:6px">
-    </div>
-    <div class="form-group">
-        <select name="type" style="padding:8px 10px;border:1px solid #ccc;border-radius:6px">
+<!-- Filter bar -->
+<div class="filter-bar">
+    <form method="get" action="/parties" class="filter-form">
+        <div class="filter-search-wrap">
+            <svg class="filter-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" name="q" value="{{ q }}" placeholder="Search by name or phone…" class="filter-search-input">
+        </div>
+        <select name="type" class="filter-select">
             <option value="">All Types</option>
             <option value="customer" {{ 'selected' if type_filter=='customer' else '' }}>Customers</option>
             <option value="supplier" {{ 'selected' if type_filter=='supplier' else '' }}>Suppliers</option>
         </select>
-    </div>
-    <button type="submit" class="btn-secondary">Search</button>
-    {% if q or type_filter %}
-    <a href="/parties" class="btn-ghost">Clear</a>
-    {% endif %}
-</form>
+        <button type="submit" class="btn btn-outline btn-sm">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            Filter
+        </button>
+        {% if q or type_filter %}
+        <a href="/parties" class="btn btn-ghost btn-sm">Clear</a>
+        {% endif %}
+    </form>
+</div>
 
 {% if not parties %}
 <div class="empty-state">
-    No parties found.
-    <a href="/parties/create">Add your first party.</a>
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+    <p>No parties found.</p>
+    <a href="/parties/create" class="btn btn-gold btn-sm">Add your first party</a>
 </div>
 {% else %}
-<table class="table">
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Phone</th>
-            <th>City</th>
-            <th>GSTIN</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for p in parties %}
-        <tr>
-            <td><a href="/parties/{{ p.id }}"><strong>{{ p.name }}</strong></a></td>
-            <td>
-                {% if p.type == 'customer' %}
-                    <span class="badge badge-paid">CUSTOMER</span>
-                {% elif p.type == 'supplier' %}
-                    <span class="badge badge-purchase">SUPPLIER</span>
-                {% else %}
-                    <span class="badge badge-partial">BOTH</span>
-                {% endif %}
-            </td>
-            <td>{{ p.phone or "—" }}</td>
-            <td>{{ p.city or "—" }}</td>
-            <td style="font-size:12px">{{ p.gstin or "—" }}</td>
-            <td>
-                <a href="/parties/{{ p.id }}" class="btn-ghost btn-sm">View</a>
-                <a href="/parties/{{ p.id }}/edit" class="btn-ghost btn-sm">Edit</a>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-<p style="color:#888;font-size:12px;margin-top:8px">{{ parties|length }} parties total</p>
+
+<div class="table-card">
+    <div class="table-card-header">
+        <span class="table-count">{{ parties|length }} parties</span>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Phone</th>
+                    <th>City</th>
+                    <th>GSTIN</th>
+                    <th class="col-actions">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in parties %}
+                <tr class="table-row-link" onclick="window.location='/parties/{{ p.id }}'">
+                    <td>
+                        <div class="party-name-cell">
+                            <div class="party-avatar">{{ p.name[0] | upper }}</div>
+                            <div>
+                                <span class="table-primary">{{ p.name }}</span>
+                                {% if p.email %}<span class="table-secondary">{{ p.email }}</span>{% endif %}
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        {% if p.type == 'customer' %}
+                            <span class="badge badge-green">Customer</span>
+                        {% elif p.type == 'supplier' %}
+                            <span class="badge badge-blue">Supplier</span>
+                        {% else %}
+                            <span class="badge badge-gold">Both</span>
+                        {% endif %}
+                    </td>
+                    <td class="table-mono">{{ p.phone or "—" }}</td>
+                    <td>{{ p.city or "—" }}</td>
+                    <td class="table-mono table-dim">{{ p.gstin or "—" }}</td>
+                    <td class="col-actions" onclick="event.stopPropagation()">
+                        <a href="/parties/{{ p.id }}" class="btn btn-ghost btn-xs">View</a>
+                        <a href="/parties/{{ p.id }}/edit" class="btn btn-ghost btn-xs">Edit</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 {% endif %}
 
 {% endblock %}

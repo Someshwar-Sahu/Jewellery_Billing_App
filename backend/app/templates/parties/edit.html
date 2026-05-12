@@ -1,106 +1,166 @@
 {% extends "base.html" %}
 {% block title %}Edit {{ party.name }}{% endblock %}
+{% block nav_parties %}active{% endblock %}
+{% block bnav_parties %}active{% endblock %}
+{% block page_title %}Edit Party{% endblock %}
+
 {% block content %}
 
 <div class="page-header">
-    <h1>Edit — {{ party.name }}</h1>
-    <a href="/parties/{{ party.id }}" class="btn-ghost">← Cancel</a>
+    <div class="page-header-left">
+        <a href="/parties/{{ party.id }}" class="page-back-link">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            {{ party.name }}
+        </a>
+        <h1 class="page-title">Edit Party</h1>
+    </div>
 </div>
 
-<form id="editForm" style="background:#fff;padding:24px;border-radius:8px;max-width:700px">
+<div class="form-page-layout">
+<div class="form-card" id="editForm">
 
-    <!-- Party type is not editable — changing type after bills exist would break ledger logic -->
-    <div class="form-row">
-        <div class="form-group">
-            <label>Party Type (cannot change)</label>
-            <input type="text" value="{{ party.type | upper }}" disabled style="background:#f5f5f5;color:#888">
-        </div>
-        <div class="form-group" style="flex:2">
-            <label>Full Name *</label>
-            <input type="text" name="name" value="{{ party.name }}" required>
+    <!-- Section: Identity -->
+    <div class="form-section">
+        <div class="form-section-title">Basic Information</div>
+        <div class="form-grid form-grid-3">
+            <div class="field-group">
+                <label class="field-label">Party Type</label>
+                <div class="field-input-wrap">
+                    <input class="field-input field-disabled" type="text" value="{{ party.type | upper }}" disabled>
+                </div>
+                <span class="field-hint">Type cannot be changed after creation</span>
+            </div>
+            <div class="field-group col-span-2">
+                <label class="field-label" for="partyName">Full Name <span class="field-req">*</span></label>
+                <input class="field-input" type="text" id="partyName" name="name" value="{{ party.name }}">
+            </div>
         </div>
     </div>
 
-    <div class="form-row">
-        <div class="form-group">
-            <label>Phone</label>
-            <input type="text" name="phone" value="{{ party.phone or '' }}">
+    <!-- Section: Contact -->
+    <div class="form-section">
+        <div class="form-section-title">Contact Details</div>
+        <div class="form-grid form-grid-3">
+            <div class="field-group">
+                <label class="field-label">Phone</label>
+                <div class="field-input-wrap">
+                    <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13.5a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.55 3h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10.5a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.5 17l.41-.08z"/></svg>
+                    <input class="field-input" type="text" name="phone" value="{{ party.phone or '' }}">
+                </div>
+            </div>
+            <div class="field-group">
+                <label class="field-label">Email</label>
+                <div class="field-input-wrap">
+                    <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    <input class="field-input" type="email" name="email" value="{{ party.email or '' }}">
+                </div>
+            </div>
+            <div class="field-group">
+                <label class="field-label">City</label>
+                <input class="field-input" type="text" name="city" value="{{ party.city or '' }}">
+            </div>
         </div>
-        <div class="form-group">
-            <label>Email</label>
-            <input type="email" name="email" value="{{ party.email or '' }}">
-        </div>
-        <div class="form-group">
-            <label>City</label>
-            <input type="text" name="city" value="{{ party.city or '' }}">
-        </div>
-    </div>
-
-    <div class="form-row">
-        <div class="form-group" style="flex:2">
-            <label>Address</label>
-            <input type="text" name="address" value="{{ party.address or '' }}">
-        </div>
-        <div class="form-group">
-            <label>State</label>
-            <input type="text" name="state" value="{{ party.state or 'Uttar Pradesh' }}">
-        </div>
-    </div>
-
-    <div class="form-row">
-        <div class="form-group" style="flex:2">
-            <label>GSTIN</label>
-            <input type="text" name="gstin" id="gstinInput" value="{{ party.gstin or '' }}"
-                   maxlength="15" style="text-transform:uppercase"
-                   oninput="this.value=this.value.toUpperCase();validateGSTIN(this.value)">
-            <small id="gstinMsg" style="font-size:11px;color:#888">
-                {% if party.gstin %}{{ party.gstin }}{% else %}Leave blank if no GST{% endif %}
-            </small>
+        <div class="form-grid form-grid-3">
+            <div class="field-group col-span-2">
+                <label class="field-label">Address</label>
+                <input class="field-input" type="text" name="address" value="{{ party.address or '' }}">
+            </div>
+            <div class="field-group">
+                <label class="field-label">State</label>
+                <input class="field-input" type="text" name="state" value="{{ party.state or 'Uttar Pradesh' }}">
+            </div>
         </div>
     </div>
 
-    <div class="form-row">
-        <div class="form-group">
-            <label>Credit Limit (₹)</label>
-            <input type="number" name="credit_limit" value="{{ party.credit_limit or '' }}" min="0" step="100">
-        </div>
-        <div class="form-group">
-            <label>Credit Days</label>
-            <input type="number" name="credit_days" value="{{ party.credit_days or '' }}" min="0">
+    <!-- Section: GST -->
+    <div class="form-section">
+        <div class="form-section-title">GST Information</div>
+        <div class="form-grid form-grid-2">
+            <div class="field-group">
+                <label class="field-label">GSTIN</label>
+                <input class="field-input field-mono" type="text" name="gstin" id="gstinInput"
+                       value="{{ party.gstin or '' }}" maxlength="15"
+                       style="text-transform:uppercase"
+                       oninput="this.value=this.value.toUpperCase();validateGSTIN(this.value)">
+                <span class="field-hint" id="gstinMsg">
+                    {% if party.gstin %}{{ party.gstin }}{% else %}Leave blank if unregistered{% endif %}
+                </span>
+            </div>
         </div>
     </div>
 
-    <div class="form-group" style="margin-bottom:20px">
-        <label>Notes</label>
-        <textarea name="notes" rows="2">{{ party.notes or '' }}</textarea>
+    <!-- Section: Credit -->
+    <div class="form-section">
+        <div class="form-section-title">Credit Settings</div>
+        <div class="form-grid form-grid-2">
+            <div class="field-group">
+                <label class="field-label">Credit Limit (₹)</label>
+                <input class="field-input" type="number" name="credit_limit" value="{{ party.credit_limit or '' }}" min="0" step="100">
+            </div>
+            <div class="field-group">
+                <label class="field-label">Credit Days</label>
+                <input class="field-input" type="number" name="credit_days" value="{{ party.credit_days or '' }}" min="0">
+            </div>
+        </div>
     </div>
 
+    <!-- Section: Notes -->
+    <div class="form-section">
+        <div class="form-section-title">Additional Notes</div>
+        <div class="field-group">
+            <textarea class="field-textarea" name="notes" rows="3">{{ party.notes or '' }}</textarea>
+        </div>
+    </div>
+
+    <!-- Actions -->
     <div class="form-actions">
-        <button type="button" onclick="saveEdit({{ party.id }})" class="btn-primary btn-large">Save Changes</button>
-        <a href="/parties/{{ party.id }}" class="btn-ghost">Cancel</a>
+        <button type="button" onclick="saveEdit({{ party.id }})" class="btn btn-gold btn-lg">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"/></svg>
+            Save Changes
+        </button>
+        <a href="/parties/{{ party.id }}" class="btn btn-ghost">Cancel</a>
     </div>
-</form>
+
+</div>
+</div>
 
 {% endblock %}
 
 {% block scripts %}
 <script>
+let _savingPartyEdit = false;
+
+async function _requestJson(url, options) {
+    try {
+        const res = await fetch(url, options);
+        let data = {};
+        try { data = await res.json(); } catch (_) {}
+        if (!res.ok) {
+            return { ok: false, data, error: data.error || data.detail || data.message || "Request failed" };
+        }
+        return { ok: true, data };
+    } catch (_) {
+        return { ok: false, data: null, error: "Network error. Please try again." };
+    }
+}
+
 function validateGSTIN(val) {
     const msg = document.getElementById("gstinMsg");
-    if (!val) { msg.textContent = "Leave blank if no GST"; msg.style.color = "#888"; return; }
+    if (!val) { msg.textContent = "Leave blank if unregistered"; msg.className = "field-hint"; return; }
     const re = /^\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}Z[A-Z\d]{1}$/;
     if (val.length === 15 && re.test(val)) {
-        msg.textContent = "✓ Valid GSTIN format"; msg.style.color = "#28a745";
+        msg.textContent = "✓ Valid GSTIN format"; msg.className = "field-hint field-hint-success";
     } else {
         msg.textContent = val.length < 15 ? val.length + "/15 characters" : "✗ Invalid format";
-        msg.style.color = val.length < 15 ? "#888" : "#dc3545";
+        msg.className = val.length < 15 ? "field-hint" : "field-hint field-hint-error";
     }
 }
 
 async function saveEdit(partyId) {
+    if (_savingPartyEdit) return;
     const form = document.getElementById("editForm");
     const name = form.querySelector('[name="name"]').value.trim();
-    if (!name) { alert("Name is required."); return; }
+    if (!name) { showToast("Name is required.", "error"); return; }
 
     const payload = {
         name,
@@ -115,15 +175,24 @@ async function saveEdit(partyId) {
         notes:        form.querySelector('[name="notes"]').value          || null,
     };
 
-    const res  = await fetch("/parties/" + partyId + "/edit", {
-        method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (data.success) {
-        window.location.href = "/parties/" + data.party_id;
-    } else {
-        alert("Error: " + data.error);
+    const btn = document.querySelector(`button[onclick="saveEdit(${partyId})"]`);
+    if (btn) btn.disabled = true;
+    _savingPartyEdit = true;
+    try {
+        const out = await _requestJson("/parties/" + partyId + "/edit", {
+            method: "POST", headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload),
+        });
+        const data = out.data || {};
+        if (out.ok && data.success) {
+            window.location.href = "/parties/" + data.party_id;
+            return;
+        }
+        const msg = out.error || data.error || "Unable to save party changes";
+        showToast("Error: " + msg, "error");
+    } finally {
+        _savingPartyEdit = false;
+        if (btn) btn.disabled = false;
     }
 }
 </script>

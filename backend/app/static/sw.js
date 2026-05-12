@@ -1,22 +1,16 @@
-// ── JEWELLERY BILLING APP — SERVICE WORKER ────────────────────────────────────
-// Strategy:
-//   Shell files (CSS, JS, icons) → Cache-first (fast loads, updated on new deploy)
-//   All HTML pages and API calls → Network-first (always fresh data)
-//   Offline fallback → Show a simple offline page if network fails
+// ── JEWELLERY BILLING APP — SERVICE WORKER v3 ─────────────────────────────────
+// CSS/JS: network-first so updates load immediately without hard refresh.
+// Images/icons: cache-first (they never change).
+// HTML + API: network-first always.
 
-const CACHE_NAME    = 'jewelbill-v1';
-const CACHE_VERSION = 1;
+const CACHE_NAME = 'jewelbill-v3';
 
-// Files to pre-cache on install — the app "shell"
-const SHELL_URLS = [
-    '/static/css/style.css',
-    '/static/js/invoice.js',
+const IMMUTABLE_URLS = [
     '/static/icons/icon-192.png',
     '/static/icons/icon-512.png',
     '/manifest.json',
 ];
 
-// Offline fallback HTML — shown when network fails on a page navigation
 const OFFLINE_HTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -44,80 +38,59 @@ const OFFLINE_HTML = `<!DOCTYPE html>
 </body>
 </html>`;
 
-// ── INSTALL: pre-cache the shell ──────────────────────────────────────────────
+// ── INSTALL ────────────────────────────────────────────────────────────────────
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
-            console.log('[SW] Pre-caching shell');
-            // Cache each file individually — don't let one failure block all
             return Promise.allSettled(
-                SHELL_URLS.map(url =>
-                    cache.add(url).catch(err =>
-                        console.warn('[SW] Failed to cache:', url, err)
-                    )
+                IMMUTABLE_URLS.map(url =>
+                    cache.add(url).catch(err => console.warn('[SW] Failed to cache:', url, err))
                 )
             );
         }).then(() => self.skipWaiting())
     );
 });
 
-// ── ACTIVATE: clean up old caches ─────────────────────────────────────────────
+// ── ACTIVATE: wipe all old caches ─────────────────────────────────────────────
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((keys) =>
             Promise.all(
-                keys
-                    .filter(key => key !== CACHE_NAME)
-                    .map(key => {
-                        console.log('[SW] Deleting old cache:', key);
-                        return caches.delete(key);
-                    })
+                keys.filter(key => key !== CACHE_NAME).map(key => {
+                    console.log('[SW] Deleting old cache:', key);
+                    return caches.delete(key);
+                })
             )
         ).then(() => self.clients.claim())
     );
 });
 
-// ── FETCH: routing strategy ───────────────────────────────────────────────────
+// ── FETCH ──────────────────────────────────────────────────────────────────────
 self.addEventListener('fetch', (event) => {
     const { request } = event;
-    const url         = new URL(request.url);
+    const url = new URL(request.url);
 
-    // Only handle same-origin requests
     if (url.origin !== self.location.origin) return;
-
-    // Skip non-GET requests (POST/PUT bill saves must always go to network)
     if (request.method !== 'GET') return;
 
-    // ── Static assets: cache-first ────────────────────────────────────────
-    if (url.pathname.startsWith('/static/') || url.pathname === '/manifest.json') {
+    // Icons + manifest: cache-first (they never change)
+    if (IMMUTABLE_URLS.includes(url.pathname)) {
         event.respondWith(
-            caches.match(request).then(cached => {
-                if (cached) return cached;
-                return fetch(request).then(response => {
-                    if (response.ok) {
-                        const clone = response.clone();
-                        caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
-                    }
-                    return response;
-                });
-            })
+            caches.match(request).then(cached => cached || fetch(request))
         );
         return;
     }
 
-    // ── All other routes (HTML pages, API): network-first ─────────────────
-    // Data must always be fresh — never serve stale bills/rates from cache
+    // Everything else (CSS, JS, HTML, API): network-first so updates are instant
     event.respondWith(
         fetch(request)
             .then(response => response)
             .catch(() => {
-                // Network failed — check if it's a page navigation
                 if (request.mode === 'navigate') {
                     return new Response(OFFLINE_HTML, {
                         headers: { 'Content-Type': 'text/html' },
                     });
                 }
-                // For API/JSON requests return a JSON error
                 return new Response(
                     JSON.stringify({ error: 'You are offline.' }),
                     { headers: { 'Content-Type': 'application/json' } }

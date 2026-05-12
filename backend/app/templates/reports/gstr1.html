@@ -1,224 +1,1023 @@
 {% extends "base.html" %}
 {% block title %}GSTR-1 Report{% endblock %}
+{% block nav_gstr1 %}active{% endblock %}
+{% block page_title %}GSTR-1{% endblock %}
+
+{% block head %}
+<style>
+    .gstr-shell {
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+    }
+
+    /* Header */
+
+    .gstr-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 18px;
+        flex-wrap: wrap;
+    }
+
+    .gstr-header-left {
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+    }
+
+    .gstr-header-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        background: var(--gold-muted2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--gold);
+        flex-shrink: 0;
+    }
+
+    .gstr-title {
+        font-size: 1.55rem;
+        font-family: var(--font-display);
+        color: var(--text-primary);
+        line-height: 1.2;
+    }
+
+    .gstr-subtitle {
+        font-size: 0.88rem;
+        color: var(--text-muted);
+        margin-top: 4px;
+    }
+
+    .gstr-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    /* Filter */
+
+    .gstr-filter {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 16px 18px;
+    }
+
+    .gstr-filter form {
+        display: flex;
+        gap: 18px;
+        flex-wrap: wrap;
+        align-items: end;
+    }
+
+    .gstr-chip {
+        margin-left: auto;
+        background: var(--bg-subtle);
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-size: 0.78rem;
+        color: var(--text-muted);
+    }
+
+    /* Stats */
+
+    .gstr-stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+    }
+
+    @media(max-width:900px) {
+        .gstr-stats {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media(max-width:520px) {
+        .gstr-stats {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .gstr-stat {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-left: 4px solid var(--gold);
+        border-radius: 18px;
+        padding: 18px;
+    }
+
+    .gstr-stat.blue {
+        border-left-color: var(--blue);
+    }
+
+    .gstr-stat.green {
+        border-left-color: var(--green);
+    }
+
+    .gstr-stat.amber {
+        border-left-color: var(--amber);
+    }
+
+    .gstr-stat-label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-muted);
+        margin-bottom: 8px;
+    }
+
+    .gstr-stat-value {
+        font-size: 1.3rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .gstr-stat-sub {
+        margin-top: 4px;
+        font-size: 0.76rem;
+        color: var(--text-muted);
+    }
+
+    /* Section */
+
+    .gstr-section {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        overflow: hidden;
+    }
+
+    .gstr-section-head {
+        padding: 18px 22px;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg-subtle);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .gstr-section-head.blue {
+        border-left: 4px solid var(--blue);
+    }
+
+    .gstr-section-head.green {
+        border-left: 4px solid var(--green);
+    }
+
+    .gstr-section-head.amber {
+        border-left: 4px solid var(--amber);
+    }
+
+    .gstr-section-head.purple {
+        border-left: 4px solid #8b5cf6;
+    }
+
+    .gstr-section-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .gstr-section-sub {
+        margin-top: 4px;
+        font-size: 0.82rem;
+        color: var(--text-muted);
+    }
+
+    .gstr-badge {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 5px 12px;
+        font-size: 0.76rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+    }
+
+    /* Tables */
+
+    .gstr-table-wrap {
+        overflow-x: auto;
+    }
+
+    .gstr-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.84rem;
+    }
+
+    .gstr-table thead th {
+        background: var(--navy);
+        color: rgba(255, 255, 255, 0.72);
+        padding: 12px 14px;
+        text-align: left;
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        white-space: nowrap;
+    }
+
+    .gstr-table thead th.num {
+        text-align: right;
+    }
+
+    .gstr-table tbody tr {
+        border-bottom: 1px solid var(--border);
+        transition: background 120ms;
+    }
+
+    .gstr-table tbody tr:hover {
+        background: var(--bg-subtle);
+    }
+
+    .gstr-table tbody td {
+        padding: 12px 14px;
+        color: var(--text-secondary);
+        vertical-align: middle;
+    }
+
+    .gstr-table tbody td.num {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+        color: var(--text-primary);
+    }
+
+    .gstr-table tfoot td {
+        padding: 13px 14px;
+        background: var(--bg-subtle);
+        border-top: 2px solid var(--border);
+        font-weight: 800;
+        color: var(--text-primary);
+    }
+
+    .gstr-table tfoot td.num {
+        text-align: right;
+    }
+
+    .gstr-link {
+        color: var(--gold-dark);
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    .gstr-link:hover {
+        text-decoration: underline;
+    }
+
+    .gstr-gstin {
+        font-family: var(--font-mono);
+        font-size: 0.78rem;
+        color: var(--text-muted);
+    }
+
+    .gstr-empty {
+        padding: 34px;
+        text-align: center;
+        color: var(--text-muted);
+        font-style: italic;
+    }
+
+    /* Summary */
+
+    .gstr-summary {
+        background: linear-gradient(135deg, var(--navy), #1b3155);
+        border-radius: 24px;
+        padding: 28px;
+        color: white;
+    }
+
+    .gstr-summary-title {
+        font-size: 1.1rem;
+        font-family: var(--font-display);
+        color: rgba(255, 255, 255, 0.75);
+        margin-bottom: 20px;
+    }
+
+    .gstr-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 18px;
+    }
+
+    .gstr-summary-item-label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: rgba(255, 255, 255, 0.5);
+        margin-bottom: 6px;
+    }
+
+    .gstr-summary-item-value {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: white;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .gstr-summary-item.total .gstr-summary-item-value {
+        color: var(--gold-light);
+        font-size: 1.4rem;
+    }
+
+    .gstr-note {
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        font-size: 0.78rem;
+        color: rgba(255, 255, 255, 0.45);
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 
-<div class="page-header" style="display:flex;justify-content:space-between;align-items:center">
-    <h1>GSTR-1 — Outward Supplies</h1>
-    <button onclick="window.print()" class="btn-secondary">🖨 Print</button>
-</div>
+{% set total_taxable = b2b_totals.taxable_gold + b2b_totals.taxable_making + b2c_totals.taxable_gold +
+b2c_totals.taxable_making %}
+{% set total_cgst = b2b_totals.cgst + b2c_totals.cgst %}
+{% set total_sgst = b2b_totals.sgst + b2c_totals.sgst %}
+{% set total_tax = total_cgst + total_sgst %}
 
-<p style="color:#888;font-size:13px;margin-bottom:16px">
-    Only <strong>GST Ready</strong> and <strong>Locked</strong> sale bills are included.
-    Mark bills as GST Ready from the <a href="/invoices/gst/review">GST Review</a> page first.
-</p>
+<div class="gstr-shell">
 
-<!-- ── MONTH FILTER ─────────────────────────────────────────────── -->
-<form method="get" style="margin-bottom:20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <!-- Header -->
 
-    {% if all_fys|length > 1 %}
-    <label style="font-weight:600;font-size:13px">FY:</label>
-    <select name="fy_id" onchange="this.form.submit()"
-            style="padding:6px 10px;border-radius:6px;border:1px solid #ddd;font-size:13px">
-        {% for fy in all_fys %}
-        <option value="{{ fy.id }}"
-                {{ 'selected' if selected_fy and fy.id == selected_fy.id else '' }}>
-            {{ fy.label }}{{ ' ●' if fy.is_active else '' }}
-        </option>
-        {% endfor %}
-    </select>
-    {% else %}
-    <input type="hidden" name="fy_id" value="{{ selected_fy.id if selected_fy else '' }}">
-    {% endif %}
+    <div class="gstr-header">
 
-    <label style="font-weight:600;font-size:13px">Month:</label>
-    <select name="month" onchange="this.form.submit()"
-            style="padding:6px 10px;border-radius:6px;border:1px solid #ddd;font-size:13px">
-        <option value="">All Months</option>
-        {% for key, label in all_months %}
-        <option value="{{ key }}" {{ 'selected' if selected_month == key else '' }}>{{ label }}</option>
-        {% endfor %}
-    </select>
+        <div class="gstr-header-left">
 
-    {% if selected_month %}
-    <a href="/reports/gstr1?fy_id={{ selected_fy.id if selected_fy else '' }}"
-       class="btn-secondary btn-sm">✕ Clear Month</a>
-    {% endif %}
+            <div class="gstr-header-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                </svg>
+            </div>
 
-    <span style="color:#888;font-size:13px;margin-left:4px">
-        {{ total_bills }} bill(s)
-        {% if selected_fy %} — FY {{ selected_fy.label }}{% endif %}
-    </span>
-</form>
+            <div>
+                <div class="gstr-title">GSTR-1 — Outward Supplies</div>
 
-<!-- ── B2B SECTION ──────────────────────────────────────────────── -->
-<div style="background:#fff;border-radius:8px;padding:20px;margin-bottom:20px">
-    <h2 style="margin-bottom:4px">B2B — Registered Businesses (with GSTIN)</h2>
-    <p style="color:#888;font-size:12px;margin-bottom:14px">
-        These entries go into Table 4A of GSTR-1
-    </p>
+                <div class="gstr-subtitle">
+                    GST Ready & Locked sale bills only
+                </div>
+            </div>
 
-    {% if b2b_rows %}
-    <table style="width:100%;border-collapse:collapse">
-        <thead>
-            <tr style="background:#1a237e;color:#fff;font-size:12px">
-                <th style="padding:8px;text-align:left">Invoice No.</th>
-                <th style="padding:8px;text-align:left">Date</th>
-                <th style="padding:8px;text-align:left">Party</th>
-                <th style="padding:8px;text-align:left">GSTIN</th>
-                <th style="padding:8px;text-align:right">Taxable (₹)</th>
-                <th style="padding:8px;text-align:right">CGST (₹)</th>
-                <th style="padding:8px;text-align:right">SGST (₹)</th>
-                <th style="padding:8px;text-align:right">Grand Total (₹)</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in b2b_rows %}
-            <tr style="border-bottom:1px solid #eee;font-size:12px">
-                <td style="padding:7px 8px">
-                    <a href="/invoices/{{ row.invoice_id }}">{{ row.invoice_number }}</a>
-                </td>
-                <td style="padding:7px 8px">{{ row.invoice_date.strftime('%d-%m-%Y') }}</td>
-                <td style="padding:7px 8px">{{ row.party_name }}</td>
-                <td style="padding:7px 8px;font-family:monospace">{{ row.gstin or '—' }}</td>
-                <td style="padding:7px 8px;text-align:right">{{ "%.2f"|format(row.taxable) }}</td>
-                <td style="padding:7px 8px;text-align:right">{{ "%.2f"|format(row.cgst) }}</td>
-                <td style="padding:7px 8px;text-align:right">{{ "%.2f"|format(row.sgst) }}</td>
-                <td style="padding:7px 8px;text-align:right"><strong>{{ "%.2f"|format(row.grand_total) }}</strong></td>
-            </tr>
-            {% endfor %}
-        </tbody>
-        <tfoot>
-            <tr style="background:#f0f4ff;font-weight:700;font-size:12px">
-                <td colspan="4" style="padding:8px">B2B Total</td>
-                <td style="padding:8px;text-align:right">{{ "%.2f"|format(b2b_totals.taxable) }}</td>
-                <td style="padding:8px;text-align:right">{{ "%.2f"|format(b2b_totals.cgst) }}</td>
-                <td style="padding:8px;text-align:right">{{ "%.2f"|format(b2b_totals.sgst) }}</td>
-                <td style="padding:8px;text-align:right">{{ "%.2f"|format(b2b_totals.grand) }}</td>
-            </tr>
-        </tfoot>
-    </table>
-    {% else %}
-    <p style="color:#aaa;font-size:13px">No B2B bills found for this period.</p>
-    {% endif %}
-</div>
+        </div>
 
-<!-- ── B2C SECTION ──────────────────────────────────────────────── -->
-<div style="background:#fff;border-radius:8px;padding:20px;margin-bottom:20px">
-    <h2 style="margin-bottom:4px">B2C — Consumers (without GSTIN)</h2>
-    <p style="color:#888;font-size:12px;margin-bottom:14px">
-        These entries go into Table 7 of GSTR-1
-    </p>
+        <div class="gstr-actions">
 
-    {% if b2c_rows %}
-    <table style="width:100%;border-collapse:collapse">
-        <thead>
-            <tr style="background:#2e7d32;color:#fff;font-size:12px">
-                <th style="padding:8px;text-align:left">Invoice No.</th>
-                <th style="padding:8px;text-align:left">Date</th>
-                <th style="padding:8px;text-align:left">Party</th>
-                <th style="padding:8px;text-align:right">Taxable (₹)</th>
-                <th style="padding:8px;text-align:right">CGST (₹)</th>
-                <th style="padding:8px;text-align:right">SGST (₹)</th>
-                <th style="padding:8px;text-align:right">Grand Total (₹)</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in b2c_rows %}
-            <tr style="border-bottom:1px solid #eee;font-size:12px">
-                <td style="padding:7px 8px">
-                    <a href="/invoices/{{ row.invoice_id }}">{{ row.invoice_number }}</a>
-                </td>
-                <td style="padding:7px 8px">{{ row.invoice_date.strftime('%d-%m-%Y') }}</td>
-                <td style="padding:7px 8px">{{ row.party_name }}</td>
-                <td style="padding:7px 8px;text-align:right">{{ "%.2f"|format(row.taxable) }}</td>
-                <td style="padding:7px 8px;text-align:right">{{ "%.2f"|format(row.cgst) }}</td>
-                <td style="padding:7px 8px;text-align:right">{{ "%.2f"|format(row.sgst) }}</td>
-                <td style="padding:7px 8px;text-align:right"><strong>{{ "%.2f"|format(row.grand_total) }}</strong></td>
-            </tr>
-            {% endfor %}
-        </tbody>
-        <tfoot>
-            <tr style="background:#e8f5e9;font-weight:700;font-size:12px">
-                <td colspan="3" style="padding:8px">B2C Total</td>
-                <td style="padding:8px;text-align:right">{{ "%.2f"|format(b2c_totals.taxable) }}</td>
-                <td style="padding:8px;text-align:right">{{ "%.2f"|format(b2c_totals.cgst) }}</td>
-                <td style="padding:8px;text-align:right">{{ "%.2f"|format(b2c_totals.sgst) }}</td>
-                <td style="padding:8px;text-align:right">{{ "%.2f"|format(b2c_totals.grand) }}</td>
-            </tr>
-        </tfoot>
-    </table>
-    {% else %}
-    <p style="color:#aaa;font-size:13px">No B2C bills found for this period.</p>
-    {% endif %}
-</div>
+            <a href="/invoices/gst/review" class="btn btn-outline btn-sm">
+                GST Review
+            </a>
 
-<!-- ── HSN SUMMARY ───────────────────────────────────────────────── -->
-<div style="background:#fff;border-radius:8px;padding:20px;margin-bottom:20px">
-    <h2 style="margin-bottom:4px">HSN-wise Summary</h2>
-    <p style="color:#888;font-size:12px;margin-bottom:14px">
-        Table 12 of GSTR-1 — summarised by HSN code
-    </p>
+            <button onclick="window.print()" class="btn btn-outline btn-sm">
+                Print
+            </button>
 
-    {% if hsn_summary %}
-    <table style="width:100%;border-collapse:collapse">
-        <thead>
-            <tr style="background:#37474f;color:#fff;font-size:12px">
-                <th style="padding:8px;text-align:left">HSN Code</th>
-                <th style="padding:8px;text-align:right">Total Qty (g)</th>
-                <th style="padding:8px;text-align:right">Taxable Value (₹)</th>
-                <th style="padding:8px;text-align:right">CGST (₹)</th>
-                <th style="padding:8px;text-align:right">SGST (₹)</th>
-                <th style="padding:8px;text-align:right">Total Tax (₹)</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in hsn_summary %}
-            <tr style="border-bottom:1px solid #eee;font-size:12px">
-                <td style="padding:7px 8px;font-family:monospace;font-weight:600">{{ row.hsn }}</td>
-                <td style="padding:7px 8px;text-align:right">{{ "%.3f"|format(row.qty) }}</td>
-                <td style="padding:7px 8px;text-align:right">{{ "%.2f"|format(row.taxable) }}</td>
-                <td style="padding:7px 8px;text-align:right">{{ "%.2f"|format(row.cgst) }}</td>
-                <td style="padding:7px 8px;text-align:right">{{ "%.2f"|format(row.sgst) }}</td>
-                <td style="padding:7px 8px;text-align:right"><strong>{{ "%.2f"|format(row.cgst + row.sgst) }}</strong>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <p style="color:#aaa;font-size:13px">No item data found for this period.</p>
-    {% endif %}
-</div>
+        </div>
 
-<!-- ── GRAND SUMMARY BOX ─────────────────────────────────────────── -->
-<div style="background:#fff;border-radius:8px;padding:20px;margin-bottom:20px">
-    <h2 style="margin-bottom:14px">Period Summary</h2>
-    <table style="width:320px;border-collapse:collapse">
-        <tr style="border-bottom:1px solid #eee">
-            <td style="padding:8px;color:#555">Total Taxable Value</td>
-            <td style="padding:8px;text-align:right;font-weight:600">
-                ₹{{ "%.2f"|format(b2b_totals.taxable + b2c_totals.taxable) }}
-            </td>
-        </tr>
-        <tr style="border-bottom:1px solid #eee">
-            <td style="padding:8px;color:#555">Total CGST Collected</td>
-            <td style="padding:8px;text-align:right;font-weight:600">
-                ₹{{ "%.2f"|format(b2b_totals.cgst + b2c_totals.cgst) }}
-            </td>
-        </tr>
-        <tr style="border-bottom:1px solid #eee">
-            <td style="padding:8px;color:#555">Total SGST Collected</td>
-            <td style="padding:8px;text-align:right;font-weight:600">
-                ₹{{ "%.2f"|format(b2b_totals.sgst + b2c_totals.sgst) }}
-            </td>
-        </tr>
-        <tr style="background:#1a237e;color:#fff">
-            <td style="padding:10px 8px;font-weight:700">Total Tax Collected</td>
-            <td style="padding:10px 8px;text-align:right;font-weight:700;font-size:15px">
-                ₹{{ "%.2f"|format(b2b_totals.cgst + b2c_totals.cgst + b2b_totals.sgst + b2c_totals.sgst) }}
-            </td>
-        </tr>
-    </table>
+    </div>
+
+    <!-- Filters -->
+
+    <div class="gstr-filter">
+
+        <form method="get">
+
+            {% if all_fys|length > 1 %}
+            <div class="field-group">
+
+                <label class="field-label">Financial Year</label>
+
+                <select class="field-select field-select-sm" name="fy_id" onchange="this.form.submit()">
+
+                    {% for fy in all_fys %}
+                    <option value="{{ fy.id }}" {{ 'selected' if selected_fy and fy.id==selected_fy.id else '' }}>
+                        {{ fy.label }}{{ ' ●' if fy.is_active else '' }}
+                    </option>
+                    {% endfor %}
+
+                </select>
+
+            </div>
+            {% else %}
+            <input type="hidden" name="fy_id" value="{{ selected_fy.id if selected_fy else '' }}">
+            {% endif %}
+
+            <div class="field-group">
+
+                <label class="field-label">Month</label>
+
+                <select class="field-select field-select-sm" name="month" onchange="this.form.submit()">
+
+                    <option value="">All Months</option>
+
+                    {% for key, label in all_months %}
+                    <option value="{{ key }}" {{ 'selected' if selected_month==key else '' }}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+            {% if selected_month %}
+            <a href="/reports/gstr1?fy_id={{ selected_fy.id if selected_fy else '' }}" class="btn btn-ghost btn-sm">
+                Clear
+            </a>
+            {% endif %}
+
+            <span class="gstr-chip">
+                {{ total_bills }} bill{{ 's' if total_bills != 1 else '' }}
+                {% if selected_fy %} — FY {{ selected_fy.label }}{% endif %}
+            </span>
+
+        </form>
+
+    </div>
+
+    <!-- Stats -->
+
+    <div class="gstr-stats">
+
+        <div class="gstr-stat">
+
+            <div class="gstr-stat-label">Total Taxable</div>
+
+            <div class="gstr-stat-value">
+                ₹{{ "%.2f"|format(total_taxable) }}
+            </div>
+
+            <div class="gstr-stat-sub">
+                Gold + Making Charges
+            </div>
+
+        </div>
+
+        <div class="gstr-stat blue">
+
+            <div class="gstr-stat-label">CGST Collected</div>
+
+            <div class="gstr-stat-value">
+                ₹{{ "%.2f"|format(total_cgst) }}
+            </div>
+
+            <div class="gstr-stat-sub">
+                Total CGST output tax
+            </div>
+
+        </div>
+
+        <div class="gstr-stat green">
+
+            <div class="gstr-stat-label">SGST Collected</div>
+
+            <div class="gstr-stat-value">
+                ₹{{ "%.2f"|format(total_sgst) }}
+            </div>
+
+            <div class="gstr-stat-sub">
+                Total SGST output tax
+            </div>
+
+        </div>
+
+        <div class="gstr-stat amber">
+
+            <div class="gstr-stat-label">Total Tax</div>
+
+            <div class="gstr-stat-value">
+                ₹{{ "%.2f"|format(total_tax) }}
+            </div>
+
+            <div class="gstr-stat-sub">
+                CGST + SGST combined
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- B2B -->
+
+    <div class="gstr-section">
+
+        <div class="gstr-section-head blue">
+
+            <div>
+                <div class="gstr-section-title">
+                    B2B — Registered Businesses
+                </div>
+
+                <div class="gstr-section-sub">
+                    With GSTIN — Table 4A of GSTR-1
+                </div>
+            </div>
+
+            <span class="gstr-badge">
+                {{ b2b_rows|length }} bill{{ 's' if b2b_rows|length != 1 else '' }}
+            </span>
+
+        </div>
+
+        {% if b2b_rows %}
+
+        <div class="gstr-table-wrap">
+
+            <table class="gstr-table">
+
+                <thead>
+                    <tr>
+                        <th>Invoice No.</th>
+                        <th>Date</th>
+                        <th>Party</th>
+                        <th>GSTIN</th>
+                        <th class="num">Gold @3%</th>
+                        <th class="num">Making @18%</th>
+                        <th class="num">Deductions</th>
+                        <th class="num">CGST</th>
+                        <th class="num">SGST</th>
+                        <th class="num">Grand Total</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for row in b2b_rows %}
+
+                    <tr>
+
+                        <td>
+                            <a href="/invoices/{{ row.invoice_id }}" class="gstr-link">
+                                {{ row.invoice_number }}
+                            </a>
+                        </td>
+
+                        <td>{{ row.invoice_date.strftime('%d-%m-%Y') }}</td>
+
+                        <td>{{ row.party_name }}</td>
+
+                        <td>
+                            <span class="gstr-gstin">
+                                {{ row.gstin or '—' }}
+                            </span>
+                        </td>
+
+                        <td class="num">{{ "%.2f"|format(row.taxable_gold) }}</td>
+                        <td class="num">{{ "%.2f"|format(row.taxable_making) }}</td>
+                        <td class="num">{{ "%.2f"|format(row.deductions) }}</td>
+                        <td class="num">{{ "%.2f"|format(row.cgst) }}</td>
+                        <td class="num">{{ "%.2f"|format(row.sgst) }}</td>
+
+                        <td class="num">
+                            <strong>{{ "%.2f"|format(row.grand_total) }}</strong>
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+                <tfoot>
+
+                    <tr>
+
+                        <td colspan="4">B2B Total</td>
+
+                        <td class="num">{{ "%.2f"|format(b2b_totals.taxable_gold) }}</td>
+                        <td class="num">{{ "%.2f"|format(b2b_totals.taxable_making) }}</td>
+                        <td class="num">{{ "%.2f"|format(b2b_totals.deductions) }}</td>
+                        <td class="num">{{ "%.2f"|format(b2b_totals.cgst) }}</td>
+                        <td class="num">{{ "%.2f"|format(b2b_totals.sgst) }}</td>
+                        <td class="num">{{ "%.2f"|format(b2b_totals.grand) }}</td>
+
+                    </tr>
+
+                </tfoot>
+
+            </table>
+
+        </div>
+
+        {% else %}
+
+        <div class="gstr-empty">
+            No B2B bills found for this period.
+        </div>
+
+        {% endif %}
+
+    </div>
+
+    <!-- B2C -->
+
+    <!-- B2CL: B2C Large (≥ ₹2,50,000) -->
+    <div class="gstr-section">
+
+        <div class="gstr-section-head green">
+
+            <div>
+                <div class="gstr-section-title">
+                    B2CL — Large Consumer Bills
+                </div>
+
+                <div class="gstr-section-sub">
+                    Without GSTIN, Grand Total ≥ ₹2,50,000 — Table 5 of GSTR-1
+                </div>
+            </div>
+
+            <span class="gstr-badge">
+                {{ b2cl_rows|length }} bill{{ 's' if b2cl_rows|length != 1 else '' }}
+            </span>
+
+        </div>
+
+        {% if b2cl_rows %}
+
+        <div class="gstr-table-wrap">
+
+            <table class="gstr-table">
+
+                <thead>
+                    <tr>
+                        <th>Invoice No.</th>
+                        <th>Date</th>
+                        <th>Party</th>
+                        <th class="num">Gold @3%</th>
+                        <th class="num">Making @18%</th>
+                        <th class="num">Deductions</th>
+                        <th class="num">CGST</th>
+                        <th class="num">SGST</th>
+                        <th class="num">Grand Total</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for row in b2cl_rows %}
+
+                    <tr>
+
+                        <td>
+                            <a href="/invoices/{{ row.invoice_id }}" class="gstr-link">
+                                {{ row.invoice_number }}
+                            </a>
+                        </td>
+
+                        <td>{{ row.invoice_date.strftime('%d-%m-%Y') }}</td>
+
+                        <td>{{ row.party_name }}</td>
+
+                        <td class="num">{{ "%.2f"|format(row.taxable_gold) }}</td>
+                        <td class="num">{{ "%.2f"|format(row.taxable_making) }}</td>
+                        <td class="num">{{ "%.2f"|format(row.deductions) }}</td>
+                        <td class="num">{{ "%.2f"|format(row.cgst) }}</td>
+                        <td class="num">{{ "%.2f"|format(row.sgst) }}</td>
+
+                        <td class="num">
+                            <strong>{{ "%.2f"|format(row.grand_total) }}</strong>
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+        {% else %}
+
+        <div class="gstr-empty">
+            No B2CL bills found for this period.
+        </div>
+
+        {% endif %}
+
+    </div>
+
+    <!-- B2CS: B2C Small (< ₹2,50,000) -->
+    <div class="gstr-section">
+
+        <div class="gstr-section-head green">
+
+            <div>
+                <div class="gstr-section-title">
+                    B2CS — Small Consumer Bills
+                </div>
+
+                <div class="gstr-section-sub">
+                    Without GSTIN, Grand Total &lt; ₹2,50,000 — Table 7 of GSTR-1
+                </div>
+            </div>
+
+            <span class="gstr-badge">
+                {{ b2cs_rows|length }} bill{{ 's' if b2cs_rows|length != 1 else '' }}
+            </span>
+
+        </div>
+
+        {% if b2cs_rows %}
+
+        <div class="gstr-table-wrap">
+
+            <table class="gstr-table">
+
+                <thead>
+                    <tr>
+                        <th>Invoice No.</th>
+                        <th>Date</th>
+                        <th>Party</th>
+                        <th class="num">Gold @3%</th>
+                        <th class="num">Making @18%</th>
+                        <th class="num">Deductions</th>
+                        <th class="num">CGST</th>
+                        <th class="num">SGST</th>
+                        <th class="num">Grand Total</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for row in b2cs_rows %}
+
+                    <tr>
+
+                        <td>
+                            <a href="/invoices/{{ row.invoice_id }}" class="gstr-link">
+                                {{ row.invoice_number }}
+                            </a>
+                        </td>
+
+                        <td>{{ row.invoice_date.strftime('%d-%m-%Y') }}</td>
+
+                        <td>{{ row.party_name }}</td>
+
+                        <td class="num">{{ "%.2f"|format(row.taxable_gold) }}</td>
+                        <td class="num">{{ "%.2f"|format(row.taxable_making) }}</td>
+                        <td class="num">{{ "%.2f"|format(row.deductions) }}</td>
+                        <td class="num">{{ "%.2f"|format(row.cgst) }}</td>
+                        <td class="num">{{ "%.2f"|format(row.sgst) }}</td>
+
+                        <td class="num">
+                            <strong>{{ "%.2f"|format(row.grand_total) }}</strong>
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+                <tfoot>
+
+                    <tr>
+
+                        <td colspan="3">B2C Total (B2CL + B2CS)</td>
+
+                        <td class="num">{{ "%.2f"|format(b2c_totals.taxable_gold) }}</td>
+                        <td class="num">{{ "%.2f"|format(b2c_totals.taxable_making) }}</td>
+                        <td class="num">{{ "%.2f"|format(b2c_totals.deductions) }}</td>
+                        <td class="num">{{ "%.2f"|format(b2c_totals.cgst) }}</td>
+                        <td class="num">{{ "%.2f"|format(b2c_totals.sgst) }}</td>
+                        <td class="num">{{ "%.2f"|format(b2c_totals.grand) }}</td>
+
+                    </tr>
+
+                </tfoot>
+
+            </table>
+
+        </div>
+
+        {% else %}
+
+        <div class="gstr-empty">
+            No B2CS bills found for this period.
+        </div>
+
+        {% endif %}
+
+    </div>
+
+    <!-- CDNR: Credit Notes -->
+    <div class="gstr-section">
+        <div class="gstr-section-head" style="background: #6b21a8;">
+            <div>
+                <div class="gstr-section-title">CDNR — Credit Notes</div>
+                <div class="gstr-section-sub">Table 9B of GSTR-1</div>
+            </div>
+            <span class="gstr-badge">
+                {{ credit_notes|length }} note{{ 's' if credit_notes|length != 1 else '' }}
+            </span>
+        </div>
+
+        {% if credit_notes %}
+        <div class="gstr-table-wrap">
+            <table class="gstr-table">
+                <thead>
+                    <tr>
+                        <th>Credit Note No.</th>
+                        <th>Date</th>
+                        <th>Ref Invoice</th>
+                        <th class="num">Taxable Value</th>
+                        <th class="num">CGST</th>
+                        <th class="num">SGST</th>
+                        <th class="num">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cn in credit_notes %}
+                    <tr>
+                        <td>
+                            <a href="/invoices/{{ cn.id }}" class="gstr-link">
+                                {{ cn.invoice_number }}
+                            </a>
+                        </td>
+                        <td>{{ cn.invoice_date.strftime('%d-%m-%Y') }}</td>
+                        <td>{{ cn.ref_invoice_id or '—' }}</td>
+                        <td class="num">{{ "%.2f"|format((cn.subtotal or 0) + (cn.total_making_charges or 0)) }}</td>
+                        <td class="num">{{ "%.2f"|format((cn.total_cgst or 0) + (cn.making_cgst or 0)) }}</td>
+                        <td class="num">{{ "%.2f"|format((cn.total_sgst or 0) + (cn.making_sgst or 0)) }}</td>
+                        <td class="num"><strong>{{ "%.2f"|format(cn.grand_total or 0) }}</strong></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="gstr-empty">No credit notes for this period.</div>
+        {% endif %}
+    </div>
+
+    <!-- HSN -->
+
+    <div class="gstr-section">
+
+        <div class="gstr-section-head purple">
+
+            <div>
+                <div class="gstr-section-title">
+                    HSN-wise Summary
+                </div>
+
+                <div class="gstr-section-sub">
+                    Table 12 of GSTR-1
+                </div>
+            </div>
+
+        </div>
+
+        {% if hsn_summary %}
+
+        <div class="gstr-table-wrap">
+
+            <table class="gstr-table">
+
+                <thead>
+                    <tr>
+                        <th>HSN Code</th>
+                        <th class="num">Total Qty (g)</th>
+                        <th class="num">Taxable Value</th>
+                        <th class="num">CGST</th>
+                        <th class="num">SGST</th>
+                        <th class="num">Total Tax</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for row in hsn_summary %}
+
+                    <tr>
+
+                        <td>
+                            <span class="gstr-gstin">
+                                {{ row.hsn }}
+                            </span>
+                        </td>
+
+                        <td class="num">{{ "%.3f"|format(row.qty) }}</td>
+                        <td class="num">{{ "%.2f"|format(row.taxable) }}</td>
+                        <td class="num">{{ "%.2f"|format(row.cgst) }}</td>
+                        <td class="num">{{ "%.2f"|format(row.sgst) }}</td>
+
+                        <td class="num">
+                            <strong>{{ "%.2f"|format(row.cgst + row.sgst) }}</strong>
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+        {% else %}
+
+        <div class="gstr-empty">
+            No HSN data found for this period.
+        </div>
+
+        {% endif %}
+
+    </div>
+
+    <!-- Summary -->
+
+    <div class="gstr-summary">
+
+        <div class="gstr-summary-title">
+            Period Summary
+        </div>
+
+        <div class="gstr-summary-grid">
+
+            <div class="gstr-summary-item">
+
+                <div class="gstr-summary-item-label">
+                    Total Taxable Value
+                </div>
+
+                <div class="gstr-summary-item-value">
+                    ₹{{ "%.2f"|format(total_taxable) }}
+                </div>
+
+            </div>
+
+            <div class="gstr-summary-item">
+
+                <div class="gstr-summary-item-label">
+                    Total CGST
+                </div>
+
+                <div class="gstr-summary-item-value">
+                    ₹{{ "%.2f"|format(total_cgst) }}
+                </div>
+
+            </div>
+
+            <div class="gstr-summary-item">
+
+                <div class="gstr-summary-item-label">
+                    Total SGST
+                </div>
+
+                <div class="gstr-summary-item-value">
+                    ₹{{ "%.2f"|format(total_sgst) }}
+                </div>
+
+            </div>
+
+            <div class="gstr-summary-item total">
+
+                <div class="gstr-summary-item-label">
+                    Total Tax
+                </div>
+
+                <div class="gstr-summary-item-value">
+                    ₹{{ "%.2f"|format(total_tax) }}
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="gstr-note">
+
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                <line x1="12" y1="9" x2="12" y2="13" />
+                <line x1="12" y1="17" x2="12.01" y2="17" />
+
+            </svg>
+
+            <span>
+                Reference summary only. Verify figures on GST portal before filing.
+            </span>
+
+        </div>
+
+    </div>
+
 </div>
 
 {% endblock %}

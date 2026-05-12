@@ -33,7 +33,6 @@ def party_list(
 
 @router.get("/create", response_class=HTMLResponse)
 def create_party_form(request: Request, type: str = "customer"):
-    # type query param pre-selects customer or supplier
     return templates.TemplateResponse(
         request=request, name="parties/create.html",
         context={"prefill_type": type}

@@ -1,160 +1,680 @@
 {% extends "base.html" %}
 {% block title %}GSTR-3B Summary{% endblock %}
+{% block nav_gstr3b %}active{% endblock %}
+{% block page_title %}GSTR-3B{% endblock %}
+
+{% block head %}
+<style>
+
+.g3b-shell{
+    display:flex;
+    flex-direction:column;
+    gap:22px;
+}
+
+/* Header */
+
+.g3b-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:18px;
+    flex-wrap:wrap;
+}
+
+.g3b-header-left{
+    display:flex;
+    gap:14px;
+    align-items:flex-start;
+}
+
+.g3b-header-icon{
+    width:48px;
+    height:48px;
+    border-radius:14px;
+    background:var(--gold-muted2);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:var(--gold);
+    flex-shrink:0;
+}
+
+.g3b-title{
+    font-size:1.55rem;
+    font-family:var(--font-display);
+    color:var(--text-primary);
+    line-height:1.2;
+}
+
+.g3b-subtitle{
+    font-size:0.88rem;
+    color:var(--text-muted);
+    margin-top:4px;
+}
+
+/* Filter */
+
+.g3b-filter{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:var(--radius-sm);
+    padding:14px 18px;
+    display:flex;
+    gap:18px;
+    flex-wrap:wrap;
+    align-items:end;
+}
+
+.g3b-filter form{
+    display:flex;
+    gap:18px;
+    flex-wrap:wrap;
+    width:100%;
+    align-items:end;
+}
+
+.g3b-filter-fy{
+    margin-left:auto;
+    background:var(--bg-subtle);
+    border-radius:999px;
+    padding:6px 12px;
+    font-size:0.78rem;
+    color:var(--text-muted);
+}
+
+/* Hero */
+
+.g3b-hero{
+    background:linear-gradient(135deg,var(--navy),#1b2f52);
+    border-radius:20px;
+    padding:28px;
+    color:white;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:24px;
+    position:relative;
+    overflow:hidden;
+}
+
+.g3b-hero::before{
+    content:'';
+    position:absolute;
+    width:220px;
+    height:220px;
+    border-radius:50%;
+    background:rgba(255,255,255,0.04);
+    top:-100px;
+    right:-60px;
+}
+
+.g3b-hero-label{
+    font-size:0.76rem;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:rgba(255,255,255,0.55);
+    margin-bottom:8px;
+}
+
+.g3b-hero-total{
+    font-size:2.4rem;
+    font-weight:800;
+    color:var(--gold-light);
+    font-family:var(--font-display);
+    font-variant-numeric:tabular-nums;
+}
+
+.g3b-hero-sub{
+    margin-top:8px;
+    font-size:0.82rem;
+    color:rgba(255,255,255,0.5);
+}
+
+.g3b-hero-grid{
+    display:flex;
+    gap:18px;
+    flex-wrap:wrap;
+}
+
+.g3b-hero-stat{
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:14px;
+    padding:14px 18px;
+    min-width:150px;
+}
+
+.g3b-hero-stat-label{
+    font-size:0.7rem;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:rgba(255,255,255,0.5);
+    margin-bottom:8px;
+}
+
+.g3b-hero-stat-value{
+    font-size:1.1rem;
+    font-weight:700;
+    color:white;
+    font-variant-numeric:tabular-nums;
+}
+
+/* Cards */
+
+.g3b-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:18px;
+}
+
+@media(max-width:900px){
+    .g3b-grid{
+        grid-template-columns:1fr;
+    }
+}
+
+.g3b-card{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:18px;
+    overflow:hidden;
+}
+
+.g3b-card-head{
+    padding:18px 22px;
+    border-bottom:1px solid var(--border);
+    background:var(--bg-subtle);
+}
+
+.g3b-card-head.primary{
+    border-left:4px solid var(--blue);
+}
+
+.g3b-card-head.success{
+    border-left:4px solid var(--green);
+}
+
+.g3b-card-title{
+    font-size:1rem;
+    font-weight:700;
+    color:var(--text-primary);
+}
+
+.g3b-card-sub{
+    margin-top:4px;
+    font-size:0.82rem;
+    color:var(--text-muted);
+}
+
+.g3b-table{
+    width:100%;
+}
+
+.g3b-row{
+    display:flex;
+    justify-content:space-between;
+    gap:16px;
+    padding:15px 22px;
+    border-bottom:1px solid var(--border);
+    font-size:0.9rem;
+}
+
+.g3b-row:last-child{
+    border-bottom:none;
+}
+
+.g3b-row-label{
+    color:var(--text-secondary);
+}
+
+.g3b-row-value{
+    font-weight:700;
+    color:var(--text-primary);
+    font-variant-numeric:tabular-nums;
+}
+
+.g3b-row-sub{
+    display:block;
+    margin-top:4px;
+    font-size:0.72rem;
+    color:var(--text-muted);
+}
+
+.g3b-row.total{
+    background:var(--bg-subtle);
+}
+
+.g3b-row.total .g3b-row-label,
+.g3b-row.total .g3b-row-value{
+    font-size:0.95rem;
+    font-weight:800;
+    color:var(--text-primary);
+}
+
+.g3b-row.success{
+    background:var(--green-bg);
+}
+
+.g3b-row.success .g3b-row-label,
+.g3b-row.success .g3b-row-value{
+    color:var(--green);
+    font-weight:800;
+}
+
+/* Net Tax */
+
+.g3b-payable{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:18px;
+    overflow:hidden;
+}
+
+.g3b-payable-head{
+    padding:18px 22px;
+    background:var(--bg-subtle);
+    border-bottom:1px solid var(--border);
+}
+
+.g3b-payable-title{
+    font-size:1rem;
+    font-weight:700;
+    color:var(--text-primary);
+}
+
+.g3b-payable-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:18px;
+    padding:22px;
+}
+
+@media(max-width:760px){
+    .g3b-payable-grid{
+        grid-template-columns:1fr;
+    }
+}
+
+.g3b-pay-box{
+    background:var(--bg-subtle);
+    border-radius:16px;
+    padding:18px;
+}
+
+.g3b-pay-box-title{
+    font-size:0.76rem;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--text-muted);
+    margin-bottom:14px;
+}
+
+.g3b-pay-row{
+    display:flex;
+    justify-content:space-between;
+    padding:7px 0;
+    font-size:0.88rem;
+}
+
+.g3b-pay-row span:last-child{
+    font-variant-numeric:tabular-nums;
+    font-weight:700;
+}
+
+.g3b-pay-row.itc{
+    color:var(--green);
+}
+
+.g3b-pay-row.total{
+    margin-top:8px;
+    padding-top:12px;
+    border-top:1px solid var(--border);
+    font-weight:800;
+    color:var(--text-primary);
+}
+
+/* Disclaimer */
+
+.g3b-note{
+    display:flex;
+    gap:10px;
+    align-items:flex-start;
+    background:var(--amber-bg);
+    border:1px solid var(--amber);
+    border-radius:14px;
+    padding:14px 16px;
+    color:var(--amber);
+    font-size:0.82rem;
+}
+
+</style>
+{% endblock %}
+
 {% block content %}
 
-<div class="page-header" style="display:flex;justify-content:space-between;align-items:center">
-    <h1>GSTR-3B — Tax Summary</h1>
-    <button onclick="window.print()" class="btn-secondary">🖨 Print</button>
-</div>
+<div class="g3b-shell">
 
-<p style="color:#888;font-size:13px;margin-bottom:16px">
-    Summary of output tax collected and ITC claimable.
-    Only <strong>GST Ready</strong> and <strong>Locked</strong> bills are included.
-</p>
+    <!-- Header -->
 
-<!-- ── MONTH FILTER ─────────────────────────────────────────────── -->
-<form method="get" style="margin-bottom:20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <div class="g3b-header">
 
-    {% if all_fys|length > 1 %}
-    <label style="font-weight:600;font-size:13px">FY:</label>
-    <select name="fy_id" onchange="this.form.submit()"
-            style="padding:6px 10px;border-radius:6px;border:1px solid #ddd;font-size:13px">
-        {% for fy in all_fys %}
-        <option value="{{ fy.id }}"
-                {{ 'selected' if selected_fy and fy.id == selected_fy.id else '' }}>
-            {{ fy.label }}{{ ' ●' if fy.is_active else '' }}
-        </option>
-        {% endfor %}
-    </select>
-    {% else %}
-    <input type="hidden" name="fy_id" value="{{ selected_fy.id if selected_fy else '' }}">
-    {% endif %}
+        <div class="g3b-header-left">
 
-    <label style="font-weight:600;font-size:13px">Month:</label>
-    <select name="month" onchange="this.form.submit()"
-            style="padding:6px 10px;border-radius:6px;border:1px solid #ddd;font-size:13px">
-        <option value="">All Months</option>
-        {% for key, label in all_months %}
-        <option value="{{ key }}" {{ 'selected' if selected_month == key else '' }}>{{ label }}</option>
-        {% endfor %}
-    </select>
+            <div class="g3b-header-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="2" y="3" width="20" height="14" rx="2"/>
+                    <line x1="8" y1="21" x2="16" y2="21"/>
+                    <line x1="12" y1="17" x2="12" y2="21"/>
+                </svg>
+            </div>
 
-    {% if selected_month %}
-    <a href="/reports/gstr3b?fy_id={{ selected_fy.id if selected_fy else '' }}"
-       class="btn-secondary btn-sm">✕ Clear Month</a>
-    {% endif %}
+            <div>
+                <div class="g3b-title">GSTR-3B — Tax Summary</div>
+                <div class="g3b-subtitle">
+                    Output tax collected vs ITC claimable — GST Ready & Locked bills only
+                </div>
+            </div>
 
-    {% if selected_fy %}
-    <span style="color:#888;font-size:13px;margin-left:4px">FY {{ selected_fy.label }}</span>
-    {% endif %}
-</form>
+        </div>
 
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
+        <button onclick="window.print()" class="btn btn-outline btn-sm">
+            Print
+        </button>
 
-    <!-- ── OUTPUT TAX (3.1) ──────────────────────────────────────── -->
-    <div style="background:#fff;border-radius:8px;padding:20px">
-        <h2 style="margin-bottom:4px;color:#1a237e">3.1 — Outward Supplies (Tax Payable)</h2>
-        <p style="color:#888;font-size:12px;margin-bottom:16px">
-            From {{ sale_count }} sale bill(s)
-        </p>
-
-        <table style="width:100%;border-collapse:collapse">
-            <tr style="border-bottom:1px solid #eee">
-                <td style="padding:10px 8px;color:#555">Total Taxable Value</td>
-                <td style="padding:10px 8px;text-align:right">₹{{ "%.2f"|format(out_taxable) }}</td>
-            </tr>
-            <tr style="border-bottom:1px solid #eee">
-                <td style="padding:10px 8px;color:#555">CGST @ 1.5%</td>
-                <td style="padding:10px 8px;text-align:right">₹{{ "%.2f"|format(out_cgst) }}</td>
-            </tr>
-            <tr style="border-bottom:1px solid #eee">
-                <td style="padding:10px 8px;color:#555">SGST @ 1.5%</td>
-                <td style="padding:10px 8px;text-align:right">₹{{ "%.2f"|format(out_sgst) }}</td>
-            </tr>
-            <tr style="background:#e8eaf6">
-                <td style="padding:10px 8px;font-weight:700">Total Output Tax</td>
-                <td style="padding:10px 8px;text-align:right;font-weight:700;color:#1a237e">
-                    ₹{{ "%.2f"|format(out_total) }}
-                </td>
-            </tr>
-        </table>
     </div>
 
-    <!-- ── ITC (4) ───────────────────────────────────────────────── -->
-    <div style="background:#fff;border-radius:8px;padding:20px">
-        <h2 style="margin-bottom:4px;color:#2e7d32">4 — ITC Available</h2>
-        <p style="color:#888;font-size:12px;margin-bottom:16px">
-            From {{ purchase_count }} purchase bill(s) + {{ expense_itc_count }} expense(s)
-        </p>
+    <!-- Filters -->
 
-        <table style="width:100%;border-collapse:collapse">
-            <tr style="border-bottom:1px solid #eee">
-                <td style="padding:8px;color:#555">ITC from Purchase Bills — CGST</td>
-                <td style="padding:8px;text-align:right">₹{{ "%.2f"|format(itc_purchase_cgst) }}</td>
-            </tr>
-            <tr style="border-bottom:1px solid #eee">
-                <td style="padding:8px;color:#555">ITC from Purchase Bills — SGST</td>
-                <td style="padding:8px;text-align:right">₹{{ "%.2f"|format(itc_purchase_sgst) }}</td>
-            </tr>
-            <tr style="border-bottom:1px solid #eee">
-                <td style="padding:8px;color:#555">ITC from Expenses</td>
-                <td style="padding:8px;text-align:right">₹{{ "%.2f"|format(itc_expenses) }}</td>
-            </tr>
-            <tr style="background:#e8f5e9">
-                <td style="padding:10px 8px;font-weight:700">Total ITC Claimable</td>
-                <td style="padding:10px 8px;text-align:right;font-weight:700;color:#2e7d32">
-                    ₹{{ "%.2f"|format(total_itc) }}
-                </td>
-            </tr>
-        </table>
+    <div class="g3b-filter">
+
+        <form method="get">
+
+            {% if all_fys|length > 1 %}
+            <div class="field-group">
+                <label class="field-label">Financial Year</label>
+
+                <select class="field-select field-select-sm" name="fy_id" onchange="this.form.submit()">
+                    {% for fy in all_fys %}
+                    <option value="{{ fy.id }}" {{ 'selected' if selected_fy and fy.id == selected_fy.id else '' }}>
+                        {{ fy.label }}{{ ' ●' if fy.is_active else '' }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% else %}
+            <input type="hidden" name="fy_id" value="{{ selected_fy.id if selected_fy else '' }}">
+            {% endif %}
+
+            <div class="field-group">
+                <label class="field-label">Month</label>
+
+                <select class="field-select field-select-sm" name="month" onchange="this.form.submit()">
+                    <option value="">All Months</option>
+
+                    {% for key, label in all_months %}
+                    <option value="{{ key }}" {{ 'selected' if selected_month == key else '' }}>
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {% if selected_month %}
+            <a href="/reports/gstr3b?fy_id={{ selected_fy.id if selected_fy else '' }}" class="btn btn-ghost btn-sm">
+                Clear
+            </a>
+            {% endif %}
+
+            {% if selected_fy %}
+            <span class="g3b-filter-fy">FY {{ selected_fy.label }}</span>
+            {% endif %}
+
+        </form>
+
     </div>
-</div>
 
-<!-- ── NET TAX PAYABLE ──────────────────────────────────────────── -->
-<div style="background:#fff;border-radius:8px;padding:24px;margin-bottom:20px">
-    <h2 style="margin-bottom:16px">Net Tax Payable (Section 6)</h2>
+    <!-- Hero -->
 
-    <table style="width:400px;border-collapse:collapse">
-        <tr style="border-bottom:1px solid #eee">
-            <td style="padding:10px 8px;color:#555">Output Tax (CGST)</td>
-            <td style="padding:10px 8px;text-align:right">₹{{ "%.2f"|format(out_cgst) }}</td>
-        </tr>
-        <tr style="border-bottom:1px solid #eee">
-            <td style="padding:10px 8px;color:#555">Less: ITC (CGST)</td>
-            <td style="padding:10px 8px;text-align:right;color:#2e7d32">
-                - ₹{{ "%.2f"|format(out_cgst - net_cgst) }}
-            </td>
-        </tr>
-        <tr style="border-bottom:2px solid #ddd">
-            <td style="padding:10px 8px;font-weight:600">Net CGST Payable</td>
-            <td style="padding:10px 8px;text-align:right;font-weight:600">₹{{ "%.2f"|format(net_cgst) }}</td>
-        </tr>
-        <tr style="border-bottom:1px solid #eee">
-            <td style="padding:10px 8px;color:#555">Output Tax (SGST)</td>
-            <td style="padding:10px 8px;text-align:right">₹{{ "%.2f"|format(out_sgst) }}</td>
-        </tr>
-        <tr style="border-bottom:1px solid #eee">
-            <td style="padding:10px 8px;color:#555">Less: ITC (SGST)</td>
-            <td style="padding:10px 8px;text-align:right;color:#2e7d32">
-                - ₹{{ "%.2f"|format(out_sgst - net_sgst) }}
-            </td>
-        </tr>
-        <tr style="border-bottom:2px solid #ddd">
-            <td style="padding:10px 8px;font-weight:600">Net SGST Payable</td>
-            <td style="padding:10px 8px;text-align:right;font-weight:600">₹{{ "%.2f"|format(net_sgst) }}</td>
-        </tr>
-        <tr style="background:#1a237e;color:#fff">
-            <td style="padding:14px 8px;font-size:16px;font-weight:700">Total Net Tax Payable</td>
-            <td style="padding:14px 8px;text-align:right;font-size:18px;font-weight:700">
+    <div class="g3b-hero">
+
+        <div>
+            <div class="g3b-hero-label">Net Tax Payable — Section 6</div>
+
+            <div class="g3b-hero-total">
                 ₹{{ "%.2f"|format(net_payable) }}
-            </td>
-        </tr>
-    </table>
+            </div>
 
-    <p style="color:#888;font-size:12px;margin-top:12px">
-        ⚠️ This is a summary for reference only. Always verify on the GST portal before filing.
-        IGST is ₹0 for this shop (all intrastate transactions).
-    </p>
+            <div class="g3b-hero-sub">
+                Final payable amount after ITC adjustment
+            </div>
+        </div>
+
+        <div class="g3b-hero-grid">
+
+            <div class="g3b-hero-stat">
+                <div class="g3b-hero-stat-label">Net CGST</div>
+                <div class="g3b-hero-stat-value">
+                    ₹{{ "%.2f"|format(net_cgst) }}
+                </div>
+            </div>
+
+            <div class="g3b-hero-stat">
+                <div class="g3b-hero-stat-label">Net SGST</div>
+                <div class="g3b-hero-stat-value">
+                    ₹{{ "%.2f"|format(net_sgst) }}
+                </div>
+            </div>
+
+            <div class="g3b-hero-stat">
+                <div class="g3b-hero-stat-label">Total ITC</div>
+                <div class="g3b-hero-stat-value">
+                    ₹{{ "%.2f"|format(total_itc) }}
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Cards -->
+
+    <div class="g3b-grid">
+
+        <!-- Output -->
+
+        <div class="g3b-card">
+
+            <div class="g3b-card-head primary">
+                <div class="g3b-card-title">3.1 — Outward Supplies</div>
+                <div class="g3b-card-sub">
+                    Tax payable from {{ sale_count }} sale bill{{ 's' if sale_count != 1 else '' }}
+                </div>
+            </div>
+
+            <div class="g3b-table">
+
+                <div class="g3b-row">
+                    <div class="g3b-row-label">Total Taxable Value</div>
+                    <div class="g3b-row-value">
+                        ₹{{ "%.2f"|format(out_taxable) }}
+                    </div>
+                </div>
+
+                <div class="g3b-row">
+                    <div class="g3b-row-label">
+                        CGST Collected
+                        <span class="g3b-row-sub">Gold @1.5% + Making @9%</span>
+                    </div>
+
+                    <div class="g3b-row-value">
+                        ₹{{ "%.2f"|format(out_cgst) }}
+                    </div>
+                </div>
+
+                <div class="g3b-row">
+                    <div class="g3b-row-label">
+                        SGST Collected
+                        <span class="g3b-row-sub">Gold @1.5% + Making @9%</span>
+                    </div>
+
+                    <div class="g3b-row-value">
+                        ₹{{ "%.2f"|format(out_sgst) }}
+                    </div>
+                </div>
+
+                <div class="g3b-row total">
+                    <div class="g3b-row-label">Total Output Tax</div>
+
+                    <div class="g3b-row-value">
+                        ₹{{ "%.2f"|format(out_total) }}
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- ITC -->
+
+        <div class="g3b-card">
+
+            <div class="g3b-card-head success">
+                <div class="g3b-card-title">4 — ITC Available</div>
+
+                <div class="g3b-card-sub">
+                    {{ purchase_count }} purchase bill{{ 's' if purchase_count != 1 else '' }}
+                    + {{ expense_itc_count }} expense{{ 's' if expense_itc_count != 1 else '' }}
+                </div>
+            </div>
+
+            <div class="g3b-table">
+
+                <div class="g3b-row">
+                    <div class="g3b-row-label">
+                        ITC from Purchase Bills — CGST
+                    </div>
+
+                    <div class="g3b-row-value">
+                        ₹{{ "%.2f"|format(itc_purchase_cgst) }}
+                    </div>
+                </div>
+
+                <div class="g3b-row">
+                    <div class="g3b-row-label">
+                        ITC from Purchase Bills — SGST
+                    </div>
+
+                    <div class="g3b-row-value">
+                        ₹{{ "%.2f"|format(itc_purchase_sgst) }}
+                    </div>
+                </div>
+
+                <div class="g3b-row">
+                    <div class="g3b-row-label">
+                        ITC from Expenses
+                        <span class="g3b-row-sub">ITC eligible expenses only</span>
+                    </div>
+
+                    <div class="g3b-row-value">
+                        ₹{{ "%.2f"|format(itc_expenses) }}
+                    </div>
+                </div>
+
+                <div class="g3b-row success">
+                    <div class="g3b-row-label">Total ITC Claimable</div>
+
+                    <div class="g3b-row-value">
+                        ₹{{ "%.2f"|format(total_itc) }}
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Net Payable -->
+
+    <div class="g3b-payable">
+
+        <div class="g3b-payable-head">
+            <div class="g3b-payable-title">
+                Net Tax Payable — Section 6 (Detailed)
+            </div>
+        </div>
+
+        <div class="g3b-payable-grid">
+
+            <!-- CGST -->
+
+            <div class="g3b-pay-box">
+
+                <div class="g3b-pay-box-title">CGST</div>
+
+                <div class="g3b-pay-row">
+                    <span>Output CGST</span>
+                    <span>₹{{ "%.2f"|format(out_cgst) }}</span>
+                </div>
+
+                <div class="g3b-pay-row itc">
+                    <span>Less: ITC (CGST)</span>
+                    <span>− ₹{{ "%.2f"|format(out_cgst - net_cgst) }}</span>
+                </div>
+
+                <div class="g3b-pay-row total">
+                    <span>Net CGST Payable</span>
+                    <span>₹{{ "%.2f"|format(net_cgst) }}</span>
+                </div>
+
+            </div>
+
+            <!-- SGST -->
+
+            <div class="g3b-pay-box">
+
+                <div class="g3b-pay-box-title">SGST</div>
+
+                <div class="g3b-pay-row">
+                    <span>Output SGST</span>
+                    <span>₹{{ "%.2f"|format(out_sgst) }}</span>
+                </div>
+
+                <div class="g3b-pay-row itc">
+                    <span>Less: ITC (SGST)</span>
+                    <span>− ₹{{ "%.2f"|format(out_sgst - net_sgst) }}</span>
+                </div>
+
+                <div class="g3b-pay-row total">
+                    <span>Net SGST Payable</span>
+                    <span>₹{{ "%.2f"|format(net_sgst) }}</span>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Disclaimer -->
+
+    <div class="g3b-note">
+
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;margin-top:1px">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+
+        <span>
+            Summary for reference only. Verify values on GST portal before filing.
+            IGST is ₹0 because all transactions are intrastate.
+        </span>
+
+    </div>
+
 </div>
 
 {% endblock %}

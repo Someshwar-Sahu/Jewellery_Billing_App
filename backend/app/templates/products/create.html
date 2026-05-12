@@ -1,135 +1,233 @@
 {% extends "base.html" %}
 {% block title %}Add Product{% endblock %}
+{% block nav_products %}active{% endblock %}
+
+{% block page_title %}Add Product{% endblock %}
+
 {% block content %}
 
 <div class="page-header">
-    <h1>Add Product</h1>
-    <a href="/products" class="btn-ghost">← Back</a>
+    <div class="page-header-left">
+        <a href="/products" class="back-link">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+            </svg>
+            Products
+        </a>
+        <h1 class="page-title">Add Product</h1>
+    </div>
 </div>
 
-<form id="productForm" style="background:#fff;padding:24px;border-radius:8px;max-width:600px">
+<div class="form-page-layout">
+<div class="form-card">
 
-    <div class="form-row">
-        <div class="form-group" style="flex:2">
-            <label>Product Name *</label>
-            <input type="text" name="name" placeholder="e.g. Gold Necklace 22K" required>
-        </div>
-        <div class="form-group">
-            <label>Metal Type</label>
-            <select name="metal_type">
-                <option value="gold">Gold</option>
-                <option value="silver">Silver</option>
-                <option value="other">Other</option>
-            </select>
-        </div>
-    </div>
+    <div class="form-section">
+        <h2 class="form-section-title">Basic Information</h2>
 
-    <div class="form-row">
-        <div class="form-group">
-            <label>Purity</label>
-            <input type="text" name="purity" placeholder="e.g. 22K, 18K, 925">
-        </div>
-        <div class="form-group">
-            <label>HSN Code</label>
-            <input type="text" name="hsn_code" value="7113">
-        </div>
-        <div class="form-group">
-            <label>GST Rate (%)</label>
-            <select name="gst_rate">
-                <option value="3.0" selected>3%</option>
-                <option value="1.5">1.5%</option>
-                <option value="0">0%</option>
-                <option value="18.0">18%</option>
-            </select>
-        </div>
-    </div>
-
-    <div class="form-row">
-        <div class="form-group">
-            <label>Making Charge Rate (₹/g)</label>
-            <input type="number" name="making_charge_rate" step="0.01" min="0"
-                   placeholder="Optional default making charge">
-        </div>
-        <div class="form-group">
-            <label>HUID</label>
-            <input type="text" name="huid" placeholder="Hallmark ID if fixed">
-        </div>
-    </div>
-
-    <div class="form-row">
-        <div class="form-group" style="flex:2">
-            <label>Group / Category</label>
-            <div style="display:flex;gap:8px">
-                <select name="group_id" id="groupSelect" style="flex:1">
-                    <option value="">-- No Group --</option>
-                    {% for g in groups %}
-                    <option value="{{ g.id }}">{{ g.name }}</option>
-                    {% endfor %}
+        <div class="field-row">
+            <div class="field-group field-group-grow">
+                <label class="field-label" for="name">Product Name <span class="field-required">*</span></label>
+                <input class="field-input" type="text" id="name" name="name"
+                       placeholder="e.g. Gold Necklace 22K">
+            </div>
+            <div class="field-group">
+                <label class="field-label" for="metal_type">Metal Type</label>
+                <select class="field-select" id="metal_type" name="metal_type">
+                    <option value="gold">Gold</option>
+                    <option value="silver">Silver</option>
+                    <option value="other">Other</option>
                 </select>
-                <button type="button" onclick="addGroup()" class="btn-secondary btn-sm">+ New</button>
+            </div>
+        </div>
+
+        <div class="field-row">
+            <div class="field-group">
+                <label class="field-label" for="purity">Purity</label>
+                <input class="field-input" type="text" id="purity" name="purity"
+                       placeholder="e.g. 22K, 18K, 925">
+            </div>
+            <div class="field-group">
+                <label class="field-label" for="hsn_code">HSN Code</label>
+                <input class="field-input" type="text" id="hsn_code" name="hsn_code" value="7113">
+            </div>
+            <div class="field-group">
+                <label class="field-label" for="gst_rate">GST Rate</label>
+                <select class="field-select" id="gst_rate" name="gst_rate">
+                    <option value="3.0" selected>3%</option>
+                    <option value="1.5">1.5%</option>
+                    <option value="0">0%</option>
+                    <option value="18.0">18%</option>
+                </select>
             </div>
         </div>
     </div>
 
-    <div class="form-group" style="margin-bottom:20px">
-        <label>Description</label>
-        <textarea name="description" rows="2" placeholder="Optional notes about this product"></textarea>
+    <div class="form-section-divider"></div>
+
+    <div class="form-section">
+        <h2 class="form-section-title">Pricing & Identity</h2>
+
+        <div class="field-row">
+            <div class="field-group">
+                <label class="field-label" for="making_charge_rate">Making Charge (₹/g)</label>
+                <div class="field-input-wrap">
+                    <span class="field-prefix">₹</span>
+                    <input class="field-input field-input-prefixed" type="number"
+                           id="making_charge_rate" name="making_charge_rate"
+                           step="0.01" min="0" placeholder="0.00">
+                </div>
+                <span class="field-hint">Default making charge for billing; can be overridden per bill</span>
+            </div>
+            <div class="field-group">
+                <label class="field-label" for="huid">HUID</label>
+                <input class="field-input text-mono" type="text" id="huid" name="huid"
+                       placeholder="Hallmark ID if fixed">
+                <span class="field-hint">BIS hallmark unique ID</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-section-divider"></div>
+
+    <div class="form-section">
+        <h2 class="form-section-title">Category & Notes</h2>
+
+        <div class="field-row">
+            <div class="field-group field-group-grow">
+                <label class="field-label" for="group_id">Group / Category</label>
+                <div class="field-input-addon-wrap">
+                    <select class="field-select" id="groupSelect" name="group_id">
+                        <option value="">— No Group —</option>
+                        {% for g in groups %}
+                        <option value="{{ g.id }}">{{ g.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="button" class="btn btn-outline btn-sm" onclick="addGroup()">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        New Group
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="field-group">
+            <label class="field-label" for="description">Description</label>
+            <textarea class="field-textarea" id="description" name="description" rows="3"
+                      placeholder="Optional notes about this product"></textarea>
+        </div>
     </div>
 
     <div class="form-actions">
-        <button type="button" onclick="saveProduct()" class="btn-primary btn-large">Save Product</button>
-        <a href="/products" class="btn-ghost">Cancel</a>
+        <button type="button" onclick="saveProduct()" class="btn btn-gold btn-lg" id="saveProductBtn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+            </svg>
+            Save Product
+        </button>
+        <a href="/products" class="btn btn-ghost">Cancel</a>
     </div>
-</form>
+
+</div>
+</div>
 
 {% endblock %}
 
 {% block scripts %}
 <script>
+let _savingProduct = false;
+
 async function addGroup() {
     const name = prompt("New group name:");
     if (!name) return;
-    const res  = await fetch("/products/groups/create", {
-        method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({name}),
-    });
-    const data = await res.json();
-    if (data.success) {
-        const sel = document.getElementById("groupSelect");
-        const opt = document.createElement("option");
-        opt.value = data.group_id;
-        opt.text  = data.name;
-        opt.selected = true;
-        sel.appendChild(opt);
+
+    try {
+        const res = await fetch("/products/groups/create", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ name }),
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            const sel = document.getElementById("groupSelect");
+
+            const opt = document.createElement("option");
+
+            opt.value = data.group_id;
+            opt.text = data.name;
+            opt.selected = true;
+
+            sel.appendChild(opt);
+
+            if (window.showToast) {
+                showToast(`Group ${data.name} created`, "success");
+            }
+        } else {
+            throw new Error(data.error || "Failed to create group");
+        }
+
+    } catch (err) {
+        console.error(err);
+
+        if (window.showToast) {
+            showToast(err.message, "error");
+        } else {
+            alert(err.message);
+        }
     }
 }
 
 async function saveProduct() {
-    const form = document.getElementById("productForm");
-    const name = form.querySelector('[name="name"]').value.trim();
-    if (!name) { alert("Product name is required."); return; }
+    if (_savingProduct) return;
+    const name = document.getElementById("name").value.trim();
+    if (!name) {
+        if (window.showToast) showToast("Product name is required", "error");
+        else alert("Product name is required.");
+        document.getElementById("name").focus();
+        return;
+    }
 
     const payload = {
         name,
-        metal_type:         form.querySelector('[name="metal_type"]').value,
-        purity:             form.querySelector('[name="purity"]').value             || null,
-        hsn_code:           form.querySelector('[name="hsn_code"]').value           || "7113",
-        gst_rate:           form.querySelector('[name="gst_rate"]').value,
-        making_charge_rate: form.querySelector('[name="making_charge_rate"]').value || null,
-        huid:               form.querySelector('[name="huid"]').value               || null,
-        group_id:           form.querySelector('[name="group_id"]').value           || null,
-        description:        form.querySelector('[name="description"]').value        || null,
+        metal_type:         document.getElementById("metal_type").value,
+        purity:             document.getElementById("purity").value             || null,
+        hsn_code:           document.getElementById("hsn_code").value           || "7113",
+        gst_rate:           document.getElementById("gst_rate").value,
+        making_charge_rate: document.getElementById("making_charge_rate").value || null,
+        huid:               document.getElementById("huid").value               || null,
+        group_id:           document.getElementById("groupSelect").value        || null,
+        description:        document.getElementById("description").value        || null,
     };
 
-    const res  = await fetch("/products/create", {
-        method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (data.success) {
-        window.location.href = "/products";
-    } else {
-        alert("Error: " + data.error);
+    const btn = document.getElementById("saveProductBtn");
+    if (btn) btn.disabled = true;
+    _savingProduct = true;
+    try {
+        const res  = await fetch("/products/create", {
+            method: "POST", headers: {"Content-Type": "application/json"},
+            body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            window.location.href = "/products";
+            return;
+        }
+        const msg = data.error || "Unable to save product";
+        if (window.showToast) showToast("Error: " + msg, "error");
+        else alert("Error: " + msg);
+    } catch (_) {
+        if (window.showToast) showToast("Network error while saving product", "error");
+        else alert("Network error while saving product.");
+    } finally {
+        _savingProduct = false;
+        if (btn) btn.disabled = false;
     }
 }
 </script>

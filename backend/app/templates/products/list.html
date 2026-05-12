@@ -1,88 +1,183 @@
 {% extends "base.html" %}
 {% block title %}Products{% endblock %}
+{% block nav_products %}active{% endblock %}
+{% block bnav_dashboard %}{% endblock %}
+
+{% block page_title %}Products{% endblock %}
+
 {% block content %}
 
 <div class="page-header">
-    <h1>Product Catalogue</h1>
-    <a href="/products/create" class="btn-primary">+ Add Product</a>
+    <div class="page-header-left">
+        <h1 class="page-title">Product Catalogue</h1>
+        <p class="page-subtitle">Products auto-fill purity, GST rate, and making charges in the bill form</p>
+    </div>
+    <div class="page-header-actions">
+        <a href="/products/create" class="btn btn-gold">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Add Product
+        </a>
+    </div>
 </div>
-
-<p style="color:#888;font-size:13px;margin-bottom:16px">
-    Products added here appear as autocomplete suggestions in the bill form.
-    Selecting a product auto-fills purity, GST rate, and making charges.
-</p>
 
 {% if not products %}
 <div class="empty-state">
-    No products yet. <a href="/products/create">Add your first product.</a>
+    <div class="empty-state-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path
+                d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+        </svg>
+    </div>
+    <h3 class="empty-state-title">No products yet</h3>
+    <p class="empty-state-desc">Add jewellery products to use as templates in bills</p>
+    <a href="/products/create" class="btn btn-gold">Add First Product</a>
 </div>
+
 {% else %}
 
-<!-- Group by metal type -->
 {% set gold_products = products | selectattr("metal_type","equalto","gold") | list %}
 {% set silver_products = products | selectattr("metal_type","equalto","silver") | list %}
-{% set other_products = products | rejectattr("metal_type","equalto","gold")
-| rejectattr("metal_type","equalto","silver") | list %}
+{% set other_products = products | rejectattr("metal_type","equalto","gold") |
+rejectattr("metal_type","equalto","silver") | list %}
 
-{% for group_name, group_products in [("Gold Items", gold_products),
-("Silver Items", silver_products),
-("Other Items", other_products)] %}
+{% for group_name, group_icon, group_products in [
+("Gold Items", "gold", gold_products),
+("Silver Items", "silver", silver_products),
+("Other Items", "other", other_products)
+] %}
 {% if group_products %}
-<h2 style="margin:20px 0 10px">{{ group_name }}</h2>
-<table class="table" style="margin-bottom:16px">
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th>Purity</th>
-            <th>HSN</th>
-            <th>GST %</th>
-            <th>Making Rate (₹/g)</th>
-            <th>HUID</th>
-            <th>Stock (g)</th>
-            <th>Status</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for p in group_products %}
-        <tr style="{{ 'opacity:0.5' if not p.is_active else '' }}">
-            <td><strong>{{ p.name }}</strong>
-                {% if p.description %}
-                <br><small style="color:#888">{{ p.description }}</small>
-                {% endif %}
-            </td>
-            <td>{{ p.purity or "—" }}</td>
-            <td>{{ p.hsn_code }}</td>
-            <td>{{ p.gst_rate }}%</td>
-            <td>{{ "₹%.2f"|format(p.making_charge_rate) if p.making_charge_rate else "—" }}</td>
-            <td style="font-size:11px">{{ p.huid or "—" }}</td>
-            <td>
-                {% if p.current_stock is not none %}
-                <span
-                    style="color:{% if p.low_stock_alert and p.current_stock <= p.low_stock_alert %}#dc3545{% else %}#333{% endif %}">
-                    {{ p.current_stock }}g
-                </span>
-                {% else %}—{% endif %}
-            </td>
-            <td>
-                {% if p.is_active %}
-                <span class="badge badge-paid">ACTIVE</span>
-                {% else %}
-                <span class="badge badge-overdue">INACTIVE</span>
-                {% endif %}
-            </td>
-            <td>
-                <a href="/stock/{{ p.id }}" class="btn-ghost btn-sm">Stock</a>
-                <a href="/products/{{ p.id }}/edit" class="btn-ghost btn-sm">Edit</a>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+
+<div class="section-block" style="margin-bottom: 32px;">
+    <div class="section-block-header">
+        <div class="section-block-title-row">
+            {% if group_name == "Gold Items" %}
+            <span class="metal-badge metal-badge-gold">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="12" cy="12" r="8" />
+                </svg>
+                Gold
+            </span>
+            {% elif group_name == "Silver Items" %}
+            <span class="metal-badge metal-badge-silver">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="12" cy="12" r="8" />
+                </svg>
+                Silver
+            </span>
+            {% else %}
+            <span class="metal-badge metal-badge-other">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                    <circle cx="12" cy="12" r="8" />
+                </svg>
+                Other
+            </span>
+            {% endif %}
+            <span class="section-block-count">{{ group_products | length }} items</span>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Purity</th>
+                    <th>HSN</th>
+                    <th>GST</th>
+                    <th>Making (₹/g)</th>
+                    <th>HUID</th>
+                    <th>Stock</th>
+                    <th>Status</th>
+                    <th class="col-actions">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in group_products %}
+                <tr class="{{ 'row-inactive' if not p.is_active else '' }}">
+                    <td>
+                        <div class="cell-primary">{{ p.name }}</div>
+                        {% if p.description %}
+                        <div class="cell-secondary">{{ p.description }}</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if p.purity %}
+                        <span class="purity-tag">{{ p.purity }}</span>
+                        {% else %}<span class="text-muted">—</span>{% endif %}
+                    </td>
+                    <td><span class="text-mono">{{ p.hsn_code }}</span></td>
+                    <td><span class="gst-tag">{{ p.gst_rate }}%</span></td>
+                    <td>
+                        {% if p.making_charge_rate %}
+                        ₹{{ "%.2f"|format(p.making_charge_rate) }}
+                        {% else %}
+                        <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if p.huid %}
+                        <span class="text-mono text-sm">{{ p.huid }}</span>
+                        {% else %}
+                        <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if p.current_stock is not none %}
+                        {% if p.low_stock_alert and p.current_stock <= p.low_stock_alert %} <span class="stock-low">{{
+                            p.current_stock }}g</span>
+                            {% else %}
+                            <span class="stock-ok">{{ p.current_stock }}g</span>
+                            {% endif %}
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                    </td>
+                    <td>
+                        {% if p.is_active %}
+                        <span class="badge badge-success">Active</span>
+                        {% else %}
+                        <span class="badge badge-neutral">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="action-btns">
+                            <a href="/stock/{{ p.id }}" class="btn btn-ghost btn-sm">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <line x1="8" y1="6" x2="21" y2="6" />
+                                    <line x1="8" y1="12" x2="21" y2="12" />
+                                    <line x1="8" y1="18" x2="21" y2="18" />
+                                    <line x1="3" y1="6" x2="3.01" y2="6" />
+                                    <line x1="3" y1="12" x2="3.01" y2="12" />
+                                    <line x1="3" y1="18" x2="3.01" y2="18" />
+                                </svg>
+                                Stock
+                            </a>
+                            <a href="/products/{{ p.id }}/edit" class="btn btn-ghost btn-sm">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                </svg>
+                                Edit
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
 {% endif %}
 {% endfor %}
 
-<p style="color:#888;font-size:12px">{{ products|length }} products total</p>
+<p class="table-footer-note">{{ products|length }} products total</p>
+
 {% endif %}
 
 {% endblock %}
