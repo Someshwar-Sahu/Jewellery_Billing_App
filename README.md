@@ -1,4 +1,3 @@
-<img width="1920" height="1080" alt="Screenshot 2026-05-13 005728" src="https://github.com/user-attachments/assets/12c27867-fc4b-40e8-aa06-7769652e8982" />
 # Jewellery Billing App
 
 A complete billing and business management system built for Indian jewellery shops. Handles GST-compliant invoicing, gold/silver rate management, inventory tracking, party ledgers, and financial reporting — all from a web browser with offline-capable PWA support.
