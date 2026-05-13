@@ -36,6 +36,7 @@ class Advance(SQLModel, table=True):
     advance_date: date
     amount: float
     mode: str
+    reference_no: Optional[str] = None
     adjusted_amount: float = 0.0
     status: str = "open"
     notes: Optional[str] = None
@@ -44,10 +45,13 @@ class CashAccount(SQLModel, table=True):
     __tablename__ = "cash_accounts"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    cash_date: date = Field(index=True)
-    entry_type: str
-    mode: str
+    entry_date: date = Field(index=True)
+    entry_type: str                          
+    mode: str                               
     amount: float
+    reference_no: Optional[str] = None       
+    party_id: Optional[int] = Field(default=None, foreign_key="parties.id")
     invoice_id: Optional[int] = Field(default=None, foreign_key="invoices.id")
     expense_id: Optional[int] = Field(default=None, foreign_key="expenses.id")
     description: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)

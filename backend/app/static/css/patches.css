@@ -2666,3 +2666,50 @@ th.sort-desc::after { content: ' ↓'; font-size: 0.7em; opacity: 0.6; }
 .btn-lg svg, .btn-large svg { width: 16px; height: 16px; }
 
 .dash-card--trend { border-left: 3px solid var(--gold); }
+.amount-negative { color: var(--red); }
+ 
+/* Mode breakdown strip below summary cards */
+.ledger-mode-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  font-size: 0.82rem;
+}
+ 
+.ledger-mode-strip-label {
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-right: 4px;
+}
+ 
+.ledger-mode-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-subtle);
+  border-radius: 6px;
+  padding: 3px 8px;
+}
+ 
+.ledger-mode-chip-amount {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.82rem;
+}
+ 
+/* Reference number cell — monospace so UTRs align */
+.ledger-ref-no {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  background: var(--bg-subtle);
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+}

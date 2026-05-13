@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% block title %}Bank & Cash Ledger{% endblock %}
+{% block nav_ledger %}active{% endblock %}
+{% block page_title %}Bank & Cash Ledger{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <div class="page-header-left">
+        <h1 class="page-title">Bank & Cash Ledger</h1>
+        <p class="page-subtitle">All inflows and outflows across payment modes</p>
+    </div>
+</div>
+
+<!-- ── Summary Cards ─────────────────────────────────────────────────────── -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-card-icon stat-icon-success">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                <polyline points="17 6 23 6 23 12"/>
+            </svg>
+        </div>
+        <div class="stat-card-body">
+            <span class="stat-card-label">Total Receipts</span>
+            <span class="stat-card-value stat-value-success">₹{{ "%.2f"|format(total_receipts) }}</span>
+            <span class="stat-card-sub">Money received (in)</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-icon stat-icon-danger">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/>
+                <polyline points="17 18 23 18 23 12"/>
+            </svg>
+        </div>
+        <div class="stat-card-body">
+            <span class="stat-card-label">Total Payments</span>
+            <span class="stat-card-value stat-value-danger">₹{{ "%.2f"|format(total_payments) }}</span>
+            <span class="stat-card-sub">Money paid out</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-icon {{ 'stat-icon-success' if net_flow >= 0 else 'stat-icon-danger' }}">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <line x1="12" y1="1" x2="12" y2="23"/>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+        </div>
+        <div class="stat-card-body">
+            <span class="stat-card-label">Net Flow</span>
+            <span class="stat-card-value {{ 'stat-value-success' if net_flow >= 0 else 'stat-value-danger' }}">
+                {{ '+' if net_flow >= 0 else '' }}₹{{ "%.2f"|format(net_flow) }}
+            </span>
+            <span class="stat-card-sub">Receipts minus payments</span>
+        </div>
+    </div>
+</div>
+
+<!-- ── Mode Breakdown Strip ──────────────────────────────────────────────── -->
+{% if mode_breakdown %}
+<div class="ledger-mode-strip">
+    <span class="ledger-mode-strip-label">Receipts by mode:</span>
+    {% for m, total in mode_breakdown.items() %}
+    <span class="ledger-mode-chip">
+        <span class="mode-tag">{{ m | upper }}</span>
+        <span class="ledger-mode-chip-amount">₹{{ "%.2f"|format(total) }}</span>
+    </span>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- ── Filters ────────────────────────────────────────────────────────────── -->
+<div class="filter-bar">
+    <form method="get" action="/ledger" class="filter-form">
+        <div class="field-group">
+            <label class="field-label">Month</label>
+            <input class="field-input" type="month" name="month" value="{{ month }}">
+        </div>
+        <div class="field-group">
+            <label class="field-label">Mode</label>
+            <div class="field-select-wrap">
+                <select class="field-select" name="mode">
+                    <option value="">All Modes</option>
+                    {% for m in all_modes %}
+                    <option value="{{ m }}" {{ 'selected' if mode == m }}>{{ m | upper }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="field-group">
+            <label class="field-label">Type</label>
+            <div class="field-select-wrap">
+                <select class="field-select" name="entry_type">
+                    <option value="">All Types</option>
+                    <option value="receipt"  {{ 'selected' if entry_type == 'receipt'  }}>Receipts only</option>
+                    <option value="payment"  {{ 'selected' if entry_type == 'payment'  }}>Payments only</option>
+                </select>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-outline btn-sm">Apply</button>
+        {% if month or mode or entry_type %}
+        <a href="/ledger" class="btn btn-ghost btn-sm">Clear</a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- ── Table ──────────────────────────────────────────────────────────────── -->
+{% if not entries %}
+<div class="empty-state">
+    <div class="empty-state-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+            <line x1="1" y1="10" x2="23" y2="10"/>
+        </svg>
+    </div>
+    <h3 class="empty-state-title">No entries found</h3>
+    <p class="empty-state-desc">
+        {% if month or mode or entry_type %}
+            No entries match the selected filters.
+        {% else %}
+            Ledger entries will appear here once bills, expenses, or advances are recorded.
+        {% endif %}
+    </p>
+    {% if month or mode or entry_type %}
+    <a href="/ledger" class="btn btn-outline">Clear Filters</a>
+    {% endif %}
+</div>
+
+{% else %}
+<div class="table-wrap">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Mode</th>
+                <th>Party</th>
+                <th>Description</th>
+                <th>Reference / UTR</th>
+                <th>Linked To</th>
+                <th style="text-align:right">Amount (₹)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for e in entries %}
+            <tr>
+                <!-- Date -->
+                <td><span class="date-cell">{{ e.entry_date }}</span></td>
+
+                <!-- Type badge -->
+                <td>
+                    {% if e.entry_type == "receipt" %}
+                    <span class="badge badge--paid">IN</span>
+                    {% else %}
+                    <span class="badge badge--unpaid">OUT</span>
+                    {% endif %}
+                </td>
+
+                <!-- Mode -->
+                <td><span class="mode-tag">{{ e.mode | upper }}</span></td>
+
+                <!-- Party -->
+                <td>
+                    {% if e.party_id and e.party_id in parties %}
+                    <a href="/parties/{{ e.party_id }}" class="table-link">{{ parties[e.party_id].name }}</a>
+                    {% else %}
+                    <span class="text-muted">—</span>
+                    {% endif %}
+                </td>
+
+                <!-- Description -->
+                <td>
+                    <span class="text-muted-sm">{{ e.description or "—" }}</span>
+                </td>
+
+                <!-- Reference / UTR -->
+                <td>
+                    {% if e.reference_no %}
+                    <span class="ledger-ref-no">{{ e.reference_no }}</span>
+                    {% else %}
+                    <span class="text-muted">—</span>
+                    {% endif %}
+                </td>
+
+                <!-- Linked invoice or expense -->
+                <td>
+                    {% if e.invoice_id %}
+                    <a href="/invoices/{{ e.invoice_id }}" class="table-link table-link--mono">Bill #{{ e.invoice_id }}</a>
+                    {% elif e.expense_id %}
+                    <span class="text-muted-sm">Exp #{{ e.expense_id }}</span>
+                    {% else %}
+                    <span class="text-muted">—</span>
+                    {% endif %}
+                </td>
+
+                <!-- Amount -->
+                <td style="text-align:right">
+                    <span class="amount-cell {{ 'amount-positive' if e.entry_type == 'receipt' else 'amount-negative' }}">
+                        {{ '+' if e.entry_type == 'receipt' else '−' }}₹{{ "%.2f"|format(e.amount) }}
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<p class="table-footer-note">{{ entry_count }} entr{{ 'y' if entry_count == 1 else 'ies' }}</p>
+{% endif %}
+
+{% endblock %}

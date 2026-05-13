@@ -84,6 +84,7 @@ class InvoiceCreate(BaseModel):
     place_of_supply: Optional[str] = "Uttar Pradesh"
     party_gstin: Optional[str] = None
     payment_mode: Optional[PaymentMode] = None
+    payment_reference: Optional[str] = None
     amount_paid: Optional[float] = 0.0
     advance_used: Optional[float] = 0.0
     old_gold_value: float = 0.0
@@ -144,6 +145,7 @@ class InvoiceUpdate(BaseModel):
     invoice_date: Optional[date] = None
     credit_due_date: Optional[date] = None
     payment_mode: Optional[PaymentMode] = None
+    payment_reference: Optional[str] = None
     amount_paid: Optional[float] = None
     old_gold_value: Optional[float] = None
     discount: Optional[float] = None
@@ -172,6 +174,7 @@ class InvoiceRead(BaseModel):
     amount_paid: float
     amount_due: float
     payment_mode: Optional[str] = None
+    payment_reference: Optional[str] = None
     payment_status: str
     gst_status: str
     is_cancelled: bool

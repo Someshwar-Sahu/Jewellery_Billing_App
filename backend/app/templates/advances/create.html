@@ -67,7 +67,7 @@
             </div>
             <div class="field-group">
                 <label class="field-label" for="mode">Payment Mode <span class="field-required">*</span></label>
-                <select class="field-select" id="mode" name="mode">
+                <select class="field-select" id="mode" name="mode" onchange="toggleAdvRef(this.value)">
                     {% for m in ["cash","upi","cheque","neft","rtgs","card"] %}
                     <option value="{{ m }}">{{ m | upper }}</option>
                     {% endfor %}
@@ -75,6 +75,11 @@
             </div>
         </div>
 
+        <div class="field-group" id="advRefRow" style="display:none">
+            <label class="field-label" for="adv_reference">Reference / UTR No.</label>
+            <input class="field-input" type="text" id="adv_reference" name="adv_reference"
+                   placeholder="e.g. UPI ref, Cheque no., NEFT/RTGS UTR">
+        </div>
         <div class="field-group">
             <label class="field-label" for="notes">Notes</label>
             <input class="field-input" type="text" id="notes" name="notes"
@@ -103,6 +108,16 @@
 <script>
 let _savingAdvance = false;
 
+function toggleAdvRef(mode) {
+    const showFor = ["upi", "card", "cheque", "neft", "rtgs"];
+    const row = document.getElementById("advRefRow");
+    if (row) row.style.display = showFor.includes(mode) ? "block" : "none";
+    if (!showFor.includes(mode)) {
+        const f = document.getElementById("adv_reference");
+        if (f) f.value = "";
+    }
+}
+
 async function saveAdvance() {
     if (_savingAdvance) return;
     const party  = document.getElementById("party_id").value;
@@ -115,6 +130,7 @@ async function saveAdvance() {
         advance_date: document.getElementById("advance_date").value,
         amount,
         mode:         document.getElementById("mode").value,
+        reference_no: document.getElementById("adv_reference")?.value?.trim() || null,
         notes:        document.getElementById("notes").value || null,
     };
 

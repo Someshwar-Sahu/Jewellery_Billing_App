@@ -9,7 +9,7 @@ import json
 from app.models.system import MonthLock
 from app.models.shop import FinancialYear
 from decimal import Decimal, ROUND_HALF_UP
-from app.models.payments import Advance
+from app.models.payments import Advance, CashAccount
 from sqlalchemy.exc import IntegrityError
 
 CANCEL_GST_SNAPSHOT = "cancel_gst_snapshot"
@@ -217,6 +217,7 @@ def create_invoice(session: Session, data: InvoiceCreate) -> Invoice:
                 amount_paid          = amount_paid,
                 amount_due           = amount_due,
                 payment_mode         = data.payment_mode.value if data.payment_mode else None,
+                payment_reference    = data.payment_reference or None,
                 payment_status       = totals["payment_status"],
                 notes                = data.notes,
             )
@@ -262,7 +263,22 @@ def create_invoice(session: Session, data: InvoiceCreate) -> Invoice:
                 snapshot       = json.dumps(snapshot),
             )
             session.add(version)
-
+            
+            if amount_paid > 0 and data.payment_mode:
+                mode_val = data.payment_mode.value if hasattr(data.payment_mode, "value") else str(data.payment_mode)
+                # For "mixed" mode, record under "mixed" — user can split later
+                cash_entry = CashAccount(
+                    entry_date   = data.invoice_date,
+                    entry_type   = "receipt" if data.invoice_type.value == "sale" else "payment",
+                    mode         = mode_val,
+                    amount       = amount_paid,
+                    reference_no = data.payment_reference or None,
+                    party_id     = data.party_id or None,
+                    invoice_id   = invoice.id,
+                    description  = f"{'Sale' if data.invoice_type.value == 'sale' else 'Purchase'} — {invoice.invoice_number}",
+                )
+                session.add(cash_entry)
+            
             if (
                 data.old_gold_value and data.old_gold_value > 0
                 and data.party_id

@@ -67,6 +67,19 @@ function toggleCreditDate() {
     dateInput.required = cat === "credit";
 }
 
+// ── REFERENCE NO FIELD TOGGLE ─────────────────────────────────────────────────
+
+function toggleRefNoField(mode) {
+    const row = document.getElementById("refNoRow");
+    if (!row) return;
+    // Show for any non-cash, non-empty, non-mixed mode
+    const showFor = ["upi", "card", "cheque", "neft", "rtgs"];
+    row.style.display = showFor.includes(mode) ? "block" : "none";
+    if (!showFor.includes(mode)) {
+        document.getElementById("paymentReference").value = "";
+    }
+}
+
 function toggleOldGoldDetails() {
     const checked     = document.getElementById("oldGoldDetailed").checked;
     const detailBlock = document.getElementById("oldGoldDetailFields");
@@ -504,7 +517,8 @@ async function submitBill() {
         invoice_type:    billType,
         bill_category:   form.querySelector('[name="bill_category"]').value,
         credit_due_date: form.querySelector('[name="credit_due_date"]')?.value || null,
-        payment_mode:    form.querySelector('[name="payment_mode"]').value || null,
+        payment_mode:      form.querySelector('[name="payment_mode"]').value || null,
+        payment_reference: form.querySelector('[name="payment_reference"]')?.value?.trim() || null,
         amount_paid:     amountPaid,
         old_gold_value:  parseFloat(form.querySelector('[name="old_gold_value"]').value) || 0,
         old_gold_metal_type: oldGoldDetailed

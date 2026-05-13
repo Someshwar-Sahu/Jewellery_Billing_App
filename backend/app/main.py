@@ -3,7 +3,7 @@ from fastapi import FastAPI, Depends
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from app.models import *
-from app.routers import invoices, parties, rates, old_gold, products, expenses, stocks, advances, settings, scan, reports, exports, dashboard, auth
+from app.routers import invoices, parties, rates, old_gold, products, expenses, stocks, advances, settings, scan, reports, exports, dashboard, auth, ledger
 from app.dependencies import require_login, add_login_redirect_handler
 from app.config import settings as app_settings
 
@@ -46,6 +46,7 @@ protected = [
     reports.router,
     exports.router,
     dashboard.router,
+    ledger.router, 
 ]
 
 for router in protected:

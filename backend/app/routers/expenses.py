@@ -122,6 +122,19 @@ async def submit_form(request: Request, session: Session = Depends(get_session))
             reference_no  = data.get("reference_no") or None,
         )
         session.add(expense)
+        session.flush()
+
+        from app.models.payments import CashAccount
+        session.add(CashAccount(
+            entry_date   = expense_date,
+            entry_type   = "payment",
+            mode         = data.get("payment_mode") or "cash",
+            amount       = amount,
+            reference_no = data.get("reference_no") or None,
+            party_id     = int(data["party_id"]) if data.get("party_id") else None,
+            expense_id   = expense.id,
+            description  = data.get("description") or cat.name,
+        ))
         session.commit()
         session.refresh(expense)
         return {"success": True, "expense_id": expense.id}

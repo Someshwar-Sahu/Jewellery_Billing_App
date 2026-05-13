@@ -7,6 +7,7 @@ from app.models.invoices import Invoice, InvoiceItem, InvoiceEditLog
 from app.models.parties import Party, OldGoldExchange
 from app.models.inventory import GoldRate
 from app.models.system import MonthLock
+from app.models.payments import CreditPayment, CashAccount
 from app.models.shop import FinancialYear
 from app.services.invoice_service import (
     create_invoice, cancel_invoice, recover_invoice,
@@ -457,7 +458,6 @@ async def record_credit_payment(invoice_id: int, request: Request, session: Sess
     if paid_now > max_payable:
         paid_now = max_payable
 
-    from app.models.payments import CreditPayment
     if invoice.party_id:
         session.add(CreditPayment(
             invoice_id   = invoice_id,
@@ -467,6 +467,17 @@ async def record_credit_payment(invoice_id: int, request: Request, session: Sess
             mode         = mode,
             reference_no = reference_no,
         ))
+
+    session.add(CashAccount(
+        entry_date   = date.today(),
+        entry_type   = "receipt" if invoice.invoice_type == "sale" else "payment",
+        mode         = mode,
+        amount       = paid_now,
+        reference_no = reference_no or None,
+        party_id     = invoice.party_id or None,
+        invoice_id   = invoice_id,
+        description  = f"Settlement — {invoice.invoice_number}",
+    ))
 
     invoice.amount_paid    = _money(Decimal(str(invoice.amount_paid)) + Decimal(str(paid_now)))
     invoice.amount_due     = max(0.0, _money(Decimal(str(invoice.grand_total)) - Decimal(str(invoice.amount_paid))))

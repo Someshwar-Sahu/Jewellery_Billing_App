@@ -35,6 +35,7 @@ class Invoice(SQLModel, table=True):
     amount_due: float = 0.0
 
     payment_mode: Optional[str] = None
+    payment_reference: Optional[str] = None
     payment_status: str = "unpaid"
 
     gst_status: str = "pending_review"

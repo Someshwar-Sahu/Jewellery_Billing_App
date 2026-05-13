@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 from app.database import get_session
-from app.models.payments import Advance
+from app.models.payments import Advance, CashAccount
 from app.models.parties import Party
 from app.models.system import MonthLock
 from app.models.shop import FinancialYear
@@ -72,9 +72,21 @@ async def create_submit(request: Request, session: Session = Depends(get_session
             advance_date = adv_date,
             amount       = am,
             mode         = data.get("mode", "cash"),
+            reference_no = data.get("reference_no") or None,
             notes        = data.get("notes") or None,
         )
         session.add(advance)
+        session.flush()
+
+        session.add(CashAccount(
+            entry_date   = adv_date,
+            entry_type   = "receipt",
+            mode         = data.get("mode", "cash"),
+            amount       = am,
+            reference_no = data.get("reference_no") or None,
+            party_id     = int(data["party_id"]),
+            description  = f"Advance received",
+        ))
         session.commit()
         session.refresh(advance)
         return {"success": True, "advance_id": advance.id}
