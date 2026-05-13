@@ -8,15 +8,19 @@ A complete billing and business management system built for Indian jewellery sho
 
 ### Dashboard
 <!-- Upload screenshot: drag and drop image here while editing on GitHub -->
+<img width="1920" height="1080" alt="Screenshot 2026-05-13 005728" src="https://github.com/user-attachments/assets/1870dfc1-d555-4a96-9ea7-5034a6097ccf" />
 
 ### Create Invoice
 <!-- Upload screenshot: drag and drop image here while editing on GitHub -->
+<img width="1920" height="1080" alt="Screenshot 2026-05-13 005941" src="https://github.com/user-attachments/assets/ff0d0469-4233-4624-90ad-ca6e405aa20c" />
 
 ### Bill Print Preview
 <!-- Upload screenshot: drag and drop image here while editing on GitHub -->
+<img width="669" height="952" alt="Screenshot 2026-05-13 010144" src="https://github.com/user-attachments/assets/8977aac9-9f67-41c1-9937-f2c3a08e9352" />
 
 ### GST Report
 <!-- Upload screenshot: drag and drop image here while editing on GitHub -->
+<img width="1920" height="1080" alt="Screenshot 2026-05-13 010231" src="https://github.com/user-attachments/assets/3b220ab5-9dc7-41fe-9753-d028164c9ef9" />
 
 ---
 
