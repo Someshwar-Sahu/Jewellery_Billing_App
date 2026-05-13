@@ -317,7 +317,76 @@ function onAmountPaidInput() {
     recalcTotals();
 }
 
-// ── ADVANCE CHECK ─────────────────────────────────────────────────────────────
+// ── PARTY SEARCHABLE DROPDOWN ─────────────────────────────────────────────────
+
+function showPartyDropdown() {
+    const dropdown = document.getElementById("partyDropdown");
+    if (!dropdown) return;
+    filterPartyDropdown(document.getElementById("partySearchInput")?.value || "");
+    dropdown.style.display = "block";
+}
+
+function hidePartyDropdownDelayed() {
+    setTimeout(() => {
+        // Only hide if focus has left both the input and the dropdown
+        const active = document.activeElement;
+        const dropdown = document.getElementById("partyDropdown");
+        if (dropdown && !dropdown.contains(active)) {
+            dropdown.style.display = "none";
+        }
+    }, 250);
+}
+
+function filterPartyDropdown(query) {
+    const dropdown = document.getElementById("partyDropdown");
+    const hint = document.getElementById("partySearchHint");
+    if (!dropdown) return;
+
+    const q = query.trim().toLowerCase();
+    const options = dropdown.querySelectorAll(".party-option");
+    let visibleCount = 0;
+
+    options.forEach(opt => {
+        const label = (opt.dataset.label || "").toLowerCase();
+        if (!q || label.includes(q)) {
+            opt.style.display = "block";
+            visibleCount++;
+        } else {
+            opt.style.display = "none";
+        }
+    });
+
+    dropdown.style.display = "block";
+    if (hint) hint.style.display = (q && visibleCount === 0) ? "inline" : "none";
+
+    // Clear selection if user is typing something new
+    const hiddenInput = document.getElementById("partyIdSelect");
+    if (hiddenInput) hiddenInput.value = "";
+}
+
+function selectPartyOption(el) {
+    const hiddenInput = document.getElementById("partyIdSelect");
+    const searchInput = document.getElementById("partySearchInput");
+    const dropdown    = document.getElementById("partyDropdown");
+    if (!el || !hiddenInput || !searchInput) return;
+
+    hiddenInput.value = el.dataset.id;
+    searchInput.value = el.dataset.label;
+
+    if (dropdown) dropdown.style.display = "none";
+    checkAdvance();
+}
+
+// Close party dropdown when clicking outside
+document.addEventListener("click", function(e) {
+    if (!e.target.closest("#partySearchInput") &&
+        !e.target.closest("#partyDropdown")) {
+        const dropdown = document.getElementById("partyDropdown");
+        if (dropdown) dropdown.style.display = "none";
+    }
+});
+
+
 
 async function checkAdvance() {
     const partyId = document.getElementById("partyIdSelect")?.value;

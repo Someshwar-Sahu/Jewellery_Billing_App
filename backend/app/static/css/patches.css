@@ -904,6 +904,11 @@ th.sort-desc::after { content: ' ↓'; font-size: 0.7em; opacity: 0.6; }
 }
 
 .form-card-items { overflow: visible; }
+/* Party searchable dropdown — allow overflow so list isn't clipped */
+#salePartySection,
+#purchasePartySection {
+  overflow: visible;
+}
 
 .form-card-items .table-scroll,
 .form-card-items .items-table,

@@ -105,7 +105,7 @@ def search_products(q: str = "", session: Session = Depends(get_session)):
     """
     stmt = select(Product).where(Product.is_active == True)
     if q:
-        stmt = stmt.where(Product.name.contains(q))
+        stmt = stmt.where(Product.name.ilike(f"%{q}%"))
     products = session.exec(stmt.order_by(Product.name).limit(10)).all()
     return [
         {
