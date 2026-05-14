@@ -450,6 +450,7 @@ async function submitBill() {
     let party_id     = null;
     let walkin_name  = null;
     let walkin_phone = null;
+    let walkin_address = null;
 
     if (billType === "purchase") {
         const supplierVal = document.getElementById("supplierIdSelect").value;
@@ -463,6 +464,7 @@ async function submitBill() {
         if (mode === "walkin") {
             walkin_name  = document.getElementById("walkinName").value.trim();
             walkin_phone = document.getElementById("walkinPhone").value.trim() || null;
+            walkin_address = document.getElementById("walkinAddress").value.trim() || null;
             if (!walkin_name) {
                 alert("Please enter the customer name.");
                 return;
@@ -512,6 +514,7 @@ async function submitBill() {
         party_id,
         walkin_name,
         walkin_phone,
+        walkin_address,
         advance_used:    advanceUsed,   
         invoice_date:    form.querySelector('[name="invoice_date"]').value,
         invoice_type:    billType,

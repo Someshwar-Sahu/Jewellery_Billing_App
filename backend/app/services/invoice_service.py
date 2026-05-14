@@ -1,13 +1,13 @@
 from sqlmodel import Session, select
 from app.models.invoices import Invoice, InvoiceItem, InvoiceVersion, InvoiceEditLog
 from app.schemas.invoice import InvoiceCreate, InvoiceUpdate
-from app.models.parties import OldGoldExchange
+from app.models.parties import OldGoldExchange, Party
 from app.models.inventory import StockLedger
 from datetime import datetime, date
 from fastapi import HTTPException
 import json
 from app.models.system import MonthLock
-from app.models.shop import FinancialYear
+from app.models.shop import FinancialYear, ShopSettings
 from decimal import Decimal, ROUND_HALF_UP
 from app.models.payments import Advance, CashAccount
 from sqlalchemy.exc import IntegrityError
@@ -163,6 +163,16 @@ def create_invoice(session: Session, data: InvoiceCreate) -> Invoice:
     """Create a full invoice with items and calculated totals."""
     _ensure_date_in_active_fy(session, data.invoice_date)
     _ensure_month_unlocked(session, data.invoice_date, "create invoice")
+
+    if data.party_id:
+        party = session.get(Party, data.party_id)
+        shop = session.exec(select(ShopSettings)).first()
+        if party and shop and party.state and shop.state:
+            if party.state.strip().lower() != shop.state.strip().lower():
+                raise HTTPException(
+                    status_code=400,
+                    detail="Interstate invoices are not supported. Party state must match shop state."
+                )
 
     calculated_items = []
     for item_data in data.items:
@@ -396,6 +406,16 @@ def update_invoice(session: Session, invoice_id: int, data: InvoiceUpdate) -> In
     _ensure_date_in_active_fy(session, invoice.invoice_date)
     _ensure_month_unlocked(session, invoice.invoice_date, "edit invoice")
 
+    if invoice.party_id:
+        party = session.get(Party, invoice.party_id)
+        shop = session.exec(select(ShopSettings)).first()
+        if party and shop and party.state and shop.state:
+            if party.state.strip().lower() != shop.state.strip().lower():
+                raise HTTPException(
+                    status_code=400,
+                    detail="Interstate invoices are not supported. Party state must match shop state."
+                )
+
     current_items = session.exec(
         select(InvoiceItem).where(InvoiceItem.invoice_id == invoice_id)
     ).all()
@@ -448,10 +468,22 @@ def update_invoice(session: Session, invoice_id: int, data: InvoiceUpdate) -> In
         if str_old != str_new:
             log_change(field, str_old, str_new)
             setattr(invoice, field, value)
+            
+            # Close time-travel loophole: re-validate the new date
+            if field == "invoice_date" and value:
+                _ensure_date_in_active_fy(session, value)
+                _ensure_month_unlocked(session, value, "edit invoice to new date")
 
     if data.items is not None and len(data.items) > 0:
         for old_item in current_items:
             session.delete(old_item)
+            
+        old_stock = session.exec(
+            select(StockLedger).where(StockLedger.invoice_id == invoice_id)
+        ).all()
+        for os in old_stock:
+            session.delete(os)
+            
         session.flush()
         items_to_calc    = data.items
         saving_new_items = True
@@ -489,6 +521,32 @@ def update_invoice(session: Session, invoice_id: int, data: InvoiceUpdate) -> In
                 description    = item_data.description,
                 sort_order     = item_data.sort_order if item_data.sort_order else idx,
             ))
+
+        is_stock_out = invoice.invoice_type in ["sale", "debit_note"]
+        is_stock_in = invoice.invoice_type in ["purchase", "credit_note"]
+
+        for item_data, calc in calculated_items:
+            if not item_data.product_id:
+                continue
+
+            stock_qty = (
+                item_data.weight_grams
+                if item_data.weight_grams
+                else (item_data.quantity or 1.0)
+            )
+
+            stock_entry = StockLedger(
+                product_id       = item_data.product_id,
+                stock_date       = invoice.invoice_date,
+                transaction_type = invoice.invoice_type,
+                invoice_id       = invoice_id,
+                quantity_in      = stock_qty if is_stock_in else 0.0,
+                quantity_out     = stock_qty if is_stock_out else 0.0,
+                balance          = 0.0,
+                rate             = item_data.rate_per_gram,
+                notes            = f"Auto updated from invoice {invoice.invoice_number}",
+            )
+            session.add(stock_entry)
 
     old_gold = data.old_gold_value if data.old_gold_value is not None else invoice.old_gold_value
     discount  = data.discount      if data.discount      is not None else invoice.discount
@@ -594,50 +652,97 @@ def cancel_invoice(session: Session, invoice_id: int, reason: str = None) -> Inv
     _ensure_date_in_active_fy(session, invoice.invoice_date)
     _ensure_month_unlocked(session, invoice.invoice_date, "cancel invoice")
 
-    items = session.exec(
-        select(InvoiceItem).where(InvoiceItem.invoice_id == invoice_id)
-    ).all()
-
-    is_stock_out     = invoice.invoice_type in ["sale", "debit_note"]
-    is_stock_in      = invoice.invoice_type in ["purchase", "credit_note"]
-
-    for item in items:
-        if not item.product_id:
-            continue
-        reversal_qty = item.weight_grams if item.weight_grams else (item.quantity or 1.0)
-        reversal = StockLedger(
-            product_id       = item.product_id,
-            stock_date       = date.today(),
-            transaction_type = "adjustment",
-            invoice_id       = invoice_id,
-            quantity_in      = reversal_qty if is_stock_out     else 0.0,
-            quantity_out     = reversal_qty if is_stock_in else 0.0,
-            balance          = 0.0,
-            rate             = item.rate_per_gram,
-            notes            = f"Reversal: bill {invoice.invoice_number} cancelled",
-        )
-        session.add(reversal)
-
-    prev_gst = invoice.gst_status
-    if prev_gst in ("gst_ready", "locked"):
-        session.add(
-            InvoiceEditLog(
-                invoice_id=invoice_id,
-                field_changed=CANCEL_GST_SNAPSHOT,
-                old_value=prev_gst,
-                new_value="pending_review",
-                reason=reason,
+    try:
+        from app.models.payments import CreditPayment
+        cash_entries = session.exec(select(CashAccount).where(CashAccount.invoice_id == invoice_id)).all()
+        for ce in cash_entries:
+            reversal_ce = CashAccount(
+                entry_date   = date.today(),
+                entry_type   = "payment" if ce.entry_type == "receipt" else "receipt",
+                mode         = ce.mode,
+                amount       = ce.amount,
+                reference_no = ce.reference_no,
+                party_id     = ce.party_id,
+                invoice_id   = invoice_id,
+                description  = f"Reversal for cancelled invoice {invoice.invoice_number}"
             )
-        )
-        invoice.gst_status = "pending_review"
+            session.add(reversal_ce)
 
-    invoice.is_cancelled     = True
-    invoice.cancelled_at     = datetime.utcnow()
-    invoice.cancelled_reason = reason
-    session.add(invoice)
-    session.commit()
-    session.refresh(invoice)
-    return invoice
+        old_gold_entries = session.exec(select(OldGoldExchange).where(OldGoldExchange.sale_invoice_id == invoice_id)).all()
+        for oge in old_gold_entries:
+            session.delete(oge)
+            
+        credit_payments = session.exec(select(CreditPayment).where(CreditPayment.invoice_id == invoice_id)).all()
+        for cp in credit_payments:
+            session.delete(cp)
+
+        advance_to_restore = _money(Decimal(str(invoice.grand_total)) - Decimal(str(invoice.amount_paid)) - Decimal(str(invoice.amount_due)))
+        if advance_to_restore > 0 and invoice.party_id:
+            used_advances = session.exec(
+                select(Advance)
+                .where(Advance.party_id == invoice.party_id)
+                .where(Advance.adjusted_amount > 0)
+                .order_by(Advance.advance_date.desc())
+            ).all()
+            
+            remaining_to_restore = advance_to_restore
+            for adv in used_advances:
+                if remaining_to_restore <= 0:
+                    break
+                can_restore = min(adv.adjusted_amount, remaining_to_restore)
+                adv.adjusted_amount = _money(Decimal(str(adv.adjusted_amount)) - Decimal(str(can_restore)))
+                adv.status = "open"
+                session.add(adv)
+                remaining_to_restore = _money(Decimal(str(remaining_to_restore)) - Decimal(str(can_restore)))
+
+        items = session.exec(
+            select(InvoiceItem).where(InvoiceItem.invoice_id == invoice_id)
+        ).all()
+
+        is_stock_out     = invoice.invoice_type in ["sale", "debit_note"]
+        is_stock_in      = invoice.invoice_type in ["purchase", "credit_note"]
+
+        for item in items:
+            if not item.product_id:
+                continue
+            reversal_qty = item.weight_grams if item.weight_grams else (item.quantity or 1.0)
+            reversal = StockLedger(
+                product_id       = item.product_id,
+                stock_date       = date.today(),
+                transaction_type = "adjustment",
+                invoice_id       = invoice_id,
+                quantity_in      = reversal_qty if is_stock_out else 0.0,
+                quantity_out     = reversal_qty if is_stock_in else 0.0,
+                balance          = 0.0,
+                rate             = item.rate_per_gram,
+                notes            = f"Reversal: bill {invoice.invoice_number} cancelled",
+            )
+            session.add(reversal)
+
+        prev_gst = invoice.gst_status
+        if prev_gst in ("gst_ready", "locked"):
+            session.add(
+                InvoiceEditLog(
+                    invoice_id=invoice_id,
+                    field_changed=CANCEL_GST_SNAPSHOT,
+                    old_value=prev_gst,
+                    new_value="pending_review",
+                    reason=reason,
+                )
+            )
+            invoice.gst_status = "pending_review"
+
+        invoice.is_cancelled     = True
+        invoice.cancelled_at     = datetime.utcnow()
+        invoice.cancelled_reason = reason
+        session.add(invoice)
+        session.commit()
+        session.refresh(invoice)
+        return invoice
+
+    except Exception:
+        session.rollback()
+        raise
 
 
 def recover_invoice(session: Session, invoice_id: int) -> Invoice:

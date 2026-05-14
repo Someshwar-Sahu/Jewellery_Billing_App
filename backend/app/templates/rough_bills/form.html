@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}Rough Bill{% endblock %}
+{% block page_title %}Rough Bill{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1 class="page-title">Rough Bill / Kaccha Bill</h1>
+    <p class="page-subtitle">Temporary estimate slip. This is NOT saved to the database.</p>
+  </div>
+</div>
+
+<form id="roughBillForm" autocomplete="off">
+  <div class="form-card">
+    <div class="form-grid form-grid-3">
+      <div class="field-group">
+        <label class="field-label">Customer Name</label>
+        <input class="field-input" type="text" id="rbName" placeholder="Name">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Address</label>
+        <input class="field-input" type="text" id="rbAddress" placeholder="Address">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Date</label>
+        <!-- Auto-fill today's date via JS later -->
+        <input class="field-input" type="date" id="rbDate">
+      </div>
+    </div>
+  </div>
+
+  <div class="form-card form-card-items">
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th style="width:120px">Weight (g)</th>
+          <th style="width:120px">Rate (₹)</th>
+          <th style="width:120px">Amount (₹)</th>
+          <th style="width:40px"></th>
+        </tr>
+      </thead>
+      <tbody id="rbBody">
+        <!-- Rows added dynamically -->
+      </tbody>
+    </table>
+    <br>
+    <button type="button" onclick="addRbItem()" class="btn btn-outline btn-sm">+ Add Item</button>
+  </div>
+
+  <div class="totals-card" style="margin-top:20px; max-width: 400px; margin-left: auto;">
+    <div class="totals-list">
+      <div class="totals-row totals-row-grand">
+        <span>Total Amount</span>
+        <span id="rbGrandTotal">₹0.00</span>
+      </div>
+    </div>
+    <div class="totals-actions">
+      <button type="button" onclick="printRoughBill()" class="btn btn-gold btn-full">🖨 Print Rough Bill</button>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Set today's date
+  document.getElementById('rbDate').valueAsDate = new Date();
+
+  let rbItemCount = 0;
+
+  function addRbItem() {
+      rbItemCount++;
+      const n = rbItemCount;
+      const tbody = document.getElementById("rbBody");
+      const tr = document.createElement("tr");
+      tr.id = `rb-row-${n}`;
+      // Note: We reuse the autocomplete logic from invoice.js by calling searchProducts
+      tr.innerHTML = `
+          <td style="position:relative">
+             <input type="text" class="rb-name" placeholder="Item Name" oninput="searchProducts(${n}, this.value)" style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px;">
+             <div id="suggestions-${n}" style="display:none;position:absolute;top:100%;left:0;z-index:99;background:#fff;border:1px solid #ccc;border-radius:6px;min-width:220px;"></div>
+          </td>
+          <td><input type="number" class="rb-weight" step="0.001" placeholder="0.000" oninput="calcRbRow(${n})" style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px;"></td>
+          <td><input type="number" class="rb-rate" step="0.01" placeholder="0.00" oninput="calcRbRow(${n})" style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px;"></td>
+          <td><strong class="rb-amount" id="rb-amt-${n}">0.00</strong></td>
+          <td><button type="button" onclick="document.getElementById('rb-row-${n}').remove(); calcRbTotals()" style="color:red; background:none; border:none; cursor:pointer;">✕</button></td>
+      `;
+      tbody.appendChild(tr);
+  }
+
+  // Fetch today's rate on load so autocomplete can autofill it
+  fetch("/rates/today")
+    .then(r => r.json())
+    .then(data => {
+      if (data.found) window.todayRate = data;
+    });
+
+  // To reuse product search, we define the global selectProduct that searchProducts expects
+  function selectProduct(n, product) {
+      const row = document.getElementById(`rb-row-${n}`);
+      row.querySelector('.rb-name').value = product.name;
+      
+      // Auto-fill rate based on product metal/purity
+      if (window.todayRate && window.todayRate.found) {
+          let rate = null;
+          const purity = (product.purity || "").toUpperCase();
+          const metal = (product.metal_type || "").toLowerCase();
+
+          if (metal === "gold") {
+              if (purity.includes("18")) rate = window.todayRate.gold_18k;
+              else rate = window.todayRate.gold_22k;
+          } else if (metal === "silver") {
+              rate = window.todayRate.silver;
+          }
+
+          if (rate) {
+              row.querySelector('.rb-rate').value = rate;
+          }
+      }
+
+      document.getElementById(`suggestions-${n}`).style.display = "none";
+      calcRbRow(n); // Recalculate amount immediately
+  }
+
+  // Hide suggestions when clicking out
+  document.addEventListener("click", function(e) {
+      if (!e.target.closest('[id^="suggestions-"]') && !e.target.classList.contains('rb-name')) {
+          document.querySelectorAll('[id^="suggestions-"]').forEach(b => b.style.display = "none");
+      }
+  });
+
+  function calcRbRow(n) {
+      const row = document.getElementById(`rb-row-${n}`);
+      const w = parseFloat(row.querySelector('.rb-weight').value) || 0;
+      const r = parseFloat(row.querySelector('.rb-rate').value) || 0;
+      const amt = w * r;
+      row.querySelector('.rb-amount').innerText = amt.toFixed(2);
+      calcRbTotals();
+  }
+
+  let totalAmount = 0;
+  function calcRbTotals() {
+      totalAmount = 0;
+      document.querySelectorAll('.rb-amount').forEach(el => {
+          totalAmount += parseFloat(el.innerText) || 0;
+      });
+      document.getElementById('rbGrandTotal').innerText = "₹" + totalAmount.toFixed(2);
+  }
+
+  async function printRoughBill() {
+      const items = [];
+      document.querySelectorAll('#rbBody tr').forEach(row => {
+          const name = row.querySelector('.rb-name').value;
+          if (!name) return;
+          items.push({
+              name: name,
+              weight: row.querySelector('.rb-weight').value || "",
+              rate: row.querySelector('.rb-rate').value || "",
+              amount: row.querySelector('.rb-amount').innerText
+          });
+      });
+
+      if(items.length === 0) {
+          alert("Please add at least one item");
+          return;
+      }
+
+      const payload = {
+          customer_name: document.getElementById('rbName').value,
+          customer_address: document.getElementById('rbAddress').value,
+          bill_date: document.getElementById('rbDate').value,
+          items: items,
+          grand_total: totalAmount
+      };
+
+      // Submit to stateless print endpoint
+      const res = await fetch("/rough-bill/print", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(payload)
+      });
+      
+      const html = await res.text();
+      
+      // Open new window and write the HTML to it
+      const printWin = window.open("", "_blank");
+      printWin.document.write(html);
+      printWin.document.close();
+  }
+
+  // Initialize first row
+  window.addEventListener('load', addRbItem);
+</script>
+
+<!-- Import invoice.js to reuse the searchProducts function -->
+<script src="/static/js/invoice.js"></script>
+{% endblock %}

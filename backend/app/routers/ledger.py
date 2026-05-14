@@ -47,7 +47,7 @@ def ledger_view(request: Request, month: str = "", mode: str = "", entry_type: s
     mode_breakdown: dict = defaultdict(float)
     for e in entries:
         if e.entry_type == "receipt":
-            mode_breakdown[e.mode] += round(mode_breakdown[e.mode] + e.amount, 2)
+            mode_breakdown[e.mode] += round(e.amount, 2)
         
     mode_breakdown = dict(sorted(mode_breakdown.items(), key=lambda x: -x[1]))
 

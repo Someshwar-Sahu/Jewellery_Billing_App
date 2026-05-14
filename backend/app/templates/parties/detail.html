@@ -108,8 +108,11 @@
                 <span class="detail-kv-value">₹{{ "%.2f"|format(total_paid) }}</span>
             </div>
             <div class="detail-kv detail-kv-total">
-                <span class="detail-kv-label">Balance Due</span>
-                <span class="detail-kv-value {{ 'text-danger' if total_due > 0 else 'text-success' }}">₹{{ "%.2f"|format(total_due) }}</span>
+                <span class="detail-kv-label">Net Balance</span>
+                <span class="detail-kv-value {{ 'text-danger' if net_balance_type == 'debit' else 'text-success' }}">
+                    ₹{{ "%.2f"|format(net_balance) }}
+                    <small class="table-dim" style="font-weight:normal; font-size: 0.85em; margin-left: 4px;">({{ 'Party owes us' if net_balance_type == 'debit' else 'We owe party' }})</small>
+                </span>
             </div>
         </div>
     </div>

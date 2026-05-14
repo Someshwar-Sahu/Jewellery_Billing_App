@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}JewelBill{% endblock %} — JewelBill</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Playfair+Display:wght@500;600&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="/static/css/style.css?v=3">
     <link rel="stylesheet" href="/static/css/patches.css?v=3">
     <link rel="manifest" href="/manifest.json">
@@ -17,368 +20,404 @@
     <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
     {% block head %}{% endblock %}
 </head>
-<body>
-{% set _username = request.session.get('username') or 'Owner' %}
-{% set _user_initial = (_username[0] if _username else 'U') %}
 
-<!-- ═══════════════════════════════════════════════════════════
+<body>
+    {% set _username = request.session.get('username') or 'Owner' %}
+    {% set _user_initial = (_username[0] if _username else 'U') %}
+
+    <!-- ═══════════════════════════════════════════════════════════
      SIDEBAR OVERLAY (mobile)
 ════════════════════════════════════════════════════════════════ -->
-<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
-<!-- ═══════════════════════════════════════════════════════════
+    <!-- ═══════════════════════════════════════════════════════════
      SIDEBAR
 ════════════════════════════════════════════════════════════════ -->
-<aside class="sidebar" id="sidebar">
+    <aside class="sidebar" id="sidebar">
 
-    <!-- Logo -->
-    <div class="sidebar-logo">
-        <div class="sidebar-logo-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </svg>
-        </div>
-        <div class="sidebar-logo-text">
-            <span class="sidebar-logo-name">JewelBill</span>
-            <span class="sidebar-logo-tag">Billing System</span>
-        </div>
-        <button class="sidebar-close-btn" onclick="closeSidebar()" aria-label="Close menu">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-        </button>
-    </div>
-
-    <!-- Nav -->
-    <nav class="sidebar-nav">
-
-        <div class="nav-section">
-            <span class="nav-section-label">Main</span>
-            <a href="/dashboard" class="nav-item {% block nav_dashboard %}{% endblock %}">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-                    <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+        <!-- Logo -->
+        <div class="sidebar-logo">
+            <div class="sidebar-logo-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon
+                        points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                 </svg>
-                <span>Dashboard</span>
-            </a>
-            <a href="/invoices/create" class="nav-item nav-item-accent {% block nav_new_bill %}{% endblock %}">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14 2 14 8 20 8"/><line x1="12" y1="11" x2="12" y2="17"/>
-                    <line x1="9" y1="14" x2="15" y2="14"/>
-                </svg>
-                <span>New Bill</span>
-            </a>
-        </div>
-
-        <div class="nav-section">
-            <span class="nav-section-label">Billing</span>
-            <a href="/invoices" class="nav-item {% block nav_invoices %}{% endblock %}">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                    <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-                    <polyline points="10 9 9 9 8 9"/>
-                </svg>
-                <span>All Bills</span>
-            </a>
-            <a href="/invoices/credit/unsettled" class="nav-item {% block nav_pending %}{% endblock %}">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <circle cx="12" cy="12" r="10"/>
-                    <polyline points="12 6 12 12 16 14"/>
-                </svg>
-                <span>Pending Payments</span>
-            </a>
-            <a href="/invoices/gst/review" class="nav-item {% block nav_gst_review %}{% endblock %}">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-                </svg>
-                <span>GST Review</span>
-            </a>
-            <a href="/invoices/cancelled" class="nav-item {% block nav_cancelled %}{% endblock %}">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <circle cx="12" cy="12" r="10"/>
-                    <line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
-                </svg>
-                <span>Cancelled Bills</span>
-            </a>
-        </div>
-
-        <div class="nav-section">
-            <span class="nav-section-label">Masters</span>
-            <a href="/parties" class="nav-item {% block nav_parties %}{% endblock %}">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                    <circle cx="9" cy="7" r="4"/>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                </svg>
-                <span>Parties</span>
-            </a>
-            <a href="/products" class="nav-item {% block nav_products %}{% endblock %}">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                </svg>
-                <span>Products</span>
-            </a>
-            <a href="/rates" class="nav-item {% block nav_rates %}{% endblock %}">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <line x1="12" y1="1" x2="12" y2="23"/>
-                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                </svg>
-                <span>Gold Rates</span>
-            </a>
-        </div>
-
-        <div class="nav-section">
-            <span class="nav-section-label">Finance</span>
-            <a href="/expenses" class="nav-item {% block nav_expenses %}{% endblock %}">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
-                    <line x1="1" y1="10" x2="23" y2="10"/>
-                </svg>
-                <span>Expenses</span>
-            </a>
-            <a href="/advances" class="nav-item {% block nav_advances %}{% endblock %}">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
-                    <polyline points="17 6 23 6 23 12"/>
-                </svg>
-                <span>Advances</span>
-            </a>
-            <a href="/old-gold" class="nav-item {% block nav_old_gold %}{% endblock %}">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <circle cx="12" cy="12" r="5"/>
-                    <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-                    <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-                </svg>
-                <span>Old Gold</span>
-            </a>
-            <a href="/stock" class="nav-item {% block nav_stock %}{% endblock %}">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
-                    <line x1="8" y1="18" x2="21" y2="18"/>
-                    <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/>
-                    <line x1="3" y1="18" x2="3.01" y2="18"/>
-                </svg>
-                <span>Stock</span>
-            </a>
-        </div>
-
-        <div class="nav-section">
-            <span class="nav-section-label">Reports</span>
-            <a href="/reports/gstr1" class="nav-item {% block nav_gstr1 %}{% endblock %}">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                    <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-                    <line x1="10" y1="9" x2="8" y2="9"/>
-                </svg>
-                <span>GSTR-1</span>
-            </a>
-            <a href="/reports/gstr3b" class="nav-item {% block nav_gstr3b %}{% endblock %}">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                    <line x1="16" y1="13" x2="8" y2="13"/><line x1="13" y1="17" x2="8" y2="17"/>
-                    <line x1="10" y1="9" x2="8" y2="9"/>
-                </svg>
-                <span>GSTR-3B</span>
-            </a>
-            <a href="/exports" class="nav-item {% block nav_exports %}{% endblock %}">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="7 10 12 15 17 10"/>
-                    <line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
-                <span>Exports</span>
-            </a>
-            <a href="/ledger" class="nav-item {% block nav_ledger %}{% endblock %}">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
-                    <line x1="1" y1="10" x2="23" y2="10"/>
-                    <line x1="6" y1="14" x2="10" y2="14"/>
-                    <line x1="14" y1="14" x2="18" y2="14"/>
-                </svg>
-                <span>Bank Ledger</span>
-            </a>
-        </div>
-
-        <div class="nav-section">
-            <span class="nav-section-label">Tools</span>
-            <a href="/scan" class="nav-item {% block nav_scan %}{% endblock %}">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <polyline points="23 7 23 1 17 1"/><polyline points="1 17 1 23 7 23"/>
-                    <polyline points="23 17 23 23 17 23"/><polyline points="1 7 1 1 7 1"/>
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                <span>Scan Bill</span>
-            </a>
-            <a href="/settings" class="nav-item {% block nav_settings %}{% endblock %}">
-                <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <circle cx="12" cy="12" r="3"/>
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                </svg>
-                <span>Settings</span>
-            </a>
-        </div>
-
-    </nav>
-
-    <!-- User Footer -->
-    <div class="sidebar-footer">
-        <div class="sidebar-user">
-            <div class="sidebar-user-avatar">
-                {{ _user_initial | upper }}
             </div>
-            <div class="sidebar-user-info">
-                <span class="sidebar-user-name">{{ _username }}</span>
-                <span class="sidebar-user-role">Owner</span>
+            <div class="sidebar-logo-text">
+                <span class="sidebar-logo-name">JewelBill</span>
+                <span class="sidebar-logo-tag">Billing System</span>
             </div>
-        </div>
-        <form action="/auth/logout" method="post" style="margin:0">
-            <button type="submit" class="sidebar-logout-btn" title="Logout">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                    <polyline points="16 17 21 12 16 7"/>
-                    <line x1="21" y1="12" x2="9" y2="12"/>
+            <button class="sidebar-close-btn" onclick="closeSidebar()" aria-label="Close menu">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
             </button>
-        </form>
-    </div>
+        </div>
 
-</aside>
+        <!-- Nav -->
+        <nav class="sidebar-nav">
 
-<!-- ═══════════════════════════════════════════════════════════
+            <div class="nav-section">
+                <span class="nav-section-label">Main</span>
+                <a href="/dashboard" class="nav-item {% block nav_dashboard %}{% endblock %}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <rect x="3" y="3" width="7" height="7" rx="1" />
+                        <rect x="14" y="3" width="7" height="7" rx="1" />
+                        <rect x="3" y="14" width="7" height="7" rx="1" />
+                        <rect x="14" y="14" width="7" height="7" rx="1" />
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/invoices/create" class="nav-item nav-item-accent {% block nav_new_bill %}{% endblock %}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="12" y1="11" x2="12" y2="17" />
+                        <line x1="9" y1="14" x2="15" y2="14" />
+                    </svg>
+                    <span>New Bill</span>
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <span class="nav-section-label">Billing</span>
+                <a href="/invoices" class="nav-item {% block nav_invoices %}{% endblock %}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                        <polyline points="10 9 9 9 8 9" />
+                    </svg>
+                    <span>All Bills</span>
+                </a>
+                <a href="/rough-bill" class="nav-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                    <span>Rough Bill</span>
+                </a>
+                <a href="/invoices/credit/unsettled" class="nav-item {% block nav_pending %}{% endblock %}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                    <span>Pending Payments</span>
+                </a>
+                <a href="/invoices/gst/review" class="nav-item {% block nav_gst_review %}{% endblock %}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M9 11l3 3L22 4" />
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                    </svg>
+                    <span>GST Review</span>
+                </a>
+                <a href="/invoices/cancelled" class="nav-item {% block nav_cancelled %}{% endblock %}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="15" y1="9" x2="9" y2="15" />
+                        <line x1="9" y1="9" x2="15" y2="15" />
+                    </svg>
+                    <span>Cancelled Bills</span>
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <span class="nav-section-label">Masters</span>
+                <a href="/parties" class="nav-item {% block nav_parties %}{% endblock %}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                    <span>Parties</span>
+                </a>
+                <a href="/products" class="nav-item {% block nav_products %}{% endblock %}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path
+                            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                    </svg>
+                    <span>Products</span>
+                </a>
+                <a href="/rates" class="nav-item {% block nav_rates %}{% endblock %}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <line x1="12" y1="1" x2="12" y2="23" />
+                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                    </svg>
+                    <span>Gold Rates</span>
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <span class="nav-section-label">Finance</span>
+                <a href="/expenses" class="nav-item {% block nav_expenses %}{% endblock %}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+                        <line x1="1" y1="10" x2="23" y2="10" />
+                    </svg>
+                    <span>Expenses</span>
+                </a>
+                <a href="/advances" class="nav-item {% block nav_advances %}{% endblock %}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+                        <polyline points="17 6 23 6 23 12" />
+                    </svg>
+                    <span>Advances</span>
+                </a>
+                <a href="/old-gold" class="nav-item {% block nav_old_gold %}{% endblock %}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <circle cx="12" cy="12" r="5" />
+                        <line x1="12" y1="1" x2="12" y2="3" />
+                        <line x1="12" y1="21" x2="12" y2="23" />
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                        <line x1="1" y1="12" x2="3" y2="12" />
+                        <line x1="21" y1="12" x2="23" y2="12" />
+                    </svg>
+                    <span>Old Gold</span>
+                </a>
+                <a href="/stock" class="nav-item {% block nav_stock %}{% endblock %}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <line x1="8" y1="6" x2="21" y2="6" />
+                        <line x1="8" y1="12" x2="21" y2="12" />
+                        <line x1="8" y1="18" x2="21" y2="18" />
+                        <line x1="3" y1="6" x2="3.01" y2="6" />
+                        <line x1="3" y1="12" x2="3.01" y2="12" />
+                        <line x1="3" y1="18" x2="3.01" y2="18" />
+                    </svg>
+                    <span>Stock</span>
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <span class="nav-section-label">Reports</span>
+                <a href="/reports/gstr1" class="nav-item {% block nav_gstr1 %}{% endblock %}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                        <line x1="10" y1="9" x2="8" y2="9" />
+                    </svg>
+                    <span>GSTR-1</span>
+                </a>
+                <a href="/reports/gstr3b" class="nav-item {% block nav_gstr3b %}{% endblock %}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="13" y1="17" x2="8" y2="17" />
+                        <line x1="10" y1="9" x2="8" y2="9" />
+                    </svg>
+                    <span>GSTR-3B</span>
+                </a>
+                <a href="/exports" class="nav-item {% block nav_exports %}{% endblock %}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    <span>Exports</span>
+                </a>
+                <a href="/ledger" class="nav-item {% block nav_ledger %}{% endblock %}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+                        <line x1="1" y1="10" x2="23" y2="10" />
+                        <line x1="6" y1="14" x2="10" y2="14" />
+                        <line x1="14" y1="14" x2="18" y2="14" />
+                    </svg>
+                    <span>Bank Ledger</span>
+                </a>
+            </div>
+
+            <div class="nav-section">
+                <span class="nav-section-label">Tools</span>
+                <a href="/scan" class="nav-item {% block nav_scan %}{% endblock %}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <polyline points="23 7 23 1 17 1" />
+                        <polyline points="1 17 1 23 7 23" />
+                        <polyline points="23 17 23 23 17 23" />
+                        <polyline points="1 7 1 1 7 1" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    <span>Scan Bill</span>
+                </a>
+                <a href="/settings" class="nav-item {% block nav_settings %}{% endblock %}">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <circle cx="12" cy="12" r="3" />
+                        <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                    <span>Settings</span>
+                </a>
+            </div>
+
+        </nav>
+
+        <!-- User Footer -->
+        <div class="sidebar-footer">
+            <div class="sidebar-user">
+                <div class="sidebar-user-avatar">
+                    {{ _user_initial | upper }}
+                </div>
+                <div class="sidebar-user-info">
+                    <span class="sidebar-user-name">{{ _username }}</span>
+                    <span class="sidebar-user-role">Owner</span>
+                </div>
+            </div>
+            <form action="/auth/logout" method="post" style="margin:0">
+                <button type="submit" class="sidebar-logout-btn" title="Logout">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
+                </button>
+            </form>
+        </div>
+
+    </aside>
+
+    <!-- ═══════════════════════════════════════════════════════════
      MAIN LAYOUT
 ════════════════════════════════════════════════════════════════ -->
-<div class="app-layout">
+    <div class="app-layout">
 
-    <!-- Top bar (mobile) -->
-    <header class="topbar">
-        <button class="topbar-menu-btn" onclick="openSidebar()" aria-label="Open menu">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="3" y1="6" x2="21" y2="6"/>
-                <line x1="3" y1="12" x2="21" y2="12"/>
-                <line x1="3" y1="18" x2="21" y2="18"/>
-            </svg>
-        </button>
-        <span class="topbar-title">{% block page_title %}JewelBill{% endblock %}</span>
-        <a href="/invoices/create" class="topbar-action-btn" aria-label="New bill">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-        </a>
-    </header>
+        <!-- Top bar (mobile) -->
+        <header class="topbar">
+            <button class="topbar-menu-btn" onclick="openSidebar()" aria-label="Open menu">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="3" y1="6" x2="21" y2="6" />
+                    <line x1="3" y1="12" x2="21" y2="12" />
+                    <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+            </button>
+            <span class="topbar-title">{% block page_title %}JewelBill{% endblock %}</span>
+            <a href="/invoices/create" class="topbar-action-btn" aria-label="New bill">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+            </a>
+        </header>
 
-    <!-- Page content -->
-    <main class="main-content">
-        {% block content %}{% endblock %}
-    </main>
+        <!-- Page content -->
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
 
-</div>
+    </div>
 
-<!-- ═══════════════════════════════════════════════════════════
+    <!-- ═══════════════════════════════════════════════════════════
      MOBILE BOTTOM NAV
 ════════════════════════════════════════════════════════════════ -->
-<nav class="bottom-nav">
-    <a href="/dashboard" class="bottom-nav-item {% block bnav_dashboard %}{% endblock %}">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-            <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-        </svg>
-        <span>Home</span>
-    </a>
-    <a href="/invoices" class="bottom-nav-item {% block bnav_invoices %}{% endblock %}">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-        </svg>
-        <span>Bills</span>
-    </a>
-    <a href="/invoices/create" class="bottom-nav-item bottom-nav-center {% block bnav_new %}{% endblock %}">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-    </a>
-    <a href="/parties" class="bottom-nav-item {% block bnav_parties %}{% endblock %}">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-            <circle cx="9" cy="7" r="4"/>
-        </svg>
-        <span>Parties</span>
-    </a>
-    <a href="/dashboard" class="bottom-nav-item" onclick="if (window.openSidebar) { openSidebar(); return false; }">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/>
-            <line x1="3" y1="18" x2="21" y2="18"/>
-        </svg>
-        <span>More</span>
-    </a>
-</nav>
+    <nav class="bottom-nav">
+        <a href="/dashboard" class="bottom-nav-item {% block bnav_dashboard %}{% endblock %}">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" />
+                <rect x="14" y="14" width="7" height="7" rx="1" />
+            </svg>
+            <span>Home</span>
+        </a>
+        <a href="/invoices" class="bottom-nav-item {% block bnav_invoices %}{% endblock %}">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+            </svg>
+            <span>Bills</span>
+        </a>
+        <a href="/invoices/create" class="bottom-nav-item bottom-nav-center {% block bnav_new %}{% endblock %}">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+        </a>
+        <a href="/parties" class="bottom-nav-item {% block bnav_parties %}{% endblock %}">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+            </svg>
+            <span>Parties</span>
+        </a>
+        <a href="/dashboard" class="bottom-nav-item" onclick="if (window.openSidebar) { openSidebar(); return false; }">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+            <span>More</span>
+        </a>
+    </nav>
 
-<!-- ═══════════════════════════════════════════════════════════
+    <!-- ═══════════════════════════════════════════════════════════
      TOAST CONTAINER
 ════════════════════════════════════════════════════════════════ -->
-<div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="false"></div>
+    <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="false"></div>
 
-<!-- ═══════════════════════════════════════════════════════════
+    <!-- ═══════════════════════════════════════════════════════════
      PWA INSTALL BANNER
 ════════════════════════════════════════════════════════════════ -->
-<div id="pwaInstallBanner" class="pwa-banner" style="display:none">
-    <div class="pwa-banner-content">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-        </svg>
-        <span>Install JewelBill as an app</span>
+    <div id="pwaInstallBanner" class="pwa-banner" style="display:none">
+        <div class="pwa-banner-content">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon
+                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+            <span>Install JewelBill as an app</span>
+        </div>
+        <div class="pwa-banner-actions">
+            <button id="pwaInstallBtn" class="btn btn-gold btn-sm">Install</button>
+            <button class="btn btn-ghost btn-sm"
+                onclick="document.getElementById('pwaInstallBanner').style.display='none'">✕</button>
+        </div>
     </div>
-    <div class="pwa-banner-actions">
-        <button id="pwaInstallBtn" class="btn btn-gold btn-sm">Install</button>
-        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('pwaInstallBanner').style.display='none'">✕</button>
-    </div>
-</div>
 
-{% block scripts %}{% endblock %}
+    {% block scripts %}{% endblock %}
 
-<script src="/static/js/ui.js"></script>
+    <script src="/static/js/ui.js"></script>
 
-<script>
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then(r => console.log('SW registered:', r.scope))
-            .catch(e => console.log('SW failed:', e));
-    });
-}
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(r => console.log('SW registered:', r.scope))
+                    .catch(e => console.log('SW failed:', e));
+            });
+        }
 
-let _deferredPrompt = null;
-const _banner = document.getElementById('pwaInstallBanner');
-const _installBtn = document.getElementById('pwaInstallBtn');
+        let _deferredPrompt = null;
+        const _banner = document.getElementById('pwaInstallBanner');
+        const _installBtn = document.getElementById('pwaInstallBtn');
 
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    _deferredPrompt = e;
-    if (!localStorage.getItem('pwaInstallDismissed')) {
-        _banner.style.display = 'flex';
-    }
-});
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            _deferredPrompt = e;
+            if (!localStorage.getItem('pwaInstallDismissed')) {
+                _banner.style.display = 'flex';
+            }
+        });
 
-if (_installBtn) {
-    _installBtn.addEventListener('click', async () => {
-        if (!_deferredPrompt) return;
-        _deferredPrompt.prompt();
-        const { outcome } = await _deferredPrompt.userChoice;
-        if (outcome === 'accepted') localStorage.setItem('pwaInstallDismissed', '1');
-        _deferredPrompt = null;
-        _banner.style.display = 'none';
-    });
-}
+        if (_installBtn) {
+            _installBtn.addEventListener('click', async () => {
+                if (!_deferredPrompt) return;
+                _deferredPrompt.prompt();
+                const { outcome } = await _deferredPrompt.userChoice;
+                if (outcome === 'accepted') localStorage.setItem('pwaInstallDismissed', '1');
+                _deferredPrompt = null;
+                _banner.style.display = 'none';
+            });
+        }
 
-window.addEventListener('appinstalled', () => {
-    _banner.style.display = 'none';
-    localStorage.setItem('pwaInstallDismissed', '1');
-});
-</script>
+        window.addEventListener('appinstalled', () => {
+            _banner.style.display = 'none';
+            localStorage.setItem('pwaInstallDismissed', '1');
+        });
+    </script>
 
 </body>
+
 </html>

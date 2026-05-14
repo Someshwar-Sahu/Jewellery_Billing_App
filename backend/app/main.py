@@ -3,7 +3,7 @@ from fastapi import FastAPI, Depends
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from app.models import *
-from app.routers import invoices, parties, rates, old_gold, products, expenses, stocks, advances, settings, scan, reports, exports, dashboard, auth, ledger
+from app.routers import invoices, parties, rates, old_gold, products, expenses, stocks, advances, settings, scan, reports, exports, dashboard, auth, ledger, rough_bill
 from app.dependencies import require_login, add_login_redirect_handler
 from app.config import settings as app_settings
 
@@ -13,7 +13,9 @@ app = FastAPI(
     version="1.0.0"
 )
 
-app.add_middleware(SessionMiddleware, secret_key=app_settings.SECRET_KEY)
+# same_site="lax" provides strong CSRF protection.
+# https_only is left to default (False) to prevent accidental lockouts on proxy-hosted deployments (like Render) where proxy headers might not be perfectly forwarded.
+app.add_middleware(SessionMiddleware, secret_key=app_settings.SECRET_KEY, same_site="lax")
 add_login_redirect_handler(app)
 
 # Static files
@@ -47,6 +49,7 @@ protected = [
     exports.router,
     dashboard.router,
     ledger.router, 
+    rough_bill.router,
 ]
 
 for router in protected:

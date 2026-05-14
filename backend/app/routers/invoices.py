@@ -143,6 +143,7 @@ async def create_bill_submit(request: Request, session: Session = Depends(get_se
         party_id     = data.get("party_id")
         walkin_name  = data.get("walkin_name")
         walkin_phone = data.get("walkin_phone")
+        walkin_address = data.get("walkin_address")
 
         if not party_id:
             if not walkin_name:
@@ -158,7 +159,7 @@ async def create_bill_submit(request: Request, session: Session = Depends(get_se
             if existing_party:
                 party_id = existing_party.id
             else:
-                walkin_party = Party(type="customer", name=walkin_name, phone=walkin_phone or None)
+                walkin_party = Party(type="customer", name=walkin_name, phone=walkin_phone or None, address=walkin_address or None)
                 session.add(walkin_party)
                 session.flush()
                 party_id = walkin_party.id

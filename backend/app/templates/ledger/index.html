@@ -186,9 +186,15 @@
                 <!-- Linked invoice or expense -->
                 <td>
                     {% if e.invoice_id %}
-                    <a href="/invoices/{{ e.invoice_id }}" class="table-link table-link--mono">Bill #{{ e.invoice_id }}</a>
+                    <a href="/invoices/{{ e.invoice_id }}" style="display:inline-flex; align-items:center; gap:4px; padding:3px 8px; background:#f1f3f5; border:1px solid #dee2e6; border-radius:4px; color:#1a237e; font-family:monospace; font-weight:bold; font-size:11px; white-space:nowrap; text-decoration:none;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        Bill #{{ e.invoice_id }}
+                    </a>
                     {% elif e.expense_id %}
-                    <span class="text-muted-sm">Exp #{{ e.expense_id }}</span>
+                    <span style="display:inline-flex; align-items:center; gap:4px; padding:3px 8px; background:#fff5f5; border:1px solid #ffe3e3; border-radius:4px; color:#c92a2a; font-family:monospace; font-weight:bold; font-size:11px; white-space:nowrap;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                        Exp #{{ e.expense_id }}
+                    </span>
                     {% else %}
                     <span class="text-muted">—</span>
                     {% endif %}

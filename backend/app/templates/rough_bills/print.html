@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Rough Bill</title>
+    <style>
+        /* --- PRESERVED PRINT ENGINE (DO NOT TOUCH) --- */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Calibri', Arial, sans-serif; color: #000; background: #f0f0f0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .rough-wrapper { width: 14cm; min-height: 20cm; background: #fff; border: 2px solid #000; position: relative; }
+        .no-print { margin-bottom: 12px; }
+        
+        @page { size: 14cm 20cm; margin: 10mm 8mm; }
+        @media print {
+            .no-print { display: none; }
+            body { padding: 0; background: #fff; display: block; }
+            /* Retain the outer border during print as requested */
+            .rough-wrapper { width: 100% !important; min-height: auto !important; border: 2px solid #000 !important; box-shadow: none; }
+        }
+
+        /* --- REDESIGNED VISUAL INNER SHELL --- */
+        .header-box { border-bottom: 2px solid #000; text-align: center; }
+        .shop-title { font-size: 34px; font-weight: 900; letter-spacing: 0.5px; padding: 10px 5px 4px 5px; text-transform: uppercase; border-bottom: 1px solid #000; }
+        .shop-sub { font-size: 14px; font-weight: bold; padding: 6px 5px; text-transform: uppercase; }
+
+        .meta-grid { display: grid; grid-template-columns: 1fr 110px; border-bottom: 2px solid #000; }
+        .meta-left { display: grid; grid-template-columns: 80px 1fr; }
+        .meta-label-col { border-right: 1.5px solid #000; }
+        .meta-cell { padding: 6px 8px; font-size: 13px; height: 32px; display: flex; align-items: center; }
+        .meta-cell.top { border-bottom: 1.5px solid #000; }
+        .meta-label-col .meta-cell { font-weight: bold; }
+        .meta-val-col .meta-cell { font-weight: normal; font-size: 14px; text-transform: uppercase; }
+        
+        .meta-right { border-left: 2px solid #000; display: flex; flex-direction: column; }
+        .date-header { height: 32px; border-bottom: 1.5px solid #000; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 13px; }
+        .date-value { height: 32px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; }
+
+        .items-table { width: 100%; border-collapse: collapse; }
+        .items-table th { border-bottom: 2px solid #000; border-right: 1.5px solid #000; padding: 6px; font-size: 13px; font-weight: normal; }
+        .items-table td { border-right: 1.5px solid #000; padding: 4px 6px; font-size: 13px; vertical-align: top; }
+        .items-table th:last-child, .items-table td:last-child { border-right: none; }
+        .items-table td.center { text-align: center; }
+        .items-table td.right { text-align: right; }
+
+        /* The blank space spanning downwards */
+        .empty-row td { height: 20px; border-bottom: none; }
+        
+        .total-row td { border-top: 2px solid #000; padding: 6px; font-size: 14px; font-weight: bold; }
+    </style>
+</head>
+<body onload="window.print()">
+
+<div class="no-print">
+    <button onclick="window.print()" style="padding:8px 20px;background:#1a237e;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px">
+        🖨 Print Rough Bill
+    </button>
+</div>
+
+<div class="rough-wrapper">
+    <!-- Header Box matching the image -->
+    <div class="header-box">
+        <div class="shop-title">{{ shop.shop_name if shop else 'SOMESHWAR JEWELLERS' }}</div>
+        <div class="shop-sub">{{ shop.address if shop else 'URDU BAZAR CAHURAHA, JAUNPUR' }}</div>
+    </div>
+
+    <!-- Customer Details matching the exact Image Layout -->
+    <div class="meta-grid">
+        <div class="meta-left">
+            <div class="meta-label-col">
+                <div class="meta-cell top">NAME</div>
+                <div class="meta-cell">ADDRESS</div>
+            </div>
+            <div class="meta-val-col">
+                <div class="meta-cell top">{{ customer_name }}</div>
+                <div class="meta-cell">{{ customer_address }}</div>
+            </div>
+        </div>
+        <div class="meta-right">
+            <div class="date-header">DATE</div>
+            <div class="date-value">{{ bill_date }}</div>
+        </div>
+    </div>
+
+    <!-- Items Table matching the drawn lines -->
+    <table class="items-table">
+        <thead>
+            <tr>
+                <th style="width: 45%">Item</th>
+                <th style="width: 17%">Weight</th>
+                <th style="width: 15%">Rate</th>
+                <th style="width: 23%">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ item.name }}</td>
+                <td class="center">{{ item.weight }}</td>
+                <td class="center">{{ item.rate }}</td>
+                <td class="right">{{ item.amount }}</td>
+            </tr>
+            {% endfor %}
+            
+            <!-- Generate enough empty rows to push the total box down slightly -->
+            {% set filled = items|length %}
+            {% set needed = [12 - filled, 0]|max %}
+            {% for i in range(needed) %}
+            <tr class="empty-row">
+                <td></td><td></td><td></td><td></td>
+            </tr>
+            {% endfor %}
+            
+            <tr class="total-row">
+                <td style="border-right: 1.5px solid #000; border-top: none;"></td>
+                <td style="border-right: 1.5px solid #000; border-top: none;"></td>
+                <td class="center" style="border-left: 1.5px solid #000;">TOTAL</td>
+                <td class="right">{{ "%.2f"|format(grand_total) }}</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+</body>
+</html>
