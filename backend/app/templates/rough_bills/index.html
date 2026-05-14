@@ -68,6 +68,51 @@
   document.getElementById('rbDate').valueAsDate = new Date();
 
   let rbItemCount = 0;
+  let _rbSearchTimer = null;
+
+  // Helper to escape HTML safely
+  function _escHtml(str) {
+      if (!str) return "";
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+  }
+
+  function searchRbProducts(n, query) {
+      clearTimeout(_rbSearchTimer);
+      const box = document.getElementById(`suggestions-${n}`);
+      if (!box) return;
+
+      if (!query || query.length < 1) {
+          box.style.display = "none";
+          return;
+      }
+
+      _rbSearchTimer = setTimeout(async () => {
+          try {
+              const res = await fetch(`/products/search?q=${encodeURIComponent(query)}`);
+              if (!res.ok) throw new Error("search_failed");
+              const list = await res.json();
+
+              if (!Array.isArray(list) || !list.length) { 
+                  box.style.display = "none"; 
+                  return; 
+              }
+
+              box.innerHTML = list.map(p => `
+                  <div onclick="selectRbProduct(${n}, ${JSON.stringify(p).replace(/"/g, '&quot;')})"
+                       style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #eee"
+                       onmouseover="this.style.background='#f5f5f5'"
+                       onmouseout="this.style.background=''">
+                      <strong>${_escHtml(p.name)}</strong>
+                      ${p.purity ? `<span style="color:#888;margin-left:6px">${_escHtml(p.purity)}</span>` : ""}
+                      <span style="color:#aaa;font-size:11px;margin-left:6px">${_escHtml(p.metal_type)}</span>
+                  </div>
+              `).join("");
+              box.style.display = "block";
+          } catch (e) {
+              box.style.display = "none";
+          }
+      }, 200);
+  }
 
   function addRbItem() {
       rbItemCount++;
@@ -75,38 +120,64 @@
       const tbody = document.getElementById("rbBody");
       const tr = document.createElement("tr");
       tr.id = `rb-row-${n}`;
-      // Note: We reuse the autocomplete logic from invoice.js by calling searchProducts
       tr.innerHTML = `
           <td style="position:relative">
-             <input type="text" class="rb-name" placeholder="Item Name" oninput="searchProducts(${n}, this.value)" style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px;">
+             <input type="text" name="item_name" placeholder="Item Name" oninput="searchRbProducts(${n}, this.value)" style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px;" autocomplete="off">
              <div id="suggestions-${n}" style="display:none;position:absolute;top:100%;left:0;z-index:99;background:#fff;border:1px solid #ccc;border-radius:6px;min-width:220px;"></div>
           </td>
-          <td><input type="number" class="rb-weight" step="0.001" placeholder="0.000" oninput="calcRbRow(${n})" style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px;"></td>
-          <td><input type="number" class="rb-rate" step="0.01" placeholder="0.00" oninput="calcRbRow(${n})" style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px;"></td>
+          <td><input type="number" name="weight_grams" step="0.001" placeholder="0.000" oninput="calcRbRow(${n})" style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px;"></td>
+          <td><input type="number" name="rate_per_gram" step="0.01" placeholder="0.00" oninput="calcRbRow(${n})" style="width:100%; border:1px solid #ccc; padding:6px; border-radius:4px;"></td>
           <td><strong class="rb-amount" id="rb-amt-${n}">0.00</strong></td>
           <td><button type="button" onclick="document.getElementById('rb-row-${n}').remove(); calcRbTotals()" style="color:red; background:none; border:none; cursor:pointer;">✕</button></td>
       `;
       tbody.appendChild(tr);
   }
 
-  // To reuse product search, we define the global selectProduct that searchProducts expects
-  function selectProduct(n, product) {
+  // Fetch today's rate on load
+  fetch("/rates/today")
+    .then(r => r.json())
+    .then(data => {
+      if (data.found) window.todayRate = data;
+    });
+
+  // Dedicated Rough Bill product selection
+  function selectRbProduct(n, product) {
       const row = document.getElementById(`rb-row-${n}`);
-      row.querySelector('.rb-name').value = product.name;
+      row.querySelector('[name="item_name"]').value = product.name;
+      
+      // Auto-fill rate based on product metal/purity
+      if (window.todayRate && window.todayRate.found) {
+          let rate = null;
+          const purity = (product.purity || "").toUpperCase();
+          const metal = (product.metal_type || "").toLowerCase();
+
+          if (metal === "gold") {
+              if (purity.includes("18")) rate = window.todayRate.gold_18k;
+              else rate = window.todayRate.gold_22k;
+          } else if (metal === "silver") {
+              rate = window.todayRate.silver;
+          }
+
+          if (rate) {
+              row.querySelector('[name="rate_per_gram"]').value = rate;
+          }
+      }
+
       document.getElementById(`suggestions-${n}`).style.display = "none";
+      calcRbRow(n); 
   }
 
   // Hide suggestions when clicking out
   document.addEventListener("click", function(e) {
-      if (!e.target.closest('[id^="suggestions-"]') && !e.target.classList.contains('rb-name')) {
+      if (!e.target.closest('[id^="suggestions-"]') && !e.target.closest('[name="item_name"]')) {
           document.querySelectorAll('[id^="suggestions-"]').forEach(b => b.style.display = "none");
       }
   });
 
   function calcRbRow(n) {
       const row = document.getElementById(`rb-row-${n}`);
-      const w = parseFloat(row.querySelector('.rb-weight').value) || 0;
-      const r = parseFloat(row.querySelector('.rb-rate').value) || 0;
+      const w = parseFloat(row.querySelector('[name="weight_grams"]').value) || 0;
+      const r = parseFloat(row.querySelector('[name="rate_per_gram"]').value) || 0;
       const amt = w * r;
       row.querySelector('.rb-amount').innerText = amt.toFixed(2);
       calcRbTotals();
@@ -124,12 +195,12 @@
   async function printRoughBill() {
       const items = [];
       document.querySelectorAll('#rbBody tr').forEach(row => {
-          const name = row.querySelector('.rb-name').value;
+          const name = row.querySelector('[name="item_name"]').value;
           if (!name) return;
           items.push({
               name: name,
-              weight: row.querySelector('.rb-weight').value || "",
-              rate: row.querySelector('.rb-rate').value || "",
+              weight: row.querySelector('[name="weight_grams"]').value || "",
+              rate: row.querySelector('[name="rate_per_gram"]').value || "",
               amount: row.querySelector('.rb-amount').innerText
           });
       });
@@ -165,7 +236,4 @@
   // Initialize first row
   window.addEventListener('load', addRbItem);
 </script>
-
-<!-- Import invoice.js to reuse the searchProducts function -->
-<script src="/static/js/invoice.js"></script>
 {% endblock %}
