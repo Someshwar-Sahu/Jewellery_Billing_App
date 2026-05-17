@@ -8,7 +8,7 @@
 
         body {
             font-family: Arial, sans-serif;
-            font-size: 11px;
+            font-size: 10px; /* Reduced from 11px */
             color: #000;
             background: #f0f0f0;
             padding: 20px;
@@ -17,13 +17,13 @@
             align-items: center;
         }
 
-        /* ── BILL WRAPPER — default small size 14×20cm ── */
+        /* ── BILL WRAPPER — Shrink to 11.5 x 16cm ── */
         .bill-wrapper {
             border: 2px solid #1a237e;
             padding: 0;
             background: #fff;
-            width: 14cm;
-            min-height: 20cm;
+            width: 11.5cm;
+            min-height: 16cm;
             position: relative;
             transition: width 0.2s;
         }
@@ -37,33 +37,33 @@
         /* ── HEADER ── */
         .bill-header {
             border-bottom: 1.5px solid #1a237e;
-            padding: 8px 12px 6px;
+            padding: 6px 10px 4px; /* Tightened */
         }
         .header-top {
             display: flex;
             justify-content: space-between;
-            font-size: 10px;
+            font-size: 9px; /* Reduced */
             color: #1a237e;
             margin-bottom: 4px;
         }
         .header-top .tax-invoice-badge {
             border: 1px solid #1a237e;
-            padding: 1px 8px;
-            border-radius: 10px;
+            padding: 1px 6px;
+            border-radius: 8px;
             font-weight: bold;
         }
         .shop-name {
             text-align: center;
-            font-size: 26px;
+            font-size: 22px; /* Reduced from 26px */
             font-weight: 900;
             color: #1a237e;
-            letter-spacing: 1px;
-            line-height: 1.2;
+            letter-spacing: 0.5px;
+            line-height: 1.1;
             text-transform: uppercase;
         }
         .shop-address {
             text-align: center;
-            font-size: 12px;
+            font-size: 10px; /* Reduced from 12px */
             color: #333;
             margin-top: 2px;
         }
@@ -71,61 +71,60 @@
         /* ── CUSTOMER SECTION ── */
         .customer-section {
             display: grid;
-            grid-template-columns: 1fr 130px;
+            grid-template-columns: 1fr 110px; /* Adjusted right column */
             border-bottom: 1px solid #1a237e;
         }
         .customer-fields {
-            padding: 7px 10px;
+            padding: 5px 8px;
             border-right: 1px solid #1a237e;
         }
         .customer-fields .field-row {
             display: flex;
             align-items: baseline;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
             gap: 4px;
         }
         .customer-fields .field-label {
             font-style: italic;
             font-weight: bold;
             white-space: nowrap;
-            min-width: 52px;
-            font-size: 10px;
+            min-width: 45px; /* Reduced */
+            font-size: 9px; /* Reduced */
         }
         .customer-fields .field-dots {
             flex: 1;
             border-bottom: 1px dotted #555;
             padding-bottom: 1px;
-            font-size: 10.5px;
+            font-size: 9.5px;
             padding-left: 4px;
-            min-height: 13px;
+            min-height: 12px;
         }
 
-        /* GSTIN row — only visible when party has a GSTIN */
         .gstin-row { display: none; }
         .gstin-row.active { display: flex; }
 
         .bill-meta-right {
-            padding: 7px 10px;
+            padding: 5px 8px;
         }
         .bill-meta-right .sno-row {
             display: flex;
             align-items: center;
-            gap: 6px;
-            margin-bottom: 8px;
+            gap: 4px;
+            margin-bottom: 6px;
         }
         .bill-meta-right .sno-label {
-            font-size: 10px;
+            font-size: 9px;
             font-weight: bold;
             white-space: nowrap;
         }
         .bill-meta-right .sno-value {
-            font-size: 18px;
+            font-size: 16px; /* Reduced from 18px */
             font-weight: bold;
             color: #1a237e;
         }
         .bill-meta-right .date-row {
-            font-size: 10px;
-            margin-top: 4px;
+            font-size: 9px;
+            margin-top: 3px;
         }
         .bill-meta-right .date-row span {
             font-weight: bold;
@@ -139,23 +138,23 @@
         }
         table.items-tbl th {
             border: 1px solid #1a237e;
-            padding: 5px 6px;
+            padding: 4px 4px;
             text-align: center;
-            font-size: 10.5px;
+            font-size: 9.5px;
             font-weight: bold;
             background: #fff;
         }
         table.items-tbl td {
             border: 1px solid #1a237e;
-            padding: 4px 6px;
-            font-size: 10.5px;
+            padding: 3px 4px;
+            font-size: 9.5px;
             vertical-align: top;
         }
         table.items-tbl td.center { text-align: center; }
         table.items-tbl td.right  { text-align: right;  }
 
         table.items-tbl tr.empty-row td {
-            height: 17px;
+            height: 14px; /* Reduced from 17px */
             border-left: 1px solid #1a237e;
             border-right: 1px solid #1a237e;
             border-top: 1px solid #ccc;
@@ -164,9 +163,9 @@
 
         /* ── OLD GOLD ── */
         .old-gold-row {
-            padding: 4px 10px;
+            padding: 3px 8px;
             border-bottom: 1px solid #1a237e;
-            font-size: 10px;
+            font-size: 9px;
             background: #fffde7;
         }
 
@@ -177,14 +176,14 @@
             border-bottom: 1px solid #1a237e;
         }
         .bank-details {
-            padding: 7px 10px;
+            padding: 5px 8px;
             border-right: 1px solid #1a237e;
-            font-size: 10px;
+            font-size: 9px;
         }
         .bank-details .bank-title {
             font-weight: bold;
-            font-size: 10.5px;
-            margin-bottom: 4px;
+            font-size: 9.5px;
+            margin-bottom: 3px;
         }
         .bank-details .bank-row {
             display: flex;
@@ -193,10 +192,10 @@
         }
         .bank-details .bank-row .bk-label {
             font-weight: bold;
-            min-width: 64px;
+            min-width: 55px;
         }
         .tax-summary {
-            padding: 7px 10px;
+            padding: 5px 8px;
         }
         table.tax-tbl {
             width: 100%;
@@ -204,20 +203,20 @@
         }
         table.tax-tbl td {
             border: 1px solid #1a237e;
-            padding: 3px 7px;
-            font-size: 10.5px;
+            padding: 2px 5px;
+            font-size: 9.5px;
         }
         table.tax-tbl td.right { text-align: right; }
         table.tax-tbl tr.grand td {
             font-weight: bold;
-            font-size: 11.5px;
+            font-size: 10.5px;
         }
 
         /* ── RS IN WORD ── */
         .rs-in-word {
-            padding: 5px 10px;
+            padding: 4px 8px;
             border-bottom: 1px solid #1a237e;
-            font-size: 10px;
+            font-size: 9px;
         }
         .rs-in-word span { font-weight: bold; }
 
@@ -225,8 +224,8 @@
         .cert-row {
             display: flex;
             justify-content: flex-end;
-            padding: 5px 10px 2px;
-            font-size: 10px;
+            padding: 4px 8px 2px;
+            font-size: 9px;
             border-bottom: 1px solid #1a237e;
         }
 
@@ -234,47 +233,66 @@
         .terms-sign-row {
             display: grid;
             grid-template-columns: 1fr auto;
-            padding: 6px 10px 8px;
+            padding: 5px 8px 6px;
             align-items: flex-end;
         }
-        .terms-block { font-size: 9.5px; }
+        .terms-block { font-size: 8.5px; } /* Reduced */
         .terms-block .terms-title {
             font-weight: bold;
-            margin-bottom: 3px;
-            font-size: 10px;
+            margin-bottom: 2px;
+            font-size: 9px;
         }
         .sign-block {
             text-align: right;
-            font-size: 10px;
+            font-size: 9px;
         }
 
         /* ── PRINT ── */
         .no-print { margin-bottom: 12px; display: flex; align-items: center; gap: 12px; }
 
-        /* Default @page for small bill */
+        /* Default @page handles the physical paper, while width handles the content */
         @page {
-            size: 14cm 20cm;
-            margin: 10mm 8mm 10mm 8mm;
+            size: 13cm 18cm; /* Physical paper size for Canon */
+            margin: 10mm 7.5mm; /* 1cm top/bottom, 0.75cm left/right margins */
         }
 
         @media print {
             .no-print { display: none; }
-            body {
-                padding: 0;
+            
+            html, body {
+                margin: 0 !important;
+                padding: 0 !important;
                 background: #fff;
-                display: block;
+                /* Force browser layout engine to center the content box on the physical paper */
+                display: flex !important;
+                justify-content: center !important;
+                align-items: center !important;
+                height: 100% !important;
+                width: 100% !important;
             }
+
             .bill-wrapper {
-                border: 2px solid #1a237e;
-                width: 100% !important;
-                min-height: auto !important;
-                box-shadow: none;
+                /* STRICTLY enforce the physical design dimensions */
+                width: 11.5cm !important;
+                min-height: 16cm !important; 
+                max-height: 16cm !important; /* Lock the canvas height */
+                
+                /* Keep the outer border intact */
+                border: 2px solid #1a237e !important;
+                box-sizing: border-box !important;
                 padding: 0 !important;
+                box-shadow: none !important;
+                background: #fff !important;
+                
+                /* Reset standard margins to let flexbox center it smoothly */
+                margin: 0 !important; 
             }
-            /* If JS switched to A4, override page size too */
+            
+            /* Safe dimensions fallback if JS switches to A4 */
             .bill-wrapper.size-a4 {
-                width: 100% !important;
-                padding: 0 !important;
+                width: 17cm !important; 
+                min-height: 25cm !important;
+                max-height: 25cm !important;
             }
         }
     </style>
@@ -332,7 +350,7 @@
                 </span>
             </div>
 
-            {# GSTIN row — only shown if party has a GSTIN (B2B sale) #}
+            {# GSTIN row #}
             <div class="field-row gstin-row {% if party and party.gstin %}active{% endif %}">
                 <span class="field-label">GSTIN</span>
                 <span class="field-dots" style="font-weight:bold;letter-spacing:0.5px">
@@ -342,11 +360,11 @@
 
             <div class="field-row">
                 <span class="field-label">State</span>
-                <span class="field-dots" style="max-width:110px">
+                <span class="field-dots" style="max-width:90px">
                     {{ party.state if party and party.state else (shop.state if shop else 'Uttar Pradesh') }}
                 </span>
-                <span class="field-label" style="min-width:60px">State Code</span>
-                <span class="field-dots" style="max-width:50px">
+                <span class="field-label" style="min-width:50px">St. Code</span>
+                <span class="field-dots" style="max-width:40px">
                     {{ party.state_code if party and party.state_code else (shop.state_code if shop else '09') }}
                 </span>
             </div>
@@ -362,7 +380,7 @@
                 <span>{{ invoice.invoice_date.strftime('%d-%m-%Y') if invoice.invoice_date else '' }}</span>
             </div>
             {% if invoice.credit_due_date %}
-            <div class="date-row" style="margin-top:4px;color:#c00">Due<br>
+            <div class="date-row" style="margin-top:3px;color:#c00">Due<br>
                 <span>{{ invoice.credit_due_date.strftime('%d-%m-%Y') }}</span>
             </div>
             {% endif %}
@@ -373,12 +391,12 @@
     <table class="items-tbl" id="itemsTable">
         <thead>
             <tr>
-                <th style="width:32px">S.No.</th>
+                <th style="width:28px">S.No.</th>
                 <th>Particulars</th>
-                <th style="width:62px">HSN Code</th>
-                <th style="width:54px">Qty.</th>
-                <th style="width:68px">Rate</th>
-                <th style="width:74px">Amount</th>
+                <th style="width:58px">HSN Code</th>
+                <th style="width:48px">Qty.</th>
+                <th style="width:62px">Rate</th>
+                <th style="width:68px">Amount</th>
             </tr>
         </thead>
         <tbody>
@@ -388,9 +406,9 @@
                 <td>
                     {{ item.item_name }}
                     {%- if item.purity %} ({{ item.purity }}){% endif %}
-                    {%- if item.huid %}<br><span style="font-size:9px;color:#555">HUID: {{ item.huid }}</span>{% endif %}
+                    {%- if item.huid %}<br><span style="font-size:8.5px;color:#555">HUID: {{ item.huid }}</span>{% endif %}
                     {% if item.making_charges and item.making_charges > 0 %}
-                    <br><span style="font-size:9.5px;color:#333">
+                    <br><span style="font-size:8.5px;color:#333">
                         Making: ₹{{ "%.2f"|format(item.making_charges) }}
                         + GST: ₹{{ "%.2f"|format(item.making_cgst + item.making_sgst) }}
                     </span>
@@ -410,7 +428,7 @@
             </tr>
             {% endfor %}
 
-            {# Empty filler rows — JS will decide how many based on size #}
+            {# Empty filler rows #}
             {% set filled = items | length %}
             {% set needed = [8 - filled, 0] | max %}
             {% for i in range(needed) %}
@@ -443,7 +461,7 @@
             {% if shop and shop.bank_name %}
             <div class="bank-title">BANK DETAIL</div>
             <div class="bank-row">
-                <span class="bk-label">Bank Name</span>
+                <span class="bk-label">Bank</span>
                 <span>: {{ shop.bank_name }}</span>
             </div>
             <div class="bank-row">
@@ -451,11 +469,11 @@
                 <span>: {{ shop.bank_account_no or '—' }}</span>
             </div>
             <div class="bank-row">
-                <span class="bk-label">IFSC Code</span>
+                <span class="bk-label">IFSC</span>
                 <span>: {{ shop.bank_ifsc or '—' }}</span>
             </div>
             {% else %}
-            <div style="color:#aaa;font-size:9.5px">
+            <div style="color:#aaa;font-size:8.5px">
                 Bank details not set.<br>Add them in ⚙ Settings.
             </div>
             {% endif %}
@@ -520,7 +538,7 @@
     <!-- ── CERTIFICATION ── -->
     <div class="cert-row">
         Certified that the particulars given above are true and correct.
-        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        &nbsp;&nbsp;&nbsp;
         For- <strong>{{ shop.shop_name if shop else '' }}</strong>
     </div>
 
@@ -547,24 +565,26 @@
     (function () {
         const wrapper  = document.getElementById('billWrapper');
         const label    = document.getElementById('size-label');
-        const SMALL_H  = 20 * 37.8;
-        const SMALL_W  = 14 * 37.8;
+        
+        // Updated Math: 16cm height and 11.5cm width for the content
+        const SMALL_H  = 16 * 37.8;
+        const SMALL_W  = 11.5 * 37.8;
 
         wrapper.style.width = SMALL_W + 'px';
         const naturalH = wrapper.scrollHeight;
         wrapper.style.width = '';
 
-        // Inject a <style> tag to override @page at print time
         const pageStyle = document.createElement('style');
 
         if (naturalH > SMALL_H) {
             wrapper.classList.add('size-a4');
             pageStyle.textContent = '@page { size: 19cm 27cm; margin: 10mm 8mm 10mm 8mm; }';
-            label.textContent = 'Auto-switched to A4 (too many items for small bill)';
+            label.textContent = 'Auto-switched to A4 (too many items)';
             label.style.color = '#c00';
         } else {
-            pageStyle.textContent = '@page { size: 14cm 20cm; margin: 10mm 8mm 10mm 8mm; }';
-            label.textContent = 'Small bill format (14×20 cm)';
+            // Physical paper is 13x18cm, Margins create the 11.5x16cm internal box
+            pageStyle.textContent = '@page { size: 13cm 18cm; margin: 10mm 7.5mm; }';
+            label.textContent = '13x18 cm Paper (11.5x16 cm Print Area)';
         }
 
         document.head.appendChild(pageStyle);

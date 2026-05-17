@@ -4,6 +4,7 @@ from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 from app.database import get_session
 from app.models.shop import ShopSettings
+from datetime import date
 
 router = APIRouter(prefix="/rough-bill", tags=["Rough Bill"])
 templates = Jinja2Templates(directory="app/templates")
@@ -29,7 +30,7 @@ async def print_rough_bill(request: Request, session: Session = Depends(get_sess
             "shop": shop,
             "customer_name": data.get("customer_name", ""),
             "customer_address": data.get("customer_address", ""),
-            "bill_date": data.get("bill_date", ""),
+            "bill_date": date.fromisoformat(data.get("bill_date", "")).strftime("%d/%m/%Y") if data.get("bill_date") else "",
             "items": data.get("items", []),
             "grand_total": data.get("grand_total", 0),
         }

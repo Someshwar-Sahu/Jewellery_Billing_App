@@ -136,7 +136,7 @@
         {% set max_val = trend | map(attribute='total') | max %}
         <div class="trend-chart">
           {% for t in trend %}
-          <div class="trend-row">
+          <div class="trend-row {% if loop.last %}trend-row--current{% endif %}">
             <span class="trend-label">{{ t.label }}</span>
             <div class="trend-bar-wrap">
               <div class="trend-bar" style="width:{{ ((t.total / max_val * 100) if max_val > 0 else 0) | int }}%"></div>
@@ -292,5 +292,59 @@ async function dismissAlert(id) {
     const el = document.getElementById(`alert-${id}`);
     if (el) { el.style.opacity = '0'; el.style.transform = 'translateY(-4px)'; setTimeout(() => el.remove(), 200); }
 }
+/* Phase 6: Chart entry animations */
+(function () {
+  // Trend bars: store target widths, reset to 0, animate in
+  const chart = document.querySelector('.trend-chart');
+  if (chart) {
+    const bars = chart.querySelectorAll('.trend-bar');
+    // Save each bar's inline width as CSS var, then reset
+    bars.forEach(bar => {
+      const w = bar.style.width || '0%';
+      bar.style.setProperty('--bar-w', w);
+      bar.style.width = '0';
+    });
+    // Trigger animation after paint
+    requestAnimationFrame(() => {
+      setTimeout(() => chart.classList.add('chart-ready'), 80);
+    });
+  }
+
+  // Mode bars: inject progress bars under each payment mode row
+  // Template already renders mode-dot. We add a bar below the TD text.
+  // This is non-intrusive — just appends a div inside existing TD.
+  const dashTable = document.querySelector('.dash-table');
+  if (dashTable) {
+    const rows = dashTable.querySelectorAll('tr');
+    const amounts = [];
+    rows.forEach(row => {
+      const num = row.querySelector('.dash-table__num');
+      if (num) {
+        const val = parseFloat(num.textContent.replace(/[^0-9.]/g, '')) || 0;
+        amounts.push(val);
+      }
+    });
+    const max = Math.max(...amounts, 1);
+    let idx = 1;
+    rows.forEach(row => {
+      const firstTd = row.querySelector('td:first-child');
+      const num = row.querySelector('.dash-table__num');
+      if (firstTd && num) {
+        const pct = ((parseFloat(num.textContent.replace(/[^0-9.]/g, '')) || 0) / max * 100).toFixed(1);
+        const wrap = document.createElement('div');
+        wrap.className = 'mode-bar-wrap';
+        const bar = document.createElement('div');
+        bar.className = `mode-bar mode-bar--${Math.min(idx, 4)}`;
+        bar.style.width = '0';
+        wrap.appendChild(bar);
+        firstTd.appendChild(wrap);
+        requestAnimationFrame(() => {
+          setTimeout(() => { bar.style.width = pct + '%'; }, 120 + idx * 40);
+        });
+        idx++;
+      }
+    });
+  }
+})();
 </script>
 {% endblock %}
