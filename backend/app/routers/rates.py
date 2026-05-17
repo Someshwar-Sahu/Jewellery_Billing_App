@@ -94,3 +94,7 @@ def today_rate(request: Request, session: Session = Depends(get_session)):
         "silver": rate.silver_per_gram,
         "rate_date": rate.rate_date.isoformat(),
     }
+
+@router.get("/live")
+async def live_rates_page(request: Request):
+    return templates.TemplateResponse(request=request, name="rates/live.html")

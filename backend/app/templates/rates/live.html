@@ -1,0 +1,786 @@
+{% extends "base.html" %}
+{% block title %}Live Market Rates{% endblock %}
+{% block page_title %}Live Rates{% endblock %}
+{% block nav_live_rates %}active{% endblock %}
+
+{% block head %}
+<style>
+/* ═══════════════════════════════════════════════════════
+   LIVE RATES PAGE
+═══════════════════════════════════════════════════════ */
+
+.lr-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Live badge */
+.lr-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--green-bg);
+  border: 1px solid rgba(21,128,61,0.2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--green);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.lr-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: lr-pulse 1.6s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes lr-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
+}
+
+/* Status bar */
+.lr-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 14px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.lr-market-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.lr-market-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.lr-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.lr-dot--open {
+  background: var(--green);
+}
+
+.lr-dot--closed {
+  background: var(--red);
+}
+
+/* Error bar */
+.lr-error-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  background: var(--red-bg);
+  border: 1px solid rgba(185,28,28,0.18);
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  color: var(--red);
+}
+
+/* Value colors */
+.lr-gold-val {
+  color: var(--gold-dark);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.lr-silver-val {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Table fixes */
+.lr-table-card .table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.lr-table-card .data-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+
+/* Column sizing */
+.lr-table-card .data-table th:nth-child(1),
+.lr-table-card .data-table td:nth-child(1) {
+  width: 120px;
+}
+
+.lr-table-card .data-table th:nth-child(2),
+.lr-table-card .data-table td:nth-child(2) {
+  width: 140px;
+}
+
+.lr-table-card .data-table th:nth-child(n+3),
+.lr-table-card .data-table td:nth-child(n+3) {
+  width: calc((100% - 260px) / 3);
+}
+
+/* Table alignment */
+.lr-table-card .data-table th {
+  white-space: nowrap;
+  vertical-align: middle;
+  text-align: left;
+}
+
+.lr-table-card .data-table th.text-right,
+.lr-table-card .data-table td.text-right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  letter-spacing: -0.01em;
+}
+
+.lr-table-card .data-table td {
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* Row spacing */
+.lr-table-card .data-table td,
+.lr-table-card .data-table th {
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+/* Badges */
+.lr-table-card .badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+}
+
+/* Note */
+.lr-note {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  background: var(--gold-muted);
+  border: 1px solid var(--gold-muted2);
+  border-radius: var(--radius);
+  font-size: 0.83rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.lr-note svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--gold);
+}
+
+/* Refresh */
+#refreshBtn:disabled {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+#refreshIcon.spin {
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+
+  .page-header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .page-header-actions {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .lr-status-bar {
+    align-items: flex-start;
+  }
+
+  .lr-market-pills {
+    width: 100%;
+  }
+
+  .lr-table-card .data-table {
+    min-width: 720px;
+  }
+}
+
+@media (max-width: 480px) {
+
+  .stat-card {
+    padding: 14px;
+  }
+
+  .stat-card-value {
+    font-size: 1.15rem;
+  }
+
+  .lr-market-pill {
+    width: 100%;
+    justify-content: center;
+  }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="lr-page">
+
+<div class="page-header">
+  <div class="page-header-left">
+    <h1 class="page-title">Live Market Rates</h1>
+    <p class="page-subtitle">
+      International spot prices converted to INR in real time
+    </p>
+  </div>
+
+  <div class="page-header-actions">
+
+    <div class="lr-live-badge">
+      <span class="lr-live-dot"></span>
+      Live
+    </div>
+
+    <button
+      type="button"
+      class="btn btn-outline btn-sm"
+      id="refreshBtn"
+      onclick="fetchRates()"
+    >
+      <svg
+        id="refreshIcon"
+        width="13"
+        height="13"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+      >
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <polyline points="1 20 1 14 7 14"></polyline>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+      </svg>
+
+      Refresh
+    </button>
+
+  </div>
+</div>
+
+<div class="lr-status-bar">
+
+  <span id="updateTime">
+    Fetching rates…
+  </span>
+
+  <div class="lr-market-pills">
+
+    <div class="lr-market-pill">
+      <span class="lr-dot" id="mcxDot"></span>
+      <span id="mcxStatus">MCX</span>
+    </div>
+
+    <div class="lr-market-pill">
+      <span class="lr-dot" id="forexDot"></span>
+      <span id="forexStatus">Forex</span>
+    </div>
+
+  </div>
+</div>
+
+<div class="lr-error-bar" id="errorBar" style="display:none">
+
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="12" cy="12" r="10"></circle>
+    <line x1="12" y1="8" x2="12" y2="12"></line>
+    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+  </svg>
+
+  <span id="errorMsg">
+    Could not fetch live rates. Check internet connection.
+  </span>
+
+</div>
+
+<div class="stats-row">
+
+  <!-- USD -->
+  <div class="stat-card">
+
+    <div class="stat-card-icon stat-icon-primary">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <line x1="12" y1="1" x2="12" y2="23"></line>
+        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+      </svg>
+    </div>
+
+    <div class="stat-card-body">
+      <span class="stat-card-label">USD / INR</span>
+      <span class="stat-card-value" id="usdInrVal">—</span>
+      <span class="stat-card-sub">Exchange rate</span>
+    </div>
+
+  </div>
+
+  <!-- Gold -->
+  <div class="stat-card">
+
+    <div class="stat-card-icon stat-icon-gold">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+      </svg>
+    </div>
+
+    <div class="stat-card-body">
+      <span class="stat-card-label">Gold — 22K per gram</span>
+      <span class="stat-card-value lr-gold-val" id="gold22k">—</span>
+
+      <span class="stat-card-sub">
+        <span class="badge badge-neutral" id="goldChange">—</span>
+        today vs prev close
+      </span>
+    </div>
+
+  </div>
+
+  <!-- Silver -->
+  <div class="stat-card">
+
+    <div class="stat-card-icon stat-icon-neutral">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+      </svg>
+    </div>
+
+    <div class="stat-card-body">
+      <span class="stat-card-label">Silver — 999 per gram</span>
+      <span class="stat-card-value lr-silver-val" id="silver999">—</span>
+
+      <span class="stat-card-sub">
+        <span class="badge badge-neutral" id="silverChange">—</span>
+        today vs prev close
+      </span>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- GOLD TABLE -->
+<div class="table-card lr-table-card">
+
+  <div class="table-card-header">
+    <span class="table-count">Gold — All Purities</span>
+  </div>
+
+  <div class="table-wrap">
+
+    <table class="data-table">
+
+      <thead>
+        <tr>
+          <th>Purity</th>
+          <th>Fineness</th>
+          <th class="text-right">Per Gram</th>
+          <th class="text-right">Per 10g</th>
+          <th class="text-right">Per Tola (11.66g)</th>
+        </tr>
+      </thead>
+
+      <tbody>
+
+        <tr>
+          <td><strong>24K</strong></td>
+          <td><span class="badge badge-neutral">999</span></td>
+          <td class="text-right lr-gold-val" id="g24k">—</td>
+          <td class="text-right" id="g24k10">—</td>
+          <td class="text-right" id="g24ktola">—</td>
+        </tr>
+
+        <tr>
+          <td><strong>22K</strong></td>
+          <td><span class="badge badge-neutral">916</span></td>
+          <td class="text-right lr-gold-val" id="g22k">—</td>
+          <td class="text-right" id="g22k10">—</td>
+          <td class="text-right" id="g22ktola">—</td>
+        </tr>
+
+        <tr>
+          <td><strong>18K</strong></td>
+          <td><span class="badge badge-neutral">750</span></td>
+          <td class="text-right lr-gold-val" id="g18k">—</td>
+          <td class="text-right" id="g18k10">—</td>
+          <td class="text-right" id="g18ktola">—</td>
+        </tr>
+
+        <tr>
+          <td><strong>14K</strong></td>
+          <td><span class="badge badge-neutral">585</span></td>
+          <td class="text-right lr-gold-val" id="g14k">—</td>
+          <td class="text-right" id="g14k10">—</td>
+          <td class="text-right" id="g14ktola">—</td>
+        </tr>
+
+      </tbody>
+    </table>
+
+  </div>
+</div>
+
+<!-- SILVER TABLE -->
+<div class="table-card lr-table-card">
+
+  <div class="table-card-header">
+    <span class="table-count">Silver — All Purities</span>
+  </div>
+
+  <div class="table-wrap">
+
+    <table class="data-table">
+
+      <thead>
+        <tr>
+          <th>Purity</th>
+          <th>Grade</th>
+          <th class="text-right">Per Gram</th>
+          <th class="text-right">Per 100g</th>
+          <th class="text-right">Per Kg</th>
+        </tr>
+      </thead>
+
+      <tbody>
+
+        <tr>
+          <td><strong>999</strong></td>
+          <td><span class="badge badge-neutral">Fine</span></td>
+          <td class="text-right lr-silver-val" id="s999g">—</td>
+          <td class="text-right" id="s999h">—</td>
+          <td class="text-right" id="s999kg">—</td>
+        </tr>
+
+        <tr>
+          <td><strong>925</strong></td>
+          <td><span class="badge badge-neutral">Sterling</span></td>
+          <td class="text-right lr-silver-val" id="s925g">—</td>
+          <td class="text-right" id="s925h">—</td>
+          <td class="text-right" id="s925kg">—</td>
+        </tr>
+
+        <tr>
+          <td><strong>800</strong></td>
+          <td><span class="badge badge-neutral">Coin/Bar</span></td>
+          <td class="text-right lr-silver-val" id="s800g">—</td>
+          <td class="text-right" id="s800h">—</td>
+          <td class="text-right" id="s800kg">—</td>
+        </tr>
+
+      </tbody>
+    </table>
+
+  </div>
+</div>
+
+<div class="lr-note">
+
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="12" cy="12" r="10"></circle>
+    <line x1="12" y1="8" x2="12" y2="12"></line>
+    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+  </svg>
+
+  <p>
+    Rates are <strong>international spot prices</strong> converted to INR in real time.
+    Actual jewellery prices may vary due to
+    <strong>making charges, 3% GST, and local market premiums</strong>.
+    Auto-refreshes every <strong>2 minutes</strong>.
+  </p>
+
+</div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const TROY_OZ_TO_GRAM = 31.1035;
+const TOLA = 11.6638;
+
+const GOLD_PURITIES = {
+  '24K': 1.0000,
+  '22K': 0.9167,
+  '18K': 0.7500,
+  '14K': 0.5833
+};
+
+const SILVER_PURITIES = {
+  '999': 1.0000,
+  '925': 0.9250,
+  '800': 0.8000
+};
+
+let lastData = null;
+
+function fmtINR(n) {
+  return '₹' + Math.round(n).toLocaleString('en-IN');
+}
+
+function applyChange(elId, pct) {
+
+  const el = document.getElementById(elId);
+
+  if (!el) return;
+
+  if (pct === null || isNaN(pct)) {
+    el.textContent = '—';
+    el.className = 'badge badge-neutral';
+    return;
+  }
+
+  const sign = pct >= 0 ? '+' : '';
+
+  el.textContent = sign + pct.toFixed(2) + '%';
+
+  el.className =
+    'badge ' +
+    (pct > 0
+      ? 'badge-success'
+      : pct < 0
+      ? 'badge-danger'
+      : 'badge-neutral');
+}
+
+function updateMarketStatus() {
+
+  const istMs = Date.now() + (5.5 * 60 * 60 * 1000);
+  const ist = new Date(istMs);
+
+  const mins = ist.getUTCHours() * 60 + ist.getUTCMinutes();
+  const day = ist.getUTCDay();
+
+  const mcxOpen =
+    day >= 1 && day <= 6 && mins >= 540 && mins < 1410;
+
+  const forexOpen =
+    !(day === 0 || (day === 6 && mins >= 240));
+
+  document.getElementById('mcxDot').className =
+    'lr-dot ' + (mcxOpen ? 'lr-dot--open' : 'lr-dot--closed');
+
+  document.getElementById('forexDot').className =
+    'lr-dot ' + (forexOpen ? 'lr-dot--open' : 'lr-dot--closed');
+
+  document.getElementById('mcxStatus').textContent =
+    'MCX ' + (mcxOpen ? 'Open' : 'Closed');
+
+  document.getElementById('forexStatus').textContent =
+    'Forex ' + (forexOpen ? 'Open' : 'Closed');
+}
+
+function renderRates({
+  gold24kPerGram,
+  silv999PerGram,
+  usdInr,
+  goldPct,
+  silvPct
+}) {
+
+  document.getElementById('usdInrVal').textContent =
+    '₹' + usdInr.toFixed(2);
+
+  document.getElementById('gold22k').textContent =
+    fmtINR(gold24kPerGram * GOLD_PURITIES['22K']);
+
+  document.getElementById('silver999').textContent =
+    fmtINR(silv999PerGram);
+
+  applyChange('goldChange', goldPct);
+  applyChange('silverChange', silvPct);
+
+  const goldIds = {
+    '24K': 'g24k',
+    '22K': 'g22k',
+    '18K': 'g18k',
+    '14K': 'g14k'
+  };
+
+  for (const [k, mult] of Object.entries(GOLD_PURITIES)) {
+
+    const pg = gold24kPerGram * mult;
+    const id = goldIds[k];
+
+    document.getElementById(id).textContent =
+      fmtINR(pg);
+
+    document.getElementById(id + '10').textContent =
+      fmtINR(pg * 10);
+
+    document.getElementById(id + 'tola').textContent =
+      fmtINR(pg * TOLA);
+  }
+
+  const silvIds = {
+    '999': 's999',
+    '925': 's925',
+    '800': 's800'
+  };
+
+  for (const [k, mult] of Object.entries(SILVER_PURITIES)) {
+
+    const pg = silv999PerGram * mult;
+    const id = silvIds[k];
+
+    document.getElementById(id + 'g').textContent =
+      fmtINR(pg);
+
+    document.getElementById(id + 'h').textContent =
+      fmtINR(pg * 100);
+
+    document.getElementById(id + 'kg').textContent =
+      fmtINR(pg * 1000);
+  }
+}
+
+async function fetchRates() {
+
+  const btn = document.getElementById('refreshBtn');
+  const refreshIcon = document.getElementById('refreshIcon');
+
+  btn.disabled = true;
+  refreshIcon.classList.add('spin');
+
+  document.getElementById('errorBar').style.display = 'none';
+
+  try {
+
+    const [goldRes, silverRes, fxRes] = await Promise.all([
+      fetch('https://api.gold-api.com/price/XAU'),
+      fetch('https://api.gold-api.com/price/XAG'),
+      fetch('https://api.exchangerate-api.com/v4/latest/USD')
+    ]);
+
+    if (!goldRes.ok || !silverRes.ok || !fxRes.ok) {
+      throw new Error('API error');
+    }
+
+    const goldData = await goldRes.json();
+    const silverData = await silverRes.json();
+    const fxData = await fxRes.json();
+
+    const usdInr = fxData.rates['INR'];
+
+    const gold24kPerGram =
+      (goldData.price / TROY_OZ_TO_GRAM) * usdInr;
+
+    const silv999PerGram =
+      (silverData.price / TROY_OZ_TO_GRAM) * usdInr;
+
+    const goldPct = goldData.prev_close_price
+      ? ((goldData.price - goldData.prev_close_price)
+          / goldData.prev_close_price) * 100
+      : null;
+
+    const silvPct = silverData.prev_close_price
+      ? ((silverData.price - silverData.prev_close_price)
+          / silverData.prev_close_price) * 100
+      : null;
+
+    lastData = {
+      gold24kPerGram,
+      silv999PerGram,
+      usdInr,
+      goldPct,
+      silvPct
+    };
+
+    renderRates(lastData);
+
+    document.getElementById('updateTime').textContent =
+      'Updated ' +
+      new Date().toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+
+  } catch (err) {
+
+    document.getElementById('errorBar').style.display = 'flex';
+
+    if (!lastData) {
+      document.getElementById('updateTime').textContent =
+        'Fetch failed';
+    }
+
+  } finally {
+
+    btn.disabled = false;
+    refreshIcon.classList.remove('spin');
+
+    updateMarketStatus();
+  }
+}
+
+fetchRates();
+setInterval(fetchRates, 2 * 60 * 1000);
+
+updateMarketStatus();
+setInterval(updateMarketStatus, 30 * 1000);
+</script>
+{% endblock %}

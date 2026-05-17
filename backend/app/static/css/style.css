@@ -377,22 +377,54 @@ body.sidebar-collapsed .sidebar-collapse-btn-desktop {
   color: #FC8181;
 }
 
-/* Sidebar collapsed styles for desktop (align with ui.js >= 1024) */
-@media (min-width: 1024px) {
+/* Sidebar collapsed styles for desktop */
+@media (min-width: 769px) {
   body.sidebar-collapsed .app-layout {
     margin-left: 70px;
   }
   body.sidebar-collapsed .sidebar {
     width: 70px;
   }
+
+  /* Hide all text / labels */
   body.sidebar-collapsed .sidebar-logo-text,
   body.sidebar-collapsed .sidebar-logo-tag,
   body.sidebar-collapsed .nav-item span,
   body.sidebar-collapsed .nav-section-label,
   body.sidebar-collapsed .sidebar-user-info {
     opacity: 0;
+    width: 0;
+    overflow: hidden;
     pointer-events: none;
-    transition: opacity var(--dur-fast);
+    transition: opacity var(--dur-fast), width var(--dur-fast);
+  }
+
+  /* Hide logout button entirely */
+  body.sidebar-collapsed .sidebar-logout-btn {
+    display: none;
+  }
+
+  /* Center nav icons inside the 70px rail */
+  body.sidebar-collapsed .nav-item {
+    justify-content: center;
+    padding: 10px 0;
+    margin: 1px 6px;
+  }
+
+  /* Center logo icon */
+  body.sidebar-collapsed .sidebar-logo {
+    justify-content: center;
+    padding: 20px 0 16px;
+  }
+
+  /* Center avatar in footer */
+  body.sidebar-collapsed .sidebar-footer {
+    justify-content: center;
+    padding: 14px 0;
+  }
+
+  body.sidebar-collapsed .sidebar-user {
+    justify-content: center;
   }
 }
 
@@ -2140,7 +2172,6 @@ select.form-control {
   .sidebar, .topbar, .bottom-nav,
   .pwa-banner, .toast-container,
   .page-actions, .filter-bar,
-  .gstr-filter, .g3b-filter, .gstr-actions, .g3b-header button,
   .form-actions, .btn-print-hide { display: none !important; }
 
   .app-layout { margin-left: 0 !important; }

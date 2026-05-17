@@ -117,9 +117,6 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
   pointer-events: all;
   max-width: 340px;
-  /* Cancel style.css `animation: toastIn` — ui.js uses the
-     opacity/transform transition approach below instead. */
-  animation: none;
   opacity: 0;
   transform: translateY(12px);
   transition: opacity 0.22s ease, transform 0.22s ease;
@@ -570,7 +567,7 @@ th.sort-desc::after {
   align-items: center;
   gap: 4px;
   padding: 3px 9px;
-  border-radius: 20px;
+  border-radius: 4px;
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -3615,11 +3612,6 @@ th.sort-desc::after {
   padding: 20px;
 }
 
-.modal-backdrop.modal--open,
-.modal.modal--open {
-  display: flex !important;
-}
-
 .modal-box {
   background: #fff;
   border-radius: 12px;
@@ -3858,7 +3850,6 @@ th.sort-desc::after {
 
 /* ── Phase 2.1: Z-Index token layer ─────────────────────── */
 :root {
-  /* Z-Index token layer */
   --z-base:      1;
   --z-dropdown:  400;
   --z-topbar:    100;
@@ -3875,37 +3866,41 @@ th.sort-desc::after {
   --space-lg:    24px;
   --space-xl:    32px;
   --space-2xl:   48px;
-
-  /* Base radii */
-  --radius-sm:      6px;
-  --radius-lg:      14px;
-
-  /* Typography */
-  --font-mono:      'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
-
-  /* Color channels & surfaces */
+}
+:root {
+  /* These are referenced in patches but not defined anywhere */
   --surface-alt:    #F9F8F6;
   --bg-hover:       #F5F3EE;
+  --dur-fast:       0.12s;
+  --radius-sm:      6px;
+  --radius-lg:      14px;
+  --font-mono:      'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  --font-display:   var(--font, 'DM Sans', sans-serif);
+
+  /* Color channel vars used by some components */
   --navy-mid:       #1a2e45;
   --navy-border:    rgba(255,255,255,0.08);
   --nav-text:       rgba(255,255,255,0.72);
+}
 
+/* Phase 4: Refined color palette — professional jewellery tone */
+:root {
   /* Gold: richer, less garish, more premium */
-  --gold:         #B8860B;
-  --gold-light:   #D4A017;
-  --gold-dark:    #996B00;
+  --gold:         #B8860B;   /* was #C8963C — darker, richer */
+  --gold-light:   #D4A017;   /* was #E0B05A */
+  --gold-dark:    #996B00;   /* was #A87830 */
   --gold-muted:   rgba(184, 134, 11, 0.10);
   --gold-muted2:  rgba(184, 134, 11, 0.20);
   --shadow-gold:  0 4px 16px rgba(184, 134, 11, 0.22);
 
   /* Backgrounds: cleaner whites for better contrast */
-  --bg:           #F8F7F4;
+  --bg:           #F8F7F4;   /* was #F7F5F0 — barely different, cleaner */
   --bg-card:      #FFFFFF;
-  --bg-subtle:    #F3F1EC;
+  --bg-subtle:    #F3F1EC;   /* was #F0EDE6 */
 
   /* Borders: slightly more defined */
-  --border:       #E2DDD6;
-  --border-strong:#C8C3BB;
+  --border:       #E2DDD6;   /* was #E4E0D9 */
+  --border-strong:#C8C3BB;   /* was #CCC8C0 */
 
   /* Shadows: softer, more modern */
   --shadow-sm:    0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
@@ -3960,11 +3955,11 @@ th.sort-desc::after {
 /* ── Phase 3.1: Sidebar icon-only mode — center icons ───── */
 /* When desktop sidebar collapses to 70px, icons should be
    centered. Currently padding: 8px 18px left-aligns them. */
-@media (min-width: 1024px) {
+@media (min-width: 769px) {
   body.sidebar-collapsed .nav-item {
     justify-content: center;
     padding: 10px 0;
-    margin: 1px 10px;
+    margin: 1px 6px;
   }
 
   body.sidebar-collapsed .nav-item span {
@@ -4031,29 +4026,6 @@ th.sort-desc::after {
     pointer-events: none;
     transition: width var(--dur) var(--ease), opacity var(--dur-fast);
   }
-
-  body.sidebar-collapsed .sidebar-footer {
-    justify-content: center;
-    padding: 12px 8px;
-  }
-
-  body.sidebar-collapsed .sidebar-user {
-    justify-content: center;
-    flex: 0;
-  }
-
-  /* Fix Priority 4: Active indicator alignment on collapsed sidebar */
-  body.sidebar-collapsed .nav-item.active::before {
-    display: block;
-    left: 2px;
-  }
-}
-
-/* Fix Priority 4: Collapse button missing on tablet landscape (769px - 1024px) */
-@media (min-width: 769px) and (max-width: 1024px) {
-  .sidebar-collapse-btn-desktop {
-    display: flex !important;
-  }
 }
 
 /* ── Phase 3.2: Topbar slide transition ─────────────────── */
@@ -4082,7 +4054,7 @@ th.sort-desc::after {
 }
 
 /* On desktop the overlay should NEVER be visible or interactive */
-@media (min-width: 1024px) {
+@media (min-width: 769px) {
   .sidebar-overlay {
     display: none !important;
   }
@@ -4139,11 +4111,7 @@ th.sort-desc::after {
 
   /* Exception: tight table action buttons stay compact */
   .table-action-btn,
-  .btn-icon-sm,
-  .row-action-btn,
-  .btn-xs,
-  .filter-chip,
-  .sidebar-logout-btn {
+  .btn-icon-sm {
     min-height: 36px;
     min-width: 36px;
   }
@@ -4275,32 +4243,17 @@ h2.section-title {
   background: var(--bg-subtle, #F3F1EC);
 }
 
-/* On mobile the topbar is sticky at top: 0 (56px height).
-   Offset sticky header so it doesn't hide under topbar. */
+/* On mobile the topbar auto-hides on scroll and does NOT
+   permanently occupy space at the top of the viewport.
+   Sticky header must sit at top: 0 so the first data row
+   is never hidden behind the thead. */
 @media (max-width: 768px) {
   .data-table thead th {
-    top: var(--topbar-h, 56px);
+    top: 0;
   }
 }
 
-/* ── Phase 5.1b: GSTR table sticky headers ───────────────── */
-/* .gstr-table uses its own thead — Phase 5.1 only covers
-   .data-table. Add sticky positioning separately.
-   Template's internal <style> sets background/color/padding only —
-   no position conflict. */
-.gstr-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-}
-
-@media (max-width: 768px) {
-  .gstr-table thead th {
-    top: var(--topbar-h, 56px);
-  }
-}
-
-
+/* ── Phase 5.2: Settings page mobile layout ─────────────── */
 /* No responsive rules exist for settings. On mobile the
    two-column sub-sections and wide inputs overflow. */
 @media (max-width: 768px) {
@@ -4377,7 +4330,7 @@ h2.section-title {
 /* ── Phase 5.5: Page header on tight screens ─────────────── */
 /* Between 769px and 900px the page-header doesn't wrap yet
    (style.css only handles ≤768px). Titles + actions clip. */
-@media (max-width: 1023px) and (min-width: 769px) {
+@media (max-width: 900px) and (min-width: 769px) {
   .page-header {
     flex-wrap: wrap;
     gap: 10px;
@@ -4395,8 +4348,7 @@ h2.section-title {
 @media (max-width: 768px) {
   .ledger-table-wrap,
   .gst-table-wrap,
-  .report-table-wrap,
-  .gstr-table-wrap {
+  .report-table-wrap {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     min-width: 0;
@@ -4406,14 +4358,8 @@ h2.section-title {
      (which hides thead) — accounting tables must stay tabular */
   .ledger-table-wrap .data-table,
   .gst-table-wrap .data-table,
-  .report-table-wrap .data-table,
-  .gstr-table-wrap .gstr-table {
+  .report-table-wrap .data-table {
     min-width: 600px; /* force scroll instead of reflow */
-  }
-
-  .gstr-shell,
-  .g3b-shell {
-    min-width: 0;
   }
 }
 
@@ -4616,7 +4562,6 @@ h2.section-title {
 /* Phase 7: Global scroll and safe-area baseline */
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: 60px; /* Account for sticky topbar */
 }
 
 /* iOS safe area: ensure bottom-nav and modals don't clip under home bar */
@@ -4628,14 +4573,332 @@ html {
   padding-bottom: calc(16px + env(safe-area-inset-bottom));
 }
 
-/* PWA banner safe area on mobile: .main-content needs extra padding to prevent occlusion */
-@media (max-width: 768px) {
-  .main-content {
-    padding-bottom: calc(var(--bottom-nav-h, 60px) + 72px + env(safe-area-inset-bottom)) !important;
+/* Prevent page-level horizontal scroll from any overflow regression */
+body {
+  overflow-x: hidden;
+}
+/* ── Sidebar collapsed: footer + logout fixes ─────────────── */
+@media (min-width: 769px) {
+  /* Hide logout button when sidebar is icon-only */
+  body.sidebar-collapsed .sidebar-logout-btn {
+    display: none;
+  }
+
+  /* Center the avatar in the footer */
+  body.sidebar-collapsed .sidebar-footer {
+    justify-content: center;
+    padding: 14px 0;
+  }
+
+  body.sidebar-collapsed .sidebar-user {
+    justify-content: center;
+    flex: unset;
   }
 }
 
-/* Contain stray horizontal bleed without blocking in-container table scroll */
-html {
-  overflow-x: clip;
+/* ══════════════════════════════════════════════════════════
+   MOBILE UI FIXES — May 2026
+   ══════════════════════════════════════════════════════════ */
+
+/* ── 1. Tab bar: first tab no longer clipped on mobile ───── */
+@media (max-width: 768px) {
+  .tab-bar {
+    /* scroll padding so active tab indicator is fully visible */
+    padding-left: 2px;
+    scroll-padding-left: 2px;
+  }
+  .tab-btn {
+    padding: 10px 14px;
+    font-size: 0.8rem;
+  }
+}
+
+/* ── 2. Old Gold filter: match parties filter style ───────── */
+/*    Remove label-on-top layout, go inline like .filter-form  */
+.old-gold-filter-bar .filter-form {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ── 3. Invoice list: prevent invoice number & date wrap ──── */
+@media (max-width: 768px) {
+  /* Invoice number should never wrap mid-word */
+  .table-link--mono {
+    word-break: keep-all;
+    white-space: nowrap;
+  }
+
+  /* Date column: keep YYYY-MM-DD on one line */
+  .data-table td:nth-child(2) {
+    white-space: nowrap;
+  }
+}
+
+/* ── 4. Rough bill item name column: set readable min-width ── */
+@media (max-width: 768px) {
+  /* The rough bill table uses inline styles; override via wrapper */
+  .rough-bill-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .rough-bill-table-wrap table {
+    min-width: 480px;
+  }
+
+  .rough-bill-table-wrap td:first-child,
+  .rough-bill-table-wrap th:first-child {
+    min-width: 130px;
+  }
+}
+
+/* ── 5. Create bill items table: enable horizontal scroll ──── */
+/*    The table-scroll has overflow:visible to allow suggestion
+      dropdowns to appear. We restore scroll only on mobile via
+      a wrapper, and use a high z-index for suggestions instead.  */
+@media (max-width: 768px) {
+  .form-card-items {
+    overflow: hidden;
+  }
+
+  .form-card-items .table-scroll {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .form-card-items .items-table {
+    min-width: 640px;
+    overflow: visible !important;
+  }
+
+  /* Suggestions still escape the clipping context */
+  .form-card-items .item-suggestions {
+    position: fixed !important;
+    z-index: 9999 !important;
+  }
+}
+
+/* ── 6. Stock table: ensure horizontal scroll ─────────────── */
+@media (max-width: 768px) {
+  .stock-table-wrap,
+  .stock-table-wrap .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .stock-table-wrap .data-table {
+    min-width: 560px;
+  }
+}
+
+/* ── 7. Old Gold filter: replace field-group label layout
+        with inline filter-select style to match parties UI ── */
+@media (max-width: 768px) {
+  .filter-bar .field-group {
+    display: contents; /* dissolve wrapper, children flow inline */
+  }
+
+  .filter-bar .field-group .field-label {
+    display: none; /* hide "Metal" / "Type" labels on mobile;
+                      placeholder text in <select> replaces them */
+  }
+
+  .filter-bar .field-group .field-select,
+  .filter-bar .field-group .field-select-sm {
+    /* reuse .filter-select sizing */
+    padding: 9px 30px 9px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    font-size: 0.875rem;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    width: auto;
+    flex: 1 1 auto;
+  }
+
+  /* Apply button: full width below selects on very small screens */
+  .filter-bar .filter-form > .btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* ── 8. Pending payments tab bar: prevent first-tab clip ───── */
+@media (max-width: 768px) {
+  #tab-credit-sale,
+  .tab-bar .tab-btn:first-child {
+    /* Ensure first tab is fully visible without left clip */
+    margin-left: 0;
+  }
+}
+
+/* ── Logo-as-collapse-toggle (desktop) ───────────────────── */
+
+/* Hide the old separate collapse button (removed from HTML) */
+.sidebar-collapse-btn-desktop {
+  display: none !important;
+}
+
+/* Logo icon is now a button — keep it looking identical to before */
+.sidebar-logo-toggle {
+  /* reset button styles */
+  background: var(--gold-muted2);
+  border: 1px solid rgba(200,150,60,0.3);
+  border-radius: var(--radius-sm);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gold);
+  flex-shrink: 0;
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--dur-fast), box-shadow var(--dur-fast);
+}
+
+.sidebar-logo-toggle:hover {
+  background: var(--gold-muted);
+  box-shadow: 0 0 0 3px rgba(200,150,60,0.15);
+}
+
+/* Collapsed: logo toggle stays centered, no text beside it */
+@media (min-width: 769px) {
+  body.sidebar-collapsed .sidebar-logo {
+    justify-content: center;
+    padding: 20px 0 16px;
+  }
+}
+/* ── Live Rates page (lr-*) ──────────────────────────────── */
+
+/* Live badge in page header */
+.lr-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--green-bg);
+  border: 1px solid rgba(21,128,61,0.2);
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--green);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.lr-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: lr-pulse 2s ease-in-out infinite;
+}
+
+@keyframes lr-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.7); }
+}
+
+/* Refresh button spin */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Status bar */
+.lr-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.lr-update-time {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.lr-market-pills {
+  display: flex;
+  gap: 8px;
+}
+
+.lr-market-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+.lr-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.lr-dot--open   { background: var(--green); }
+.lr-dot--closed { background: var(--red); }
+
+/* Error bar */
+.lr-error-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--red-bg);
+  border: 1px solid rgba(185,28,28,0.2);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 0.8rem;
+  color: var(--red);
+  margin-bottom: 16px;
+}
+
+/* Gold/silver colored values */
+.lr-gold-val   { color: var(--gold-dark) !important; }
+.lr-silver-val { color: var(--text-secondary) !important; }
+
+/* Change badge inline */
+.lr-change-badge {
+  font-size: 0.7rem;
+  padding: 2px 7px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* Disclaimer note */
+.lr-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--gold-muted);
+  border: 1px solid var(--gold-border, rgba(200,150,60,0.25));
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.lr-note strong {
+  color: var(--text-primary);
+}
+
+/* table-card-header (if not already defined) */
+.table-card-header {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-subtle);
 }
