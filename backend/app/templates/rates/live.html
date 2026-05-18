@@ -15,6 +15,15 @@
   gap: 18px;
 }
 
+/* Header */
+.lr-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
 /* Live badge */
 .lr-live-badge {
   display: inline-flex;
@@ -37,11 +46,10 @@
   border-radius: 50%;
   background: var(--green);
   animation: lr-pulse 1.6s ease-in-out infinite;
-  flex-shrink: 0;
 }
 
 @keyframes lr-pulse {
-  0%, 100% {
+  0%,100% {
     opacity: 1;
     transform: scale(1);
   }
@@ -50,6 +58,45 @@
     opacity: 0.4;
     transform: scale(0.8);
   }
+}
+
+/* Controls */
+.lr-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.lr-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.lr-toggle input {
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+
+.lr-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: var(--gold-muted);
+  color: var(--gold-dark);
+  border: 1px solid var(--gold-muted2);
 }
 
 /* Status bar */
@@ -90,8 +137,6 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--border);
-  flex-shrink: 0;
 }
 
 .lr-dot--open {
@@ -102,7 +147,7 @@
   background: var(--red);
 }
 
-/* Error bar */
+/* Error */
 .lr-error-bar {
   display: flex;
   align-items: center;
@@ -115,7 +160,7 @@
   color: var(--red);
 }
 
-/* Value colors */
+/* Values */
 .lr-gold-val {
   color: var(--gold-dark);
   font-weight: 600;
@@ -128,7 +173,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Table fixes */
+/* Tables */
 .lr-table-card .table-wrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -142,7 +187,6 @@
   table-layout: fixed;
 }
 
-/* Column sizing */
 .lr-table-card .data-table th:nth-child(1),
 .lr-table-card .data-table td:nth-child(1) {
   width: 120px;
@@ -158,11 +202,15 @@
   width: calc((100% - 260px) / 3);
 }
 
-/* Table alignment */
 .lr-table-card .data-table th {
   white-space: nowrap;
   vertical-align: middle;
   text-align: left;
+}
+
+.lr-table-card .data-table td {
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .lr-table-card .data-table th.text-right,
@@ -170,27 +218,12 @@
   text-align: right;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
-  letter-spacing: -0.01em;
 }
 
-.lr-table-card .data-table td {
-  vertical-align: middle;
-  white-space: nowrap;
-}
-
-/* Row spacing */
 .lr-table-card .data-table td,
 .lr-table-card .data-table th {
   padding-top: 16px;
   padding-bottom: 16px;
-}
-
-/* Badges */
-.lr-table-card .badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 52px;
 }
 
 /* Note */
@@ -232,15 +265,12 @@
 /* Mobile */
 @media (max-width: 768px) {
 
-  .page-header {
-    flex-wrap: wrap;
-    gap: 12px;
+  .lr-header-top {
+    align-items: flex-start;
   }
 
-  .page-header-actions {
+  .lr-controls {
     width: 100%;
-    display: flex;
-    justify-content: space-between;
   }
 
   .lr-status-bar {
@@ -258,12 +288,10 @@
 
 @media (max-width: 480px) {
 
-  .stat-card {
-    padding: 14px;
-  }
-
-  .stat-card-value {
-    font-size: 1.15rem;
+  .lr-toggle,
+  .lr-mode-badge {
+    width: 100%;
+    justify-content: center;
   }
 
   .lr-market-pill {
@@ -278,10 +306,12 @@
 <div class="lr-page">
 
 <div class="page-header">
+
   <div class="page-header-left">
     <h1 class="page-title">Live Market Rates</h1>
+
     <p class="page-subtitle">
-      International spot prices converted to INR in real time
+      Indian bullion adjusted live rates
     </p>
   </div>
 
@@ -318,6 +348,29 @@
   </div>
 </div>
 
+<div class="lr-header-top">
+
+  <div class="lr-controls">
+
+    <label class="lr-toggle">
+
+      <input
+        type="checkbox"
+        id="gstToggle"
+      >
+
+      Include GST (3%)
+
+    </label>
+
+    <div class="lr-mode-badge" id="modeBadge">
+      Bullion Mode
+    </div>
+
+  </div>
+
+</div>
+
 <div class="lr-status-bar">
 
   <span id="updateTime">
@@ -347,23 +400,15 @@
     <line x1="12" y1="16" x2="12.01" y2="16"></line>
   </svg>
 
-  <span id="errorMsg">
-    Could not fetch live rates. Check internet connection.
+  <span>
+    Could not fetch live rates.
   </span>
 
 </div>
 
 <div class="stats-row">
 
-  <!-- USD -->
   <div class="stat-card">
-
-    <div class="stat-card-icon stat-icon-primary">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-        <line x1="12" y1="1" x2="12" y2="23"></line>
-        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-      </svg>
-    </div>
 
     <div class="stat-card-body">
       <span class="stat-card-label">USD / INR</span>
@@ -373,49 +418,29 @@
 
   </div>
 
-  <!-- Gold -->
   <div class="stat-card">
 
-    <div class="stat-card-icon stat-icon-gold">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-      </svg>
-    </div>
-
     <div class="stat-card-body">
-      <span class="stat-card-label">Gold — 22K per gram</span>
+      <span class="stat-card-label">Gold — 22K</span>
       <span class="stat-card-value lr-gold-val" id="gold22k">—</span>
 
       <span class="stat-card-sub">
         <span class="badge badge-neutral" id="goldChange">—</span>
-        today vs prev close
+        today
       </span>
     </div>
 
   </div>
 
-  <!-- Silver -->
   <div class="stat-card">
 
-    <div class="stat-card-icon stat-icon-neutral">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-        <circle cx="12" cy="12" r="5"></circle>
-        <line x1="12" y1="1" x2="12" y2="3"></line>
-        <line x1="12" y1="21" x2="12" y2="23"></line>
-        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-        <line x1="1" y1="12" x2="3" y2="12"></line>
-        <line x1="21" y1="12" x2="23" y2="12"></line>
-      </svg>
-    </div>
-
     <div class="stat-card-body">
-      <span class="stat-card-label">Silver — 999 per gram</span>
+      <span class="stat-card-label">Silver — 999</span>
       <span class="stat-card-value lr-silver-val" id="silver999">—</span>
 
       <span class="stat-card-sub">
         <span class="badge badge-neutral" id="silverChange">—</span>
-        today vs prev close
+        today
       </span>
     </div>
 
@@ -423,7 +448,7 @@
 
 </div>
 
-<!-- GOLD TABLE -->
+<!-- GOLD -->
 <div class="table-card lr-table-card">
 
   <div class="table-card-header">
@@ -440,7 +465,7 @@
           <th>Fineness</th>
           <th class="text-right">Per Gram</th>
           <th class="text-right">Per 10g</th>
-          <th class="text-right">Per Tola (11.66g)</th>
+          <th class="text-right">Per Tola</th>
         </tr>
       </thead>
 
@@ -448,7 +473,7 @@
 
         <tr>
           <td><strong>24K</strong></td>
-          <td><span class="badge badge-neutral">999</span></td>
+          <td>999</td>
           <td class="text-right lr-gold-val" id="g24k">—</td>
           <td class="text-right" id="g24k10">—</td>
           <td class="text-right" id="g24ktola">—</td>
@@ -456,7 +481,7 @@
 
         <tr>
           <td><strong>22K</strong></td>
-          <td><span class="badge badge-neutral">916</span></td>
+          <td>916</td>
           <td class="text-right lr-gold-val" id="g22k">—</td>
           <td class="text-right" id="g22k10">—</td>
           <td class="text-right" id="g22ktola">—</td>
@@ -464,27 +489,20 @@
 
         <tr>
           <td><strong>18K</strong></td>
-          <td><span class="badge badge-neutral">750</span></td>
+          <td>750</td>
           <td class="text-right lr-gold-val" id="g18k">—</td>
           <td class="text-right" id="g18k10">—</td>
           <td class="text-right" id="g18ktola">—</td>
         </tr>
 
-        <tr>
-          <td><strong>14K</strong></td>
-          <td><span class="badge badge-neutral">585</span></td>
-          <td class="text-right lr-gold-val" id="g14k">—</td>
-          <td class="text-right" id="g14k10">—</td>
-          <td class="text-right" id="g14ktola">—</td>
-        </tr>
-
       </tbody>
+
     </table>
 
   </div>
 </div>
 
-<!-- SILVER TABLE -->
+<!-- SILVER -->
 <div class="table-card lr-table-card">
 
   <div class="table-card-header">
@@ -509,7 +527,7 @@
 
         <tr>
           <td><strong>999</strong></td>
-          <td><span class="badge badge-neutral">Fine</span></td>
+          <td>Fine</td>
           <td class="text-right lr-silver-val" id="s999g">—</td>
           <td class="text-right" id="s999h">—</td>
           <td class="text-right" id="s999kg">—</td>
@@ -517,21 +535,14 @@
 
         <tr>
           <td><strong>925</strong></td>
-          <td><span class="badge badge-neutral">Sterling</span></td>
+          <td>Sterling</td>
           <td class="text-right lr-silver-val" id="s925g">—</td>
           <td class="text-right" id="s925h">—</td>
           <td class="text-right" id="s925kg">—</td>
         </tr>
 
-        <tr>
-          <td><strong>800</strong></td>
-          <td><span class="badge badge-neutral">Coin/Bar</span></td>
-          <td class="text-right lr-silver-val" id="s800g">—</td>
-          <td class="text-right" id="s800h">—</td>
-          <td class="text-right" id="s800kg">—</td>
-        </tr>
-
       </tbody>
+
     </table>
 
   </div>
@@ -546,10 +557,8 @@
   </svg>
 
   <p>
-    Rates are <strong>international spot prices</strong> converted to INR in real time.
-    Actual jewellery prices may vary due to
-    <strong>making charges, 3% GST, and local market premiums</strong>.
-    Auto-refreshes every <strong>2 minutes</strong>.
+    Indian market multipliers are applied to international spot prices
+    to approximate real bullion market rates used in India.
   </p>
 
 </div>
@@ -562,20 +571,30 @@
 const TROY_OZ_TO_GRAM = 31.1035;
 const TOLA = 11.6638;
 
+/* =========================================
+   INDIA MARKET CONSTANTS
+========================================= */
+
+const GOLD_INDIA_MULTIPLIER = 1.16;
+const SILVER_INDIA_MULTIPLIER = 1.08;
+
+const GST_RATE = 0.03;
+
+/* ========================================= */
+
 const GOLD_PURITIES = {
   '24K': 1.0000,
   '22K': 0.9167,
-  '18K': 0.7500,
-  '14K': 0.5833
+  '18K': 0.7500
 };
 
 const SILVER_PURITIES = {
   '999': 1.0000,
-  '925': 0.9250,
-  '800': 0.8000
+  '925': 0.9250
 };
 
 let lastData = null;
+let gstEnabled = false;
 
 function fmtINR(n) {
   return '₹' + Math.round(n).toLocaleString('en-IN');
@@ -589,57 +608,42 @@ function applyChange(elId, pct) {
 
   if (pct === null || isNaN(pct)) {
     el.textContent = '—';
-    el.className = 'badge badge-neutral';
     return;
   }
 
   const sign = pct >= 0 ? '+' : '';
 
   el.textContent = sign + pct.toFixed(2) + '%';
-
-  el.className =
-    'badge ' +
-    (pct > 0
-      ? 'badge-success'
-      : pct < 0
-      ? 'badge-danger'
-      : 'badge-neutral');
 }
 
-function updateMarketStatus() {
+function updateModeBadge() {
 
-  const istMs = Date.now() + (5.5 * 60 * 60 * 1000);
-  const ist = new Date(istMs);
+  const badge = document.getElementById('modeBadge');
 
-  const mins = ist.getUTCHours() * 60 + ist.getUTCMinutes();
-  const day = ist.getUTCDay();
-
-  const mcxOpen =
-    day >= 1 && day <= 6 && mins >= 540 && mins < 1410;
-
-  const forexOpen =
-    !(day === 0 || (day === 6 && mins >= 240));
-
-  document.getElementById('mcxDot').className =
-    'lr-dot ' + (mcxOpen ? 'lr-dot--open' : 'lr-dot--closed');
-
-  document.getElementById('forexDot').className =
-    'lr-dot ' + (forexOpen ? 'lr-dot--open' : 'lr-dot--closed');
-
-  document.getElementById('mcxStatus').textContent =
-    'MCX ' + (mcxOpen ? 'Open' : 'Closed');
-
-  document.getElementById('forexStatus').textContent =
-    'Forex ' + (forexOpen ? 'Open' : 'Closed');
+  badge.textContent =
+    gstEnabled
+      ? 'Retail GST Mode'
+      : 'Bullion Mode';
 }
 
-function renderRates({
-  gold24kPerGram,
-  silv999PerGram,
-  usdInr,
-  goldPct,
-  silvPct
-}) {
+function renderRates(data) {
+
+  let {
+    gold24kPerGram,
+    silv999PerGram,
+    usdInr,
+    goldPct,
+    silvPct
+  } = data;
+
+  if (gstEnabled) {
+
+    gold24kPerGram =
+      gold24kPerGram * (1 + GST_RATE);
+
+    silv999PerGram =
+      silv999PerGram * (1 + GST_RATE);
+  }
 
   document.getElementById('usdInrVal').textContent =
     '₹' + usdInr.toFixed(2);
@@ -656,8 +660,7 @@ function renderRates({
   const goldIds = {
     '24K': 'g24k',
     '22K': 'g22k',
-    '18K': 'g18k',
-    '14K': 'g14k'
+    '18K': 'g18k'
   };
 
   for (const [k, mult] of Object.entries(GOLD_PURITIES)) {
@@ -677,8 +680,7 @@ function renderRates({
 
   const silvIds = {
     '999': 's999',
-    '925': 's925',
-    '800': 's800'
+    '925': 's925'
   };
 
   for (const [k, mult] of Object.entries(SILVER_PURITIES)) {
@@ -705,8 +707,6 @@ async function fetchRates() {
   btn.disabled = true;
   refreshIcon.classList.add('spin');
 
-  document.getElementById('errorBar').style.display = 'none';
-
   try {
 
     const [goldRes, silverRes, fxRes] = await Promise.all([
@@ -715,21 +715,23 @@ async function fetchRates() {
       fetch('https://api.exchangerate-api.com/v4/latest/USD')
     ]);
 
-    if (!goldRes.ok || !silverRes.ok || !fxRes.ok) {
-      throw new Error('API error');
-    }
-
     const goldData = await goldRes.json();
     const silverData = await silverRes.json();
     const fxData = await fxRes.json();
 
     const usdInr = fxData.rates['INR'];
 
-    const gold24kPerGram =
+    const rawGold24kPerGram =
       (goldData.price / TROY_OZ_TO_GRAM) * usdInr;
 
-    const silv999PerGram =
+    const rawSilver999PerGram =
       (silverData.price / TROY_OZ_TO_GRAM) * usdInr;
+
+    const gold24kPerGram =
+      rawGold24kPerGram * GOLD_INDIA_MULTIPLIER;
+
+    const silv999PerGram =
+      rawSilver999PerGram * SILVER_INDIA_MULTIPLIER;
 
     const goldPct = goldData.prev_close_price
       ? ((goldData.price - goldData.prev_close_price)
@@ -753,34 +755,41 @@ async function fetchRates() {
 
     document.getElementById('updateTime').textContent =
       'Updated ' +
-      new Date().toLocaleTimeString('en-IN', {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      });
+      new Date().toLocaleTimeString('en-IN');
 
   } catch (err) {
 
-    document.getElementById('errorBar').style.display = 'flex';
-
-    if (!lastData) {
-      document.getElementById('updateTime').textContent =
-        'Fetch failed';
-    }
+    document.getElementById('errorBar').style.display =
+      'flex';
 
   } finally {
 
     btn.disabled = false;
     refreshIcon.classList.remove('spin');
-
-    updateMarketStatus();
   }
 }
+
+/* =========================================
+   GST TOGGLE
+========================================= */
+
+document.getElementById('gstToggle')
+  .addEventListener('change', function() {
+
+    gstEnabled = this.checked;
+
+    updateModeBadge();
+
+    if (lastData) {
+      renderRates(lastData);
+    }
+  });
+
+/* ========================================= */
 
 fetchRates();
 setInterval(fetchRates, 2 * 60 * 1000);
 
-updateMarketStatus();
-setInterval(updateMarketStatus, 30 * 1000);
+updateModeBadge();
 </script>
 {% endblock %}
