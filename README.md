@@ -1,32 +1,27 @@
 # Jewellery Billing App
 
-A complete billing and business management system built for Indian jewellery shops. Handles GST-compliant invoicing, gold/silver rate management, inventory tracking, party ledgers, and financial reporting — all from a web browser with offline-capable PWA support.
+A complete billing and business management system built for Indian jewellery shops. Handles GST-compliant invoicing, gold/silver rate management, inventory tracking, party ledgers, cash accounting, and financial reporting — all from a web browser with offline-capable PWA support.
 
 ---
 
 ## Screenshots
 
 ### Dashboard
-<!-- Upload screenshot: drag and drop image here while editing on GitHub -->
-<img width="1920" height="1080" alt="Screenshot 2026-05-13 005728" src="https://github.com/user-attachments/assets/1870dfc1-d555-4a96-9ea7-5034a6097ccf" />
+<img width="1920" height="1080" alt="Dashboard" src="https://github.com/user-attachments/assets/1870dfc1-d555-4a96-9ea7-5034a6097ccf" />
 
 ### Create Invoice
-<!-- Upload screenshot: drag and drop image here while editing on GitHub -->
-<img width="1920" height="1080" alt="Screenshot 2026-05-13 005941" src="https://github.com/user-attachments/assets/ff0d0469-4233-4624-90ad-ca6e405aa20c" />
+<img width="1920" height="1080" alt="Create Invoice" src="https://github.com/user-attachments/assets/ff0d0469-4233-4624-90ad-ca6e405aa20c" />
 
 ### Bill Print Preview
-<!-- Upload screenshot: drag and drop image here while editing on GitHub -->
-<img width="669" height="952" alt="Screenshot 2026-05-13 010144" src="https://github.com/user-attachments/assets/8977aac9-9f67-41c1-9937-f2c3a08e9352" />
+<img width="669" height="952" alt="Bill Print Preview" src="https://github.com/user-attachments/assets/8977aac9-9f67-41c1-9937-f2c3a08e9352" />
 
 ### GST Report
-<!-- Upload screenshot: drag and drop image here while editing on GitHub -->
-<img width="1920" height="1080" alt="Screenshot 2026-05-13 010231" src="https://github.com/user-attachments/assets/3b220ab5-9dc7-41fe-9753-d028164c9ef9" />
+<img width="1920" height="1080" alt="GST Report" src="https://github.com/user-attachments/assets/3b220ab5-9dc7-41fe-9753-d028164c9ef9" />
 
 ---
 
 ## Table of Contents
 
-- [Screenshots](#screenshots)
 - [Features](#features)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
@@ -48,7 +43,9 @@ A complete billing and business management system built for Indian jewellery sho
 ### Billing & Invoicing
 - Create GST-compliant sale and purchase invoices with automatic tax calculation (CGST/SGST for intrastate, IGST for interstate)
 - Support for multiple payment modes: cash, card, UPI, cheque, NEFT
-- Credit bill management with due dates and payment tracking
+- Credit bill management with due dates: partial payments can be recorded against a credit bill over time (by cash/UPI/etc. or by applying the party's unused advance balance, oldest-first), each one logged as a `PaymentEvent`, with `payment_status` and `amount_due` updating automatically as payments come in
+- Dedicated unsettled-credit view listing open credit sales, credit purchases, and partially-paid bills
+- Credit notes and debit notes for adjusting a previously issued invoice
 - Invoice edit history with version tracking (full audit log of every change)
 - Cancel and recover bills with reason tracking
 - Duplicate an existing invoice to speed up repeat billing
@@ -56,20 +53,30 @@ A complete billing and business management system built for Indian jewellery sho
 - Amount-in-words auto-generated on bills (e.g., "Rupees Five Thousand Only")
 - Old gold exchange value deducted directly on invoices
 
+### Rough Bill (Kaccha Bill)
+- Quick, stateless estimate slips for walk-in customers — name, address, items, and total
+- Printable directly from the browser
+- Nothing is saved to the database, so it's purely a fast quotation/estimate tool
+
 ### AI-Powered Bill Scanning
 - Photograph a handwritten bill and extract all fields automatically using Google Gemini Vision
-- Extracted data populates the invoice form — reduce manual data entry for old paper records
+- Extracted data populates the invoice form — reduces manual data entry for old paper records
 - Requires a Google API key (optional feature, app works fully without it)
 
 ### Gold & Silver Rate Management
 - Set daily rates for Gold 22K, Gold 18K, and Silver per gram
 - Rates auto-fill into the invoice creation form when you open it
-- Last 30 days of rate history visible at a glance
+- Live rate view plus historical rate list for quick reference
 
-### Party Management
-- Maintain a customer and supplier directory with GSTIN, phone, address
-- Per-party ledger showing all invoices, outstanding dues, and advance balance
-- Credit and debit tracking per party
+### Party Management & Credit/Debit Balance
+- Maintain a customer and supplier directory with GSTIN, phone, address, credit limit, and credit days
+- Each party carries a proper double-sided ledger balance, not just a single "due" number:
+  - **Sales** (and debit notes) add to what the party owes you (receivable)
+  - **Purchases** (and credit notes) add to what you owe the party (payable)
+  - **Unused advances** held for that party reduce the net balance you owe them
+  - An optional **opening balance** (debit or credit) is included in the calculation as a starting point, and can be partially or fully settled on its own (recorded as a `CashAccount` entry + `PaymentEvent`, separate from invoice payments)
+- The result is a single **net balance** with a **debit/credit type** — "debit" means the party owes the shop money, "credit" means the shop owes the party — shown alongside the breakdown (`money_to_receive` vs `money_to_pay`)
+- Per-party detail page shows total billed, total paid, total due, count of sale vs purchase bills, and all open/unsettled credit bills for that party
 
 ### Old Gold / Silver Exchange
 - Record old gold and silver received from customers (exchange or direct purchase)
@@ -79,6 +86,12 @@ A complete billing and business management system built for Indian jewellery sho
 ### Advance Payments
 - Record advance amounts received from customers before a bill is made
 - Advances visible on the party detail page and deductible during billing
+- Advance applications tracked against specific invoices for a clean audit trail
+
+### Cash Account / Ledger
+- Central ledger of every cash movement: invoice payments, advances, and expenses
+- Filterable by month, payment mode, and entry type (in/out)
+- Gives a day-by-day view of money in and out of the business, separate from per-party ledgers
 
 ### Inventory & Stock
 - Product catalogue with purity, category, and low-stock threshold
@@ -90,6 +103,7 @@ A complete billing and business management system built for Indian jewellery sho
 - Log business expenses by category (rent, labour, purchase, miscellaneous, etc.)
 - Soft-delete with restore support (no data is permanently lost)
 - Expense list filterable by financial year and category
+- Expenses feed automatically into the Cash Account ledger
 
 ### GST Reports
 - GSTR-1 report: outward supply summary broken down by HSN and tax rate
@@ -120,7 +134,7 @@ A complete billing and business management system built for Indian jewellery sho
 ### Authentication
 - Single-user login with password protection
 - First-run setup wizard to configure shop and credentials
-- Session-based auth with secure cookies
+- Session-based auth (signed cookies via Starlette's `SessionMiddleware`) with `same_site=lax` for CSRF protection
 
 ---
 
@@ -128,7 +142,7 @@ A complete billing and business management system built for Indian jewellery sho
 
 | Layer | Technology |
 |---|---|
-| Backend | Python 3.11, FastAPI |
+| Backend | Python 3.11+, FastAPI |
 | Templating | Jinja2 (server-side HTML) |
 | Database ORM | SQLModel (SQLAlchemy + Pydantic) |
 | Migrations | Alembic |
@@ -136,7 +150,9 @@ A complete billing and business management system built for Indian jewellery sho
 | Frontend | Vanilla JS, HTML5, CSS3 |
 | PWA | Web App Manifest + Service Worker |
 | Excel Export | openpyxl |
-| AI Scanning | Google Gemini Vision API |
+| AI Scanning | Google Gemini Vision API (`google-genai`) |
+| Auth/Session | Starlette `SessionMiddleware`, passlib (bcrypt), python-jose |
+| Number formatting | num2words (amount-in-words on bills) |
 | Deployment | Render (free tier, Singapore region) |
 
 ---
@@ -150,17 +166,17 @@ Jewellery_Billing_App/
     │   ├── main.py              # FastAPI app, middleware, router registration
     │   ├── config.py            # Settings loaded from .env
     │   ├── database.py          # DB engine and session
-    │   ├── dependencies.py      # Auth dependency (require_login)
-    │   ├── models/              # SQLModel table definitions
+    │   ├── dependencies.py      # Auth dependency (require_login) + login redirect handler
+    │   ├── models/               # SQLModel table definitions
     │   │   ├── invoices.py
     │   │   ├── parties.py
     │   │   ├── inventory.py
     │   │   ├── products.py
-    │   │   ├── payments.py
+    │   │   ├── payments.py       # Advances, PaymentEvent, CashAccount (ledger)
     │   │   ├── expenses.py
     │   │   ├── shop.py
     │   │   └── system.py
-    │   ├── routers/             # One file per feature area
+    │   ├── routers/               # One file per feature area
     │   │   ├── invoices.py
     │   │   ├── parties.py
     │   │   ├── rates.py
@@ -169,26 +185,30 @@ Jewellery_Billing_App/
     │   │   ├── expenses.py
     │   │   ├── stocks.py
     │   │   ├── advances.py
+    │   │   ├── ledger.py         # Cash account / ledger view
+    │   │   ├── rough_bill.py     # Stateless kaccha-bill estimate slip
     │   │   ├── settings.py
     │   │   ├── scan.py
     │   │   ├── reports.py
     │   │   ├── exports.py
     │   │   ├── dashboard.py
     │   │   └── auth.py
-    │   ├── schemas/             # Pydantic request/response models
-    │   ├── services/            # Business logic (invoice_service, party_service)
+    │   ├── schemas/              # Pydantic request/response models
+    │   ├── services/              # Business logic (invoice_service, party_service)
     │   ├── static/
-    │   │   ├── css/             # App styles and patches
-    │   │   ├── js/              # invoice.js, ui.js
-    │   │   ├── icons/           # PWA icons
+    │   │   ├── css/              # style.css, patches.css
+    │   │   ├── js/               # invoice.js, ui.js
+    │   │   ├── icons/             # PWA icons (192×192, 512×512)
     │   │   ├── manifest.json
     │   │   └── sw.js
-    │   └── templates/           # Jinja2 HTML templates
-    ├── alembic/                 # DB migration scripts
+    │   └── templates/             # Jinja2 HTML templates (invoices, parties, ledger,
+    │                              # rough_bills, products, rates, reports, scan, settings, stock)
+    ├── alembic/                   # DB migration scripts
     ├── alembic.ini
     ├── requirements.txt
-    ├── render.yaml              # One-click Render deployment config
-    └── .env.example             # Template for environment variables
+    ├── render.yaml                # One-click Render deployment config
+    ├── .env.example               # Template for environment variables
+    └── test.db                    # Local SQLite DB (development only; gitignored in real use)
 ```
 
 ---
@@ -239,7 +259,7 @@ cp .env.example .env
 Open `.env` and set the following (minimum required for local use):
 
 ```env
-DATABASE_URL=sqlite:///./jewellery.db
+DATABASE_URL=sqlite:///./test.db
 SECRET_KEY=any-random-string-here
 ```
 
@@ -275,7 +295,7 @@ Use the **Transaction pooler** URL (port `6543`) — required for Render's free 
 
 ```env
 DATABASE_URL=postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-ap-south-1.pooler.supabase.com:6543/postgres
-SECRET_KEY=generate-with-python-c-import-secrets-print-secrets-token-hex-32
+SECRET_KEY=generate-with-the-command-below
 ```
 
 To generate a secure `SECRET_KEY`:
@@ -300,7 +320,7 @@ The repository includes a `render.yaml` for one-click deployment.
 
 **Step 2** — Go to [render.com](https://render.com) → New → Blueprint → connect your GitHub repo.
 
-**Step 3** — Render will detect `render.yaml` automatically. Set the following environment variables manually in the Render dashboard (do **not** put them in the file):
+**Step 3** — Render detects `render.yaml` automatically. It builds with `rootDir: backend`, region `singapore`, and the free plan. Set the following environment variables manually in the Render dashboard (do **not** put secrets in the file):
 
 | Variable | Description |
 |---|---|
@@ -308,7 +328,9 @@ The repository includes a `render.yaml` for one-click deployment.
 | `SECRET_KEY` | A strong random 64-character hex string |
 | `GOOGLE_API_KEY` | *(Optional)* Only needed for the Scan Bill feature |
 
-**Step 4** — Deploy. Alembic migrations run automatically on every deploy.
+`APP_NAME` and `PYTHON_VERSION` are already set as plain values in `render.yaml` and don't need to be added manually.
+
+**Step 4** — Deploy. The start command (`alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT`) runs migrations automatically on every deploy, and Render checks app health at `/`.
 
 ---
 
@@ -319,7 +341,7 @@ The repository includes a `render.yaml` for one-click deployment.
 | `DATABASE_URL` | Yes | SQLite path or PostgreSQL URI |
 | `SECRET_KEY` | Yes | Secret key for session signing |
 | `APP_NAME` | No | Display name (default: `Jewellery Billing App`) |
-| `GOOGLE_API_KEY` | No | Google Gemini API key for bill scanning |
+| `GOOGLE_API_KEY` | No | Google Gemini API key for the AI bill-scanning feature |
 
 Never commit your `.env` file. It is listed in `.gitignore`.
 
@@ -349,8 +371,8 @@ Migrations are safe to run multiple times — Alembic tracks applied versions an
 The app is a Progressive Web App. On Chrome (Android or desktop), users will see an "Add to Home Screen" / "Install" prompt. Once installed:
 
 - The app opens in standalone mode (no browser chrome)
-- PWA shortcuts for "New Bill" and "Gold Rates" are available from the app icon
-- A service worker (`sw.js`) is registered at the root scope
+- A service worker (`sw.js`) is registered at the root scope (served from `/sw.js`, not `/static/sw.js`, so it can intercept all app routes)
+- The manifest is likewise served from `/manifest.json` at the root
 
 Icons are located at `backend/app/static/icons/` (192×192 and 512×512 PNG).
 
@@ -361,6 +383,7 @@ Icons are located at `backend/app/static/icons/` (192×192 and 512×512 PNG).
 - **Single-user only** — there is one set of credentials per installation. Multi-user / role-based access is not implemented.
 - **No real-time sync** — the app does not push live updates across browser tabs.
 - **Scan Bill feature requires internet** — it calls the Google Gemini API and will not work offline or without a valid `GOOGLE_API_KEY`.
+- **Rough Bill is not persisted** — it's a stateless print helper; if you need a record of the estimate, convert it into a real invoice.
 - **Render free tier spins down** after 15 minutes of inactivity. The first request after idle may take 30–60 seconds to respond.
 
 ---
@@ -377,4 +400,4 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 
 ---
 
-*Built for Indian jewellery shops. Handles GST, gold rates, and everything in between.*
+*Built for Indian jewellery shops. Handles GST, gold rates, cash ledgers, and everything in between.*
