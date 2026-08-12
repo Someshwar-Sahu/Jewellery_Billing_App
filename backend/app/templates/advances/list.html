@@ -12,6 +12,11 @@
         <p class="page-subtitle">Customer advances applied against future bills</p>
     </div>
     <div class="page-header-actions">
+        <select class="field-input field-input--sm" onchange="window.location='/advances/?status='+this.value" style="width:auto;">
+          <option value="open"  {% if status_filter == 'open'  %}selected{% endif %}>Unused</option>
+          <option value="used"  {% if status_filter == 'used'  %}selected{% endif %}>Used</option>
+          <option value="all"   {% if status_filter == 'all'   %}selected{% endif %}>All</option>
+        </select>
         <a href="/advances/create" class="btn btn-gold">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -79,7 +84,9 @@
                 <td><span class="amount-cell">₹{{ "%.2f"|format(a.amount) }}</span></td>
                 <td>
                     {% if a.adjusted_amount > 0 %}
-                    <span class="amount-cell amount-muted">₹{{ "%.2f"|format(a.adjusted_amount) }}</span>
+                    <button class="btn-link" onclick="toggleAdvDetail({{ a.id }})">
+                      ₹{{ "%.2f"|format(a.adjusted_amount) }} ▾
+                    </button>
                     {% else %}<span class="text-muted">—</span>{% endif %}
                 </td>
                 <td>
@@ -99,6 +106,21 @@
                 </td>
                 <td><span class="text-muted-sm">{{ a.notes or "—" }}</span></td>
             </tr>
+            {% set apps = apps_by_advance.get(a.id, []) %}
+            {% if apps %}
+            <tr id="adv-detail-{{ a.id }}" style="display:none;">
+              <td colspan="8" style="background:var(--surface-2);padding:0.5rem 1rem;">
+                <strong>Used against:</strong>
+                {% for app in apps %}
+                {% set inv = invoices_map.get(app.invoice_id) %}
+                <span style="margin-left:0.75rem;">
+                  {% if inv %}<a href="/invoices/{{ inv.id }}" class="table-link">{{ inv.invoice_number }}</a>{% endif %}
+                  — ₹{{ "%.2f"|format(app.amount_applied) }} on {{ app.applied_date }}
+                </span>
+                {% endfor %}
+              </td>
+            </tr>
+            {% endif %}
             {% endfor %}
         </tbody>
     </table>
@@ -106,4 +128,13 @@
 <p class="table-footer-note">{{ advances|length }} records</p>
 {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleAdvDetail(id) {
+    const row = document.getElementById('adv-detail-' + id);
+    if (row) row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+}
+</script>
 {% endblock %}

@@ -25,7 +25,7 @@ def setup_page(request: Request, session: Session = Depends(get_session)):
     return templates.TemplateResponse(request=request, name="auth/setup.html", context={})
 
 @router.post("/setup")
-async def setup_page(request: Request, session: Session = Depends(get_session)):
+async def setup_submit(request: Request, session: Session = Depends(get_session)):
     existing = session.exec(select(User)).first()
     if existing:
         return JSONResponse(status_code=400, content={"success": False, "error": "Setup already complete."})

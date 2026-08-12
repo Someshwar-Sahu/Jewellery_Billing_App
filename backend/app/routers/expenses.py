@@ -181,8 +181,14 @@ def delete_expense(expense_id: int, session: Session = Depends(get_session)):
     if lock:
         raise HTTPException(status_code=400, detail=f"Cannot delete: {expense.expense_date.strftime('%B %Y')} is locked for GST filing.")
     from datetime import datetime
+    from app.models.payments import CashAccount
     expense.is_deleted = True
     expense.deleted_at = datetime.utcnow()
     session.add(expense)
+
+    cash_entries = session.exec(select(CashAccount).where(CashAccount.expense_id == expense_id)).all()
+    for ce in cash_entries:
+        session.delete(ce)
+
     session.commit()
     return {"success": True}

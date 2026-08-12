@@ -371,9 +371,14 @@
             <div class="t-row"><span>Round Off</span><span>₹{{ "%.2f"|format(invoice.round_off) }}</span></div>
             {% endif %}
             <div class="t-row grand"><span>Grand Total</span><span>₹{{ "%.2f"|format(invoice.grand_total) }}</span></div>
-            {% if invoice.amount_paid > 0 %}
+            {% if (invoice.amount_paid and invoice.amount_paid > 0) or (invoice.advance_used and invoice.advance_used > 0) or (invoice.amount_due and invoice.amount_due > 0) %}
+            {% if invoice.advance_used and invoice.advance_used > 0 %}
+            <div class="t-row"><span>Advance Adjusted</span><span>₹{{ "%.2f"|format(invoice.advance_used) }}</span></div>
+            {% endif %}
+            {% if invoice.amount_paid and invoice.amount_paid > 0 %}
             <div class="t-row"><span>Amount Paid</span><span>₹{{ "%.2f"|format(invoice.amount_paid) }}</span></div>
-            <div class="t-row due"><span>Balance Due</span><span>₹{{ "%.2f"|format(invoice.amount_due) }}</span></div>
+            {% endif %}
+            <div class="t-row due"><span>Balance Due</span><span>₹{{ "%.2f"|format(invoice.amount_due or 0) }}</span></div>
             {% endif %}
         </div>
     </div>

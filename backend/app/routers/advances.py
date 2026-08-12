@@ -3,7 +3,9 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 from app.database import get_session
-from app.models.payments import Advance, CashAccount
+from app.models.payments import Advance, CashAccount, AdvanceApplication
+from app.models.invoices import Invoice
+from collections import defaultdict
 from app.models.parties import Party
 from app.models.system import MonthLock
 from app.models.shop import FinancialYear
@@ -15,8 +17,11 @@ templates = Jinja2Templates(directory="app/templates")
 # ── LIST ──────────────────────────────────────────────────────────────────────
 
 @router.get("/", response_class=HTMLResponse)
-def advance_list(request: Request, session: Session = Depends(get_session)):
-    advances = session.exec(select(Advance).order_by(Advance.advance_date.desc())).all()
+def advance_list(request: Request, status: str = "open", session: Session = Depends(get_session)):
+    stmt = select(Advance).order_by(Advance.advance_date.desc())
+    if status in ("open", "used"):
+        stmt = stmt.where(Advance.status == status)
+    advances = session.exec(stmt).all()
 
     party_ids = {a.party_id for a in advances}
     parties = {p.id: p for p in session.exec(
@@ -25,9 +30,31 @@ def advance_list(request: Request, session: Session = Depends(get_session)):
 
     total_open = round(sum(a.amount - a.adjusted_amount for a in advances if a.status == "open"), 2)
 
+    advance_ids = [a.id for a in advances]
+    apps_by_advance = defaultdict(list)
+    invoices_map = {}
+    if advance_ids:
+        applications = session.exec(
+            select(AdvanceApplication)
+            .where(AdvanceApplication.advance_id.in_(advance_ids))
+        ).all()
+        for app in applications:
+            apps_by_advance[app.advance_id].append(app)
+        invoice_ids = {app.invoice_id for app in applications}
+        if invoice_ids:
+            for inv in session.exec(select(Invoice).where(Invoice.id.in_(invoice_ids))).all():
+                invoices_map[inv.id] = inv
+
     return templates.TemplateResponse(
         request=request, name="advances/list.html",
-        context={"advances": advances, "parties": parties, "total_open": total_open}
+        context={
+            "advances":         advances,
+            "parties":          parties,
+            "total_open":       total_open,
+            "status_filter":    status,
+            "apps_by_advance":  dict(apps_by_advance),
+            "invoices_map":     invoices_map,
+        }
     )
 
 # ── CREATE ────────────────────────────────────────────────────────────────────

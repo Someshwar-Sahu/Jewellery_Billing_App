@@ -303,18 +303,31 @@ def gstr3b_report(
 
     sale_bills = session.exec(sale_stmt).all()
 
+    cn_stmt = (
+        select(Invoice)
+        .where(Invoice.invoice_type == "credit_note")
+        .where(Invoice.is_cancelled == False)
+        .where(Invoice.gst_status.in_(["gst_ready", "locked"]))
+    )
+    cn_stmt, _, _ = _apply_fy_month_filter(cn_stmt, selected_fy, month)
+    cn_bills = session.exec(cn_stmt).all()
+
+    cn_cgst = round(sum((b.total_cgst or 0) + (b.making_cgst or 0) for b in cn_bills), 2)
+    cn_sgst = round(sum((b.total_sgst or 0) + (b.making_sgst or 0) for b in cn_bills), 2)
+    cn_taxable = round(sum((b.subtotal or 0) + (b.total_making_charges or 0) for b in cn_bills), 2)
+
     out_cgst = round(
-        sum((b.total_cgst or 0) + (b.making_cgst or 0) for b in sale_bills),
+        max(0.0, sum((b.total_cgst or 0) + (b.making_cgst or 0) for b in sale_bills) - cn_cgst),
         2
     )
 
     out_sgst = round(
-        sum((b.total_sgst or 0) + (b.making_sgst or 0) for b in sale_bills),
+        max(0.0, sum((b.total_sgst or 0) + (b.making_sgst or 0) for b in sale_bills) - cn_sgst),
         2
     )
 
     out_taxable = round(
-        sum((b.subtotal or 0) + (b.total_making_charges or 0) for b in sale_bills),
+        max(0.0, sum((b.subtotal or 0) + (b.total_making_charges or 0) for b in sale_bills) - cn_taxable),
         2
     )
 

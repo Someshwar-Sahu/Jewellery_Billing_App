@@ -41,13 +41,10 @@ def get_summary(session: Session) -> list:
             .order_by(StockLedger.stock_date.desc())
         ).all()
 
-        if not entries:
-            continue
-
-        effective_entries = [e for e in entries if not _is_system_generated_reversal(e)]
+        effective_entries = [e for e in entries if not _is_system_generated_reversal(e)] if entries else []
         total_in  = round(sum(e.quantity_in  for e in effective_entries), 3)
         total_out = round(sum(e.quantity_out for e in effective_entries), 3)
-        balance   = round(sum(e.quantity_in - e.quantity_out for e in entries), 3)
+        balance   = round(sum(e.quantity_in - e.quantity_out for e in entries), 3) if entries else 0.0
         last_date = entries[0].stock_date if entries else None
         is_low    = product.low_stock_alert is not None and balance <= product.low_stock_alert
 
@@ -58,7 +55,7 @@ def get_summary(session: Session) -> list:
             "balance":   balance,
             "last_date": last_date,
             "is_low":    is_low,
-            "entries":   entries,
+            "entries":   entries or [],
         })
 
     return summary

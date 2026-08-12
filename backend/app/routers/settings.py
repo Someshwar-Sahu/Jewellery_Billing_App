@@ -298,14 +298,18 @@ def _carry_forward_party_balances(session: Session, closing_fy: FinancialYear) -
         elif bill.invoice_type in ("purchase", "credit_note"):
             party_net[bill.party_id] = party_net.get(bill.party_id, Decimal("0")) - due
 
-    for party_id, net in party_net.items():
-        if net == Decimal("0"):
-            continue
-        party = session.get(Party, party_id)
-        if not party:
-            continue
-        party.opening_balance      = float(abs(net))
-        party.opening_balance_type = "debit" if net > 0 else "credit"
+    for party in session.exec(select(Party)).all():
+        pre_bal = Decimal(str(party.opening_balance or 0))
+        pre_net = pre_bal if party.opening_balance_type == "debit" else -pre_bal
+        year_net = party_net.get(party.id, Decimal("0"))
+        total_net = pre_net + year_net
+
+        if total_net != Decimal("0"):
+            party.opening_balance      = float(abs(total_net))
+            party.opening_balance_type = "debit" if total_net > 0 else "credit"
+        else:
+            party.opening_balance      = 0.0
+            party.opening_balance_type = None
         session.add(party)
 
 @router.get("/all-fy")

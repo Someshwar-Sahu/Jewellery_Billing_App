@@ -232,7 +232,8 @@ function calcRow(n) {
   const weight  = parseFloat(row.querySelector('[name="weight_grams"]').value)  || 0;
   const rate    = parseFloat(row.querySelector('[name="rate_per_gram"]').value)  || 0;
   const making  = parseFloat(row.querySelector('[name="making_charges"]').value) || 0;
-  const gstRate = parseFloat(row.querySelector('[name="gst_rate"]').value)       || 3.0;
+  const gstVal  = row.querySelector('[name="gst_rate"]')?.value;
+  const gstRate = (gstVal !== undefined && gstVal !== null && gstVal !== '' && !isNaN(gstVal)) ? parseFloat(gstVal) : 3.0;
   const amount    = weight * rate;
   const cgst      = amount * (gstRate / 2) / 100;
   const makingGst = making * 0.18;
@@ -248,7 +249,8 @@ function recalcTotals() {
     const weight  = parseFloat(row.querySelector('[name="weight_grams"]')?.value)  || 0;
     const rate    = parseFloat(row.querySelector('[name="rate_per_gram"]')?.value)  || 0;
     const making  = parseFloat(row.querySelector('[name="making_charges"]')?.value) || 0;
-    const gstRate = parseFloat(row.querySelector('[name="gst_rate"]')?.value)       || 3.0;
+    const gstVal  = row.querySelector('[name="gst_rate"]')?.value;
+    const gstRate = (gstVal !== undefined && gstVal !== null && gstVal !== '' && !isNaN(gstVal)) ? parseFloat(gstVal) : 3.0;
     const amount  = weight * rate;
     const cgst    = amount * (gstRate / 2) / 100;
     subtotal       += amount;

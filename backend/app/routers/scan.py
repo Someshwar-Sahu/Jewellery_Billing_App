@@ -128,13 +128,11 @@ EXTRACTION LOGIC:
                 else:
                     raise e
 
-        if raw.startswith("```"):
-            raw = raw.split("```")[1]
-            if raw.startswith("json"):
-                raw = raw[4:]
-        raw = raw.strip()
+        import re
+        match = re.search(r"\{.*\}", raw, re.DOTALL)
+        json_str = match.group(0) if match else raw.strip()
 
-        extracted = json.loads(raw)
+        extracted = json.loads(json_str)
         return {"success": True, "data": extracted}
 
     except json.JSONDecodeError as e:

@@ -134,16 +134,22 @@
       <div class="pay-summary">
         <div class="pay-summary__row">
           <span>Grand Total</span>
-          <span class="font-medium">₹{{ invoice.grand_total }}</span>
+          <span class="font-medium">₹{{ "%.2f"|format(invoice.grand_total) }}</span>
         </div>
+        {% if invoice.advance_used and invoice.advance_used > 0 %}
+        <div class="pay-summary__row">
+          <span>Advance Used</span>
+          <span class="font-medium text-green">₹{{ "%.2f"|format(invoice.advance_used) }}</span>
+        </div>
+        {% endif %}
         <div class="pay-summary__row">
           <span>Amount Paid</span>
-          <span class="font-medium text-green">₹{{ invoice.amount_paid }}</span>
+          <span class="font-medium text-green">₹{{ "%.2f"|format(invoice.amount_paid) }}</span>
         </div>
         <div class="pay-summary__row pay-summary__row--total">
           <span>Balance Due</span>
           <span class="font-bold {% if invoice.amount_due > 0 %}text-red{% else %}text-green{% endif %}">
-            ₹{{ invoice.amount_due }}
+            ₹{{ "%.2f"|format(invoice.amount_due) }}
           </span>
         </div>
         {% if invoice.bill_category == "credit" and invoice.credit_due_date %}
@@ -174,12 +180,23 @@
                max="{{ invoice.amount_due }}" placeholder="0.00" class="field-input field-input--sm">
       </div>
       <div class="field-group field-group--inline">
+        <label class="field-label">Date</label>
+        <input type="date" id="payDate" value="{{ today }}" class="field-input field-input--sm">
+      </div>
+      <div class="field-group field-group--inline">
         <label class="field-label">Mode</label>
-        <select id="payMode" class="field-input field-input--sm">
+        <select id="payMode" class="field-input field-input--sm" onchange="onPayModeChange()">
           {% for m in ["cash","upi","cheque","card","neft","rtgs"] %}
           <option value="{{ m }}">{{ m | upper }}</option>
           {% endfor %}
+          {% if invoice.party_id %}
+          <option value="advance">ADVANCE</option>
+          {% endif %}
         </select>
+      </div>
+      <div id="advanceBalanceInfo" style="display:none" class="field-group field-group--inline">
+        <label class="field-label">Advance Available</label>
+        <strong id="advanceBalanceAmt">₹0.00</strong>
       </div>
       <div class="field-group field-group--inline">
         <label class="field-label">Reference No.</label>
@@ -187,6 +204,48 @@
       </div>
       <button onclick="recordPayment({{ invoice.id }})" class="btn btn-gold">Save Payment</button>
     </div>
+  </div>
+</div>
+{% endif %}
+
+{# ── Payment Timeline ── #}
+{% if payment_events %}
+<div class="section-card">
+  <div class="section-card__header">Payment History</div>
+  <div class="section-card__body">
+    <div class="payment-timeline">
+      {% for event in payment_events %}
+      <div class="timeline-entry" style="display:flex;gap:1rem;padding:0.5rem 0;border-bottom:1px solid var(--border);">
+        <span style="color:var(--text-muted);min-width:90px;">{{ event.event_date }}</span>
+        <span class="badge badge--{{ event.payment_type }}" style="min-width:70px;text-align:center;">{{ event.payment_type | upper }}</span>
+        <span style="font-weight:600;">₹{{ "%.2f"|format(event.amount) }}</span>
+        <span style="color:var(--text-muted);">{{ event.mode | upper }}</span>
+        {% if event.reference_no %}<span style="color:var(--text-muted);">Ref: {{ event.reference_no }}</span>{% endif %}
+        {% if event.notes %}<span style="color:var(--text-muted);">{{ event.notes }}</span>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{# ── Version History ── #}
+{% if versions %}
+<div class="section-card">
+  <div class="section-card__header" style="cursor:pointer;" onclick="toggleSection('versionHistory')">
+    Version History ({{ versions|length }} events) ▾
+  </div>
+  <div id="versionHistory" style="display:none" class="section-card__body">
+    {% for v in versions %}
+    {% set snap = v.snapshot | fromjson %}
+    <div style="display:flex;gap:1rem;padding:0.4rem 0;border-bottom:1px solid var(--border);font-size:0.85rem;">
+      <span style="color:var(--text-muted);min-width:30px;">v{{ v.version_number }}</span>
+      <span style="min-width:80px;font-weight:600;">{{ snap.get('event','edit') | upper }}</span>
+      {% if snap.get('payment_amount') %}<span>₹{{ "%.2f"|format(snap.payment_amount) }}</span>{% endif %}
+      <span style="color:var(--text-muted);">Due after: ₹{{ "%.2f"|format(snap.get('amount_due',0)) }}</span>
+      <span style="color:var(--text-muted);margin-left:auto;">{{ snap.get('saved_at','') }}</span>
+    </div>
+    {% endfor %}
   </div>
 </div>
 {% endif %}
@@ -310,10 +369,30 @@
 const BILL_GST_STATUS = "{{ invoice.gst_status }}";
 const BILL_IS_CANCELLED = {{ 'true' if invoice.is_cancelled else 'false' }};
 /* ── All existing functions preserved exactly ── */
+async function onPayModeChange() {
+    const mode = document.getElementById('payMode').value;
+    const info = document.getElementById('advanceBalanceInfo');
+    if (mode === 'advance') {
+        try {
+            const res  = await fetch(`/invoices/{{ invoice.id }}/advance-balance`);
+            const data = await res.json();
+            document.getElementById('advanceBalanceAmt').textContent = '₹' + data.available.toFixed(2);
+            info.style.display = 'flex';
+            const amtInput = document.getElementById('payAmount');
+            const maxAdv   = Math.min(data.available, {{ invoice.amount_due }});
+            amtInput.max   = maxAdv;
+            amtInput.placeholder = maxAdv.toFixed(2);
+        } catch(_) { info.style.display = 'none'; }
+    } else {
+        info.style.display = 'none';
+        document.getElementById('payAmount').max = '{{ invoice.amount_due }}';
+    }
+}
 async function recordPayment(id) {
     const amount = parseFloat(document.getElementById('payAmount').value);
     const mode   = document.getElementById('payMode').value;
     const ref    = document.getElementById('payRef').value;
+    const pdate  = document.getElementById('payDate').value;
     if (!amount || amount <= 0) { alert('Enter a valid amount'); return; }
     const maxPayable = parseFloat(document.getElementById('payAmount').max) || 0;
     if (maxPayable > 0 && amount > maxPayable) {
@@ -325,7 +404,7 @@ async function recordPayment(id) {
         const res = await fetch(`/invoices/${id}/record-payment`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ amount, mode, reference_no: ref }),
+            body: JSON.stringify({ amount, mode, reference_no: ref, event_date: pdate }),
         });
         const result = await res.json();
         if (res.ok && result.success) location.reload();
@@ -333,6 +412,10 @@ async function recordPayment(id) {
     } catch (_) {
         alert('Network error while recording payment.');
     }
+}
+function toggleSection(id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
 async function duplicateBill(id) {
     if (!confirm('Duplicate this bill? You will be taken to the edit page to make changes before saving.')) return;

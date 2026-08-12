@@ -3,15 +3,16 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select
 from app.database import get_session
-from app.models.invoices import Invoice, InvoiceItem, InvoiceEditLog
+from app.models.invoices import Invoice, InvoiceItem, InvoiceEditLog, InvoiceVersion
 from app.models.parties import Party, OldGoldExchange
 from app.models.inventory import GoldRate
 from app.models.system import MonthLock
-from app.models.payments import CreditPayment, CashAccount
+from app.models.payments import CashAccount, PaymentEvent, Advance
 from app.models.shop import FinancialYear
 from app.services.invoice_service import (
     create_invoice, cancel_invoice, recover_invoice,
-    get_pending_bills, update_invoice, duplicate_invoice
+    get_pending_bills, update_invoice, duplicate_invoice,
+    record_payment_event,
 )
 from app.schemas.invoice import InvoiceCreate, InvoiceItemCreate, InvoiceUpdate
 from datetime import date
@@ -168,12 +169,14 @@ async def create_bill_submit(request: Request, session: Session = Depends(get_se
 
         items = []
         for item in data.get("items", []):
+            gst_val = item.get("gst_rate")
+            gst_r = float(gst_val) if (gst_val is not None and str(gst_val).strip() != "") else 3.0
             items.append(InvoiceItemCreate(
                 item_name      = item["item_name"],
                 weight_grams   = float(item["weight_grams"])   if item.get("weight_grams")   else None,
                 rate_per_gram  = float(item["rate_per_gram"])  if item.get("rate_per_gram")  else None,
                 making_charges = float(item["making_charges"]) if item.get("making_charges") else None,
-                gst_rate       = float(item.get("gst_rate", 3.0)),
+                gst_rate       = gst_r,
                 purity         = item.get("purity")      or None,
                 huid           = item.get("huid")        or None,
                 hsn_code       = item.get("hsn_code")    or "7113",
@@ -273,16 +276,30 @@ def invoice_detail(invoice_id: int, request: Request, session: Session = Depends
         active_fy is None or
         not (active_fy.start_date <= invoice.invoice_date <= active_fy.end_date)
     )
+    versions = session.exec(
+        select(InvoiceVersion)
+        .where(InvoiceVersion.invoice_id == invoice_id)
+        .order_by(InvoiceVersion.version_number.desc())
+    ).all()
+
+    payment_events = session.exec(
+        select(PaymentEvent)
+        .where(PaymentEvent.invoice_id == invoice_id)
+        .order_by(PaymentEvent.event_date, PaymentEvent.id)
+    ).all()
+
     return templates.TemplateResponse(
         request=request, name="invoices/detail.html",
         context={
-            "invoice":      invoice,
-            "items":        items,
-            "party":        party,
-            "edit_logs":    edit_logs,
-            "today":        date.today(),
-            "is_historical": is_historical,
-            "active_fy":    active_fy,
+            "invoice":         invoice,
+            "items":           items,
+            "party":           party,
+            "edit_logs":       edit_logs,
+            "today":           date.today(),
+            "is_historical":   is_historical,
+            "active_fy":       active_fy,
+            "versions":        versions,
+            "payment_events":  payment_events,
         }
     )
 
@@ -333,16 +350,19 @@ async def edit_bill_submit(invoice_id: int, request: Request, session: Session =
     try:
         items = []
         for item in data.get("items", []):
+            gst_val = item.get("gst_rate")
+            gst_r = float(gst_val) if (gst_val is not None and str(gst_val).strip() != "") else 3.0
             items.append(InvoiceItemCreate(
                 item_name      = item["item_name"],
                 weight_grams   = float(item["weight_grams"])   if item.get("weight_grams")   else None,
                 rate_per_gram  = float(item["rate_per_gram"])  if item.get("rate_per_gram")  else None,
                 making_charges = float(item["making_charges"]) if item.get("making_charges") else None,
-                gst_rate       = float(item.get("gst_rate", 3.0)),
+                gst_rate       = gst_r,
                 purity         = item.get("purity")      or None,
                 huid           = item.get("huid")        or None,   
                 hsn_code       = item.get("hsn_code")    or "7113",
                 description    = item.get("description") or None,
+                product_id     = int(item["product_id"]) if item.get("product_id") else None,
             ))
 
         update_data = InvoiceUpdate(
@@ -415,82 +435,41 @@ def print_bill(invoice_id: int, request: Request, session: Session = Depends(get
 
 @router.post("/{invoice_id}/record-payment")
 async def record_credit_payment(invoice_id: int, request: Request, session: Session = Depends(get_session)):
-    invoice = session.get(Invoice, invoice_id)
-    if not invoice:
-        raise HTTPException(status_code=404, detail="Bill not found")
-    if invoice.is_cancelled:
-        raise HTTPException(status_code=400, detail="Cannot record payment on a cancelled bill.")
-
-    active_fy = session.exec(
-        select(FinancialYear).where(FinancialYear.is_active == True)
-    ).first()
-    if not active_fy:
-        raise HTTPException(status_code=400, detail="No active financial year configured.")
-    if not (active_fy.start_date <= invoice.invoice_date <= active_fy.end_date):
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot modify bill outside active financial year {active_fy.label}.",
-        )
-
-    lock = session.exec(
-        select(MonthLock)
-        .where(MonthLock.year == invoice.invoice_date.year)
-        .where(MonthLock.month == invoice.invoice_date.month)
-        .where(MonthLock.is_locked == True)
-    ).first()
-    if lock:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot record payment: {invoice.invoice_date.strftime('%B %Y')} is locked for GST filing.",
-        )
-
     data         = await request.json()
-    paid_now = _money(data.get("amount", 0))
-    if paid_now <= 0:
-        return JSONResponse(status_code=400, content={"success": False, "error": "Payment amount must be greater than zero."})
+    amount       = float(data.get("amount", 0))
     mode         = data.get("mode", "cash")
-    reference_no = data.get("reference_no", "")
+    reference_no = data.get("reference_no") or None
+    notes        = data.get("notes") or None
+    event_date_raw = data.get("event_date")
+    event_date   = date.fromisoformat(event_date_raw) if event_date_raw else None
 
-    max_payable = _money(Decimal(str(invoice.grand_total)) - Decimal(str(invoice.amount_paid)))
-    if max_payable <= 0:
-        return JSONResponse(status_code=400, content={
-            "success": False, "error": "Bill is already fully paid."
-        })
-    if paid_now > max_payable:
-        paid_now = max_payable
-
-    if invoice.party_id:
-        session.add(CreditPayment(
+    try:
+        pe = record_payment_event(
+            session      = session,
             invoice_id   = invoice_id,
-            party_id     = invoice.party_id,
-            credit_date  = date.today(),
-            amount       = paid_now,
+            amount       = amount,
             mode         = mode,
+            event_date   = event_date,
             reference_no = reference_no,
-        ))
+            notes        = notes,
+        )
+        invoice = session.get(Invoice, invoice_id)
+        return {"success": True, "payment_status": invoice.payment_status, "amount_due": invoice.amount_due}
+    except HTTPException as e:
+        return JSONResponse(status_code=e.status_code, content={"success": False, "error": e.detail})
 
-    session.add(CashAccount(
-        entry_date   = date.today(),
-        entry_type   = "receipt" if invoice.invoice_type == "sale" else "payment",
-        mode         = mode,
-        amount       = paid_now,
-        reference_no = reference_no or None,
-        party_id     = invoice.party_id or None,
-        invoice_id   = invoice_id,
-        description  = f"Settlement — {invoice.invoice_number}",
-    ))
-
-    invoice.amount_paid    = _money(Decimal(str(invoice.amount_paid)) + Decimal(str(paid_now)))
-    invoice.amount_due     = max(0.0, _money(Decimal(str(invoice.grand_total)) - Decimal(str(invoice.amount_paid))))
-    invoice.payment_status = (
-        "paid"    if invoice.amount_paid >= invoice.grand_total else
-        "partial" if invoice.amount_paid > 0 else
-        "unpaid"
-    )
-    session.add(invoice)
-    session.commit()
-    return {"success": True, "payment_status": invoice.payment_status, "amount_due": invoice.amount_due}
-
+@router.get("/{invoice_id}/advance-balance")
+def get_invoice_advance_balance(invoice_id: int, session: Session = Depends(get_session)):
+    invoice = session.get(Invoice, invoice_id)
+    if not invoice or not invoice.party_id:
+        return {"available": 0}
+    advances = session.exec(
+        select(Advance)
+        .where(Advance.party_id == invoice.party_id)
+        .where(Advance.status == "open")
+    ).all()
+    available = round(sum(a.amount - a.adjusted_amount for a in advances), 2)
+    return {"available": available, "party_id": invoice.party_id}
 
 # ── DUPLICATE ─────────────────────────────────────────────────────────────────
 
@@ -530,15 +509,18 @@ async def credit_note_submit(invoice_id: int, request: Request, session: Session
 
         items = []
         for item in data.get("items", []):
+            gst_val = item.get("gst_rate")
+            gst_r = float(gst_val) if (gst_val is not None and str(gst_val).strip() != "") else 3.0
             items.append(InvoiceItemCreate(
                 item_name      = item["item_name"],
                 weight_grams   = float(item["weight_grams"])   if item.get("weight_grams")   else None,
                 rate_per_gram  = float(item["rate_per_gram"])  if item.get("rate_per_gram")  else None,
                 making_charges = float(item["making_charges"]) if item.get("making_charges") else None,
-                gst_rate       = float(item.get("gst_rate", 3.0)),
+                gst_rate       = gst_r,
                 purity         = item.get("purity") or None,
                 huid           = item.get("huid")   or None,
                 hsn_code       = item.get("hsn_code") or "7113",
+                product_id     = int(item["product_id"]) if item.get("product_id") else None,
             ))
 
         note_type    = data.get("note_type", "credit_note")

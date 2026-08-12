@@ -52,7 +52,10 @@
         <tbody>
             {% for item in items %}
             <tr>
-                <td><input type="text" name="item_name" value="{{ item.item_name }}" style="width:150px"></td>
+                <td>
+                    <input type="hidden" name="product_id" value="{{ item.product_id or '' }}">
+                    <input type="text" name="item_name" value="{{ item.item_name }}" style="width:150px">
+                </td>
                 <td><input type="text" name="purity" value="{{ item.purity or '' }}" style="width:55px"></td>
                 <td><input type="number" name="weight_grams" step="0.001" value="{{ item.weight_grams or '' }}"
                         style="width:85px"></td>
@@ -89,7 +92,6 @@
     async function submitNote() {
         const form = document.getElementById('cnForm');
         const rows = form.querySelectorAll('#itemsTable tbody tr');
-        // REPLACE the items collection map with:
         const items = Array.from(rows).map(row => ({
             item_name: row.querySelector('[name="item_name"]').value.trim(),
             purity: row.querySelector('[name="purity"]').value || null,
@@ -97,7 +99,8 @@
             rate_per_gram: row.querySelector('[name="rate_per_gram"]').value || null,
             making_charges: row.querySelector('[name="making_charges"]').value || null,
             gst_rate: parseFloat(row.querySelector('[name="gst_rate"]').value),
-        })).filter(item => item.item_name.length > 0);  // ADD this filter
+            product_id: row.querySelector('[name="product_id"]')?.value ? parseInt(row.querySelector('[name="product_id"]').value) : null,
+        })).filter(item => item.item_name.length > 0);
 
         if (items.length === 0) { alert('Add at least one item.'); return; }
 

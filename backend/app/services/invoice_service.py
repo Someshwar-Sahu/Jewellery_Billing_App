@@ -9,7 +9,7 @@ import json
 from app.models.system import MonthLock
 from app.models.shop import FinancialYear, ShopSettings
 from decimal import Decimal, ROUND_HALF_UP
-from app.models.payments import Advance, CashAccount
+from app.models.payments import Advance, CashAccount, AdvanceApplication, PaymentEvent
 from sqlalchemy.exc import IntegrityError
 
 CANCEL_GST_SNAPSHOT = "cancel_gst_snapshot"
@@ -56,7 +56,7 @@ def calculate_item(item_data) -> dict:
     """Calculate all amounts for one invoice line item."""
     weight   = item_data.weight_grams  or 0
     rate     = item_data.rate_per_gram or 0
-    gst_rate = item_data.gst_rate      or 3.0
+    gst_rate = item_data.gst_rate if item_data.gst_rate is not None else 3.0
     making   = item_data.making_charges or 0
 
     amount      = _money(_d(weight) * _d(rate)) if (weight and rate) else 0.0
@@ -261,9 +261,15 @@ def create_invoice(session: Session, data: InvoiceCreate) -> Invoice:
                 session.add(item)
 
             snapshot = {
+                "event":          "created",
                 "invoice_number": invoice.invoice_number,
                 "grand_total":    totals["grand_total"],
-                "items":          [i.item_name for i, _ in calculated_items],
+                "amount_paid":    amount_paid,
+                "advance_used":   float(data.advance_used or 0),
+                "amount_due":     amount_due,
+                "payment_status": totals["payment_status"],
+                "items_count":    len(calculated_items),
+                "party_name":     session.get(__import__('app.models.parties', fromlist=['Party']).Party, data.party_id).name if data.party_id else None,
                 "saved_at":       datetime.utcnow().isoformat(),
             }
 
@@ -365,6 +371,28 @@ def create_invoice(session: Session, data: InvoiceCreate) -> Invoice:
 
                     session.add(adv)
 
+                    app_row = AdvanceApplication(
+                        advance_id     = adv.id,
+                        invoice_id     = invoice.id,
+                        party_id       = data.party_id,
+                        amount_applied = use,
+                        applied_date   = data.invoice_date,
+                        created_at     = datetime.utcnow(),
+                    )
+                    session.add(app_row)
+                    session.flush()
+
+                    session.add(PaymentEvent(
+                        invoice_id              = invoice.id,
+                        party_id                = data.party_id,
+                        event_date              = data.invoice_date,
+                        amount                  = use,
+                        mode                    = "advance",
+                        payment_type            = "advance",
+                        advance_application_id  = app_row.id,
+                        created_at              = datetime.utcnow(),
+                    ))
+
                     remaining = _money(_d(remaining) - _d(use))
 
                 actually_deducted = _money(_d(advance_used) - _d(remaining))
@@ -378,6 +406,29 @@ def create_invoice(session: Session, data: InvoiceCreate) -> Invoice:
                         )
                     )
 
+                invoice.advance_used = actually_deducted
+
+            if amount_paid > 0 and data.payment_mode:
+                session.add(PaymentEvent(
+                    invoice_id   = invoice.id,
+                    party_id     = data.party_id or None,
+                    event_date   = data.invoice_date,
+                    amount       = amount_paid,
+                    mode         = data.payment_mode.value if hasattr(data.payment_mode, "value") else str(data.payment_mode),
+                    payment_type = "cash",
+                    created_at   = datetime.utcnow(),
+                ))
+
+            if data.old_gold_value and data.old_gold_value > 0:
+                session.add(PaymentEvent(
+                    invoice_id   = invoice.id,
+                    party_id     = data.party_id or None,
+                    event_date   = data.invoice_date,
+                    amount       = data.old_gold_value,
+                    mode         = "old_gold",
+                    payment_type = "old_gold",
+                    created_at   = datetime.utcnow(),
+                ))
             session.commit()
             session.refresh(invoice)
             return invoice
@@ -556,10 +607,10 @@ def update_invoice(session: Session, invoice_id: int, data: InvoiceUpdate) -> In
         items_to_calc,
         old_gold,
         discount,
-        invoice.amount_paid or 0
+        (invoice.amount_paid or 0) + (invoice.advance_used or 0)
     )
 
-    effective_paid = _d(invoice.amount_paid or 0)
+    effective_paid = _d(invoice.amount_paid or 0) + _d(invoice.advance_used or 0)
 
     if effective_paid > _d(totals["grand_total"]) + _d("0.01"):
         raise HTTPException(
@@ -567,7 +618,34 @@ def update_invoice(session: Session, invoice_id: int, data: InvoiceUpdate) -> In
             detail="Existing payment exceeds updated invoice total."
         )
 
-    log_change("grand_total", str(invoice.grand_total), str(totals["grand_total"]))
+    new_grand_total = totals["grand_total"]
+    log_change("grand_total", str(invoice.grand_total), str(new_grand_total))
+
+    if new_grand_total < invoice.grand_total and (invoice.advance_used or 0) > 0:
+        excess = _money(_d(invoice.advance_used) - max(_d(0), _d(new_grand_total) - _d(invoice.amount_paid or 0)))
+        if excess > 0:
+            apps = session.exec(
+                select(AdvanceApplication)
+                .where(AdvanceApplication.invoice_id == invoice.id)
+                .order_by(AdvanceApplication.advance_id.desc())
+            ).all()
+            remaining_excess = excess
+            for app_row in apps:
+                if remaining_excess <= 0:
+                    break
+                release = min(app_row.amount_applied, remaining_excess)
+                adv = session.get(Advance, app_row.advance_id)
+                if adv:
+                    adv.adjusted_amount = _money(_d(adv.adjusted_amount) - _d(release))
+                    adv.status = "open"
+                    session.add(adv)
+                app_row.amount_applied = _money(_d(app_row.amount_applied) - _d(release))
+                if app_row.amount_applied <= 0:
+                    session.delete(app_row)
+                else:
+                    session.add(app_row)
+                remaining_excess = _money(_d(remaining_excess) - _d(release))
+            invoice.advance_used = _money(_d(invoice.advance_used) - _d(excess))
 
     invoice.subtotal             = totals["subtotal"]
     invoice.total_cgst           = totals["total_cgst"]
@@ -653,7 +731,6 @@ def cancel_invoice(session: Session, invoice_id: int, reason: str = None) -> Inv
     _ensure_month_unlocked(session, invoice.invoice_date, "cancel invoice")
 
     try:
-        from app.models.payments import CreditPayment
         cash_entries = session.exec(select(CashAccount).where(CashAccount.invoice_id == invoice_id)).all()
         for ce in cash_entries:
             reversal_ce = CashAccount(
@@ -672,28 +749,24 @@ def cancel_invoice(session: Session, invoice_id: int, reason: str = None) -> Inv
         for oge in old_gold_entries:
             session.delete(oge)
             
-        credit_payments = session.exec(select(CreditPayment).where(CreditPayment.invoice_id == invoice_id)).all()
-        for cp in credit_payments:
-            session.delete(cp)
+        payment_events = session.exec(select(PaymentEvent).where(PaymentEvent.invoice_id == invoice_id)).all()
+        for pe in payment_events:
+            session.delete(pe)
 
-        advance_to_restore = _money(Decimal(str(invoice.grand_total)) - Decimal(str(invoice.amount_paid)) - Decimal(str(invoice.amount_due)))
+        advance_to_restore = invoice.advance_used or 0
         if advance_to_restore > 0 and invoice.party_id:
-            used_advances = session.exec(
-                select(Advance)
-                .where(Advance.party_id == invoice.party_id)
-                .where(Advance.adjusted_amount > 0)
-                .order_by(Advance.advance_date.desc())
+            apps = session.exec(
+                select(AdvanceApplication)
+                .where(AdvanceApplication.invoice_id == invoice_id)
+                .order_by(AdvanceApplication.advance_id.desc())
             ).all()
-            
-            remaining_to_restore = advance_to_restore
-            for adv in used_advances:
-                if remaining_to_restore <= 0:
-                    break
-                can_restore = min(adv.adjusted_amount, remaining_to_restore)
-                adv.adjusted_amount = _money(Decimal(str(adv.adjusted_amount)) - Decimal(str(can_restore)))
-                adv.status = "open"
-                session.add(adv)
-                remaining_to_restore = _money(Decimal(str(remaining_to_restore)) - Decimal(str(can_restore)))
+            for app_row in apps:
+                adv = session.get(Advance, app_row.advance_id)
+                if adv:
+                    adv.adjusted_amount = _money(_d(adv.adjusted_amount) - _d(app_row.amount_applied))
+                    adv.status = "open"
+                    session.add(adv)
+                session.delete(app_row)
 
         items = session.exec(
             select(InvoiceItem).where(InvoiceItem.invoice_id == invoice_id)
@@ -791,6 +864,28 @@ def recover_invoice(session: Session, invoice_id: int) -> Invoice:
         )
         session.add(re_entry)
 
+    if invoice.amount_paid and invoice.amount_paid > 0:
+        session.add(PaymentEvent(
+            invoice_id   = invoice.id,
+            party_id     = invoice.party_id,
+            event_date   = invoice.invoice_date,
+            payment_type = "initial_payment",
+            mode         = invoice.payment_mode or "cash",
+            amount       = invoice.amount_paid,
+            reference_no = invoice.payment_reference,
+            notes        = f"Reinstated on bill recovery: {invoice.invoice_number}",
+        ))
+        session.add(CashAccount(
+            entry_date   = date.today(),
+            entry_type   = "receipt" if is_sale else "payment",
+            mode         = invoice.payment_mode or "cash",
+            amount       = invoice.amount_paid,
+            reference_no = invoice.payment_reference,
+            party_id     = invoice.party_id,
+            invoice_id   = invoice.id,
+            description  = f"Reinstated on recovery of {invoice.invoice_number}",
+        ))
+
     invoice.is_cancelled     = False
     invoice.cancelled_at     = None
     invoice.cancelled_reason = None
@@ -802,6 +897,146 @@ def recover_invoice(session: Session, invoice_id: int) -> Invoice:
         raise
     session.refresh(invoice)
     return invoice
+
+def record_payment_event(
+    session: Session,
+    invoice_id: int,
+    amount: float,
+    mode: str,
+    event_date: date = None,
+    reference_no: str = None,
+    notes: str = None,
+) -> PaymentEvent:
+    if event_date is None:
+        event_date = date.today()
+
+    invoice = session.get(Invoice, invoice_id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Bill not found")
+    if invoice.is_cancelled:
+        raise HTTPException(status_code=400, detail="Cannot record payment on a cancelled bill.")
+
+    _ensure_date_in_active_fy(session, invoice.invoice_date)
+    _ensure_month_unlocked(session, invoice.invoice_date, "record payment")
+
+    amount = _money(amount)
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Payment amount must be greater than zero.")
+
+    amount_due = _money(_d(invoice.grand_total) - _d(invoice.amount_paid) - _d(invoice.advance_used or 0))
+    if amount > amount_due + 0.01:
+        raise HTTPException(status_code=400, detail=f"Payment ₹{amount:.2f} exceeds amount due ₹{amount_due:.2f}.")
+
+    if mode == "advance":
+        if not invoice.party_id:
+            raise HTTPException(status_code=400, detail="No party on invoice — cannot apply advance.")
+        open_advances = session.exec(
+            select(Advance)
+            .where(Advance.party_id == invoice.party_id)
+            .where(Advance.status == "open")
+            .order_by(Advance.advance_date)
+        ).all()
+        available = _money(sum(_d(a.amount) - _d(a.adjusted_amount) for a in open_advances))
+        if available < amount - 0.01:
+            raise HTTPException(status_code=400, detail=f"Insufficient advance balance. Available: ₹{available:.2f}.")
+
+        remaining = amount
+        last_app_id = None
+        for adv in open_advances:
+            if remaining <= 0:
+                break
+            use = min(_money(_d(adv.amount) - _d(adv.adjusted_amount)), remaining)
+            adv.adjusted_amount = _money(_d(adv.adjusted_amount) + _d(use))
+            if adv.adjusted_amount >= adv.amount:
+                adv.status = "used"
+            session.add(adv)
+            app_row = AdvanceApplication(
+                advance_id     = adv.id,
+                invoice_id     = invoice_id,
+                party_id       = invoice.party_id,
+                amount_applied = use,
+                applied_date   = event_date,
+                created_at     = datetime.utcnow(),
+            )
+            session.add(app_row)
+            session.flush()
+            last_app_id = app_row.id
+            remaining = _money(_d(remaining) - _d(use))
+
+        invoice.advance_used = _money(_d(invoice.advance_used or 0) + _d(amount))
+        payment_type = "advance"
+        pe = PaymentEvent(
+            invoice_id             = invoice_id,
+            party_id               = invoice.party_id,
+            event_date             = event_date,
+            amount                 = amount,
+            mode                   = "advance",
+            payment_type           = "advance",
+            reference_no           = reference_no,
+            advance_application_id = last_app_id,
+            notes                  = notes,
+            created_at             = datetime.utcnow(),
+        )
+    else:
+        payment_type = "cash"
+        session.add(CashAccount(
+            entry_date   = event_date,
+            entry_type   = "receipt" if invoice.invoice_type == "sale" else "payment",
+            mode         = mode,
+            amount       = amount,
+            reference_no = reference_no or None,
+            party_id     = invoice.party_id or None,
+            invoice_id   = invoice_id,
+            description  = f"Settlement — {invoice.invoice_number}",
+        ))
+        invoice.amount_paid = _money(_d(invoice.amount_paid) + _d(amount))
+        pe = PaymentEvent(
+            invoice_id   = invoice_id,
+            party_id     = invoice.party_id or None,
+            event_date   = event_date,
+            amount       = amount,
+            mode         = mode,
+            payment_type = "cash",
+            reference_no = reference_no,
+            notes        = notes,
+            created_at   = datetime.utcnow(),
+        )
+
+    session.add(pe)
+    session.flush()
+
+    invoice.amount_due = max(0.0, _money(
+        _d(invoice.grand_total) - _d(invoice.amount_paid) - _d(invoice.advance_used or 0)
+    ))
+    invoice.payment_status = (
+        "paid"    if invoice.amount_due <= 0 else
+        "partial" if (invoice.amount_paid > 0 or (invoice.advance_used or 0) > 0) else
+        "unpaid"
+    )
+
+    snapshot = {
+        "event":          "payment",
+        "invoice_number": invoice.invoice_number,
+        "grand_total":    invoice.grand_total,
+        "amount_paid":    invoice.amount_paid,
+        "advance_used":   invoice.advance_used or 0,
+        "amount_due":     invoice.amount_due,
+        "payment_status": invoice.payment_status,
+        "payment_type":   payment_type,
+        "payment_mode":   mode,
+        "payment_amount": amount,
+        "saved_at":       datetime.utcnow().isoformat(),
+    }
+    session.add(InvoiceVersion(
+        invoice_id     = invoice_id,
+        version_number = invoice.version_number,
+        snapshot       = json.dumps(snapshot),
+    ))
+    invoice.version_number += 1
+    session.add(invoice)
+    session.commit()
+    session.refresh(pe)
+    return pe
 
 def get_unsettled_credit_bills(session: Session):
     """Return all credit bills not fully paid."""

@@ -55,7 +55,7 @@
             {% if invoice.credit_due_date %}
             <strong>Due Date:</strong> {{ invoice.credit_due_date }}<br>
             {% endif %}
-            <strong>Payment:</strong> {{ invoice.payment_mode or "—" | upper }}
+            <strong>Payment:</strong> {{ (invoice.payment_mode or "—") | upper }}
         </div>
     </div>
 
@@ -146,8 +146,15 @@
             <tr><td>Round Off</td><td>₹{{ "%.2f" | format(invoice.round_off) }}</td></tr>
             {% endif %}
             <tr class="grand-total"><td>Grand Total</td><td>₹{{ "%.2f" | format(invoice.grand_total) }}</td></tr>
+            {% if (invoice.amount_paid and invoice.amount_paid > 0) or (invoice.advance_used and invoice.advance_used > 0) or (invoice.amount_due and invoice.amount_due > 0) %}
+            {% if invoice.advance_used and invoice.advance_used > 0 %}
+            <tr><td>Advance Adjusted</td><td>₹{{ "%.2f" | format(invoice.advance_used) }}</td></tr>
+            {% endif %}
+            {% if invoice.amount_paid and invoice.amount_paid > 0 %}
             <tr><td>Amount Paid</td><td>₹{{ "%.2f" | format(invoice.amount_paid) }}</td></tr>
-            <tr><td><strong>Balance Due</strong></td><td><strong>₹{{ "%.2f" | format(invoice.amount_due) }}</strong></td></tr>
+            {% endif %}
+            <tr><td><strong>Balance Due</strong></td><td><strong>₹{{ "%.2f" | format(invoice.amount_due or 0) }}</strong></td></tr>
+            {% endif %}
         </table>
     </div>
 

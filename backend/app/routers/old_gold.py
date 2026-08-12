@@ -117,6 +117,20 @@ async def create_submit(request: Request, session: Session = Depends(get_session
             notes            = data.get("notes") or None,
         )
         session.add(entry)
+        session.flush()
+
+        cash_out = entry.cash_paid or total
+        if tx_type == "direct_purchase" and cash_out > 0:
+            from app.models.payments import CashAccount
+            session.add(CashAccount(
+                entry_date   = ex_date,
+                entry_type   = "payment",
+                mode         = "cash",
+                amount       = cash_out,
+                party_id     = party_id,
+                description  = f"Direct purchase of scrap {entry.metal_type} ({entry.weight_grams}g)",
+            ))
+
         session.commit()
         session.refresh(entry)
         return {"success": True, "id": entry.id, "total_value": total}

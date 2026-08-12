@@ -256,7 +256,8 @@ function calcRow(n) {
     const weight  = parseFloat(row.querySelector('[name="weight_grams"]').value)  || 0;
     const rate    = parseFloat(row.querySelector('[name="rate_per_gram"]').value)  || 0;
     const making  = parseFloat(row.querySelector('[name="making_charges"]').value) || 0;
-    const gstRate = parseFloat(row.querySelector('[name="gst_rate"]').value)       || 3.0;
+    const gstVal  = row.querySelector('[name="gst_rate"]')?.value;
+    const gstRate = (gstVal !== undefined && gstVal !== null && gstVal !== '' && !isNaN(gstVal)) ? parseFloat(gstVal) : 3.0;
 
     const amount    = weight * rate;
     const cgst      = amount * (gstRate / 2) / 100;
@@ -279,7 +280,8 @@ function recalcTotals() {
         const weight  = parseFloat(row.querySelector('[name="weight_grams"]')?.value)  || 0;
         const rate    = parseFloat(row.querySelector('[name="rate_per_gram"]')?.value)  || 0;
         const making  = parseFloat(row.querySelector('[name="making_charges"]')?.value) || 0;
-        const gstRate = parseFloat(row.querySelector('[name="gst_rate"]')?.value)       || 3.0;
+        const gstVal  = row.querySelector('[name="gst_rate"]')?.value;
+        const gstRate = (gstVal !== undefined && gstVal !== null && gstVal !== '' && !isNaN(gstVal)) ? parseFloat(gstVal) : 3.0;
 
         const amount = weight * rate;
         const cgst   = amount * (gstRate / 2) / 100;
@@ -420,7 +422,18 @@ async function checkAdvance() {
 }
 
 function applyAdvance() {
-    const hint        = document.getElementById('advanceHint');
+    const hint = document.getElementById('advanceHint');
+
+    const itemRows = document.querySelectorAll('#itemsBody tr');
+    const hasItems = Array.from(itemRows).some(row =>
+        row.querySelector('[name="item_name"]')?.value?.trim()
+    );
+    if (!hasItems) {
+        const warn = document.getElementById('advanceWarnMsg');
+        if (warn) warn.style.display = 'inline';
+        return;
+    }
+
     const available   = parseFloat(hint.dataset.available || 0);
     const applyAmount = Math.min(available, _currentGrandTotal);
     const paidInput   = document.getElementById('amountPaid');
@@ -500,7 +513,8 @@ async function submitBill() {
     const hint        = document.getElementById('advanceHint');
     const wasApplied  = hint?.dataset?.wasApplied === '1';
     const available   = parseFloat(hint?.dataset?.available || 0);
-    const advanceUsed = wasApplied ? Math.min(available, amountPaid) : 0;
+    const advanceUsed = wasApplied ? Math.min(available, _currentGrandTotal) : 0;
+    if (wasApplied) amountPaid = Math.max(0, amountPaid - advanceUsed);
 
     const oldGoldDetailed = document.getElementById('oldGoldDetailed')?.checked || false;
 

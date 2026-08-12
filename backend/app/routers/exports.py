@@ -13,7 +13,7 @@ from app.models.parties import Party, OldGoldExchange
 from app.models.expenses import Expense, ExpenseCategory
 from app.models.inventory import StockLedger
 from app.models.products import Product
-from app.models.payments import CreditPayment
+from app.models.payments import PaymentEvent
 from app.models.shop import FinancialYear
 
 import openpyxl
@@ -303,9 +303,9 @@ def export_party_ledger(
     ).all()
 
     payments = session.exec(
-        select(CreditPayment)
-        .where(CreditPayment.party_id == party_id)
-        .order_by(CreditPayment.credit_date)
+        select(PaymentEvent)
+        .where(PaymentEvent.party_id == party_id)
+        .order_by(PaymentEvent.event_date)
     ).all()
     payment_map = {}
     for p in payments:
@@ -335,11 +335,48 @@ def export_party_ledger(
     total_billed = 0.0
     total_paid   = 0.0
     total_due    = 0.0
+    cur_row      = 7
 
-    for r_idx, inv in enumerate(invoices, start=7):
+    if party.opening_balance:
+        ob_type = party.opening_balance_type or "debit"
+        ob_due  = party.opening_balance if ob_type == "debit" else -party.opening_balance
+        row = [
+            "OPENING-BAL",
+            party.created_at.strftime("%d-%m-%Y") if party.created_at else "—",
+            "BALANCE",
+            party.opening_balance,
+            0.0,
+            ob_due,
+            "OPEN",
+            "—",
+            f"Opening balance ({ob_type})",
+        ]
+        _data_row(ws, row, cur_row, AMT_COLS)
+        total_due += ob_due
+        cur_row += 1
+
+    unlinked_payments = payment_map.get(None, [])
+    for up in unlinked_payments:
+        row = [
+            "SETTLEMENT",
+            up.event_date.strftime("%d-%m-%Y"),
+            "SETTLE-OB",
+            0.0,
+            up.amount,
+            -up.amount,
+            "PAID",
+            "—",
+            f"{up.event_date.strftime('%d-%m-%Y')} ₹{up.amount:.2f} ({up.mode}) {up.reference_no or ''}".strip(),
+        ]
+        _data_row(ws, row, cur_row, AMT_COLS)
+        total_paid += up.amount
+        total_due -= up.amount
+        cur_row += 1
+
+    for inv in invoices:
         plist = payment_map.get(inv.id, [])
         ptext = "; ".join(
-            f"{p.credit_date.strftime('%d-%m-%Y')} ₹{p.amount:.2f} ({p.mode})"
+            f"{p.event_date.strftime('%d-%m-%Y')} ₹{p.amount:.2f} ({p.mode})"
             for p in plist
         ) or "—"
         row = [
@@ -353,12 +390,13 @@ def export_party_ledger(
             inv.gst_status.replace("_", " ").upper(),
             ptext,
         ]
-        _data_row(ws, row, r_idx, AMT_COLS)
+        _data_row(ws, row, cur_row, AMT_COLS)
         total_billed += inv.grand_total
         total_paid   += inv.amount_paid
         total_due    += inv.amount_due
+        cur_row += 1
 
-    t_row = len(invoices) + 7
+    t_row = cur_row
     _total_row(ws, [
         "TOTAL", f"{len(invoices)} bills", "",
         round(total_billed, 2), round(total_paid, 2), round(total_due, 2),

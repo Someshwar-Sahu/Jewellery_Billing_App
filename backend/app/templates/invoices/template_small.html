@@ -515,14 +515,22 @@
                     <td>Total After Tax</td>
                     <td class="right">₹{{ "%.2f"|format(invoice.grand_total) }}</td>
                 </tr>
+                {% if (invoice.amount_paid and invoice.amount_paid > 0) or (invoice.advance_used and invoice.advance_used > 0) or (invoice.amount_due and invoice.amount_due > 0) %}
+                {% if invoice.advance_used and invoice.advance_used > 0 %}
+                <tr>
+                    <td>Advance Adjusted</td>
+                    <td class="right">₹{{ "%.2f"|format(invoice.advance_used) }}</td>
+                </tr>
+                {% endif %}
                 {% if invoice.amount_paid and invoice.amount_paid > 0 %}
                 <tr>
                     <td>Amount Paid</td>
                     <td class="right">₹{{ "%.2f"|format(invoice.amount_paid) }}</td>
                 </tr>
+                {% endif %}
                 <tr>
                     <td><strong>Balance Due</strong></td>
-                    <td class="right"><strong>₹{{ "%.2f"|format(invoice.amount_due) }}</strong></td>
+                    <td class="right"><strong>₹{{ "%.2f"|format(invoice.amount_due or 0) }}</strong></td>
                 </tr>
                 {% endif %}
             </table>

@@ -100,9 +100,7 @@ def dashboard_home(request: Request, session: Session = Depends(get_session)):
         entries = session.exec(
             select(StockLedger).where(StockLedger.product_id == product.id)
         ).all()
-        if not entries:
-            continue
-        balance = sum(e.quantity_in for e in entries) - sum(e.quantity_out for e in entries)
+        balance = sum(e.quantity_in for e in entries) - sum(e.quantity_out for e in entries) if entries else 0.0
         if balance <= product.low_stock_alert:
             low_stock_count += 1
 

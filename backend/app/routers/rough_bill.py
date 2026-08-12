@@ -19,7 +19,7 @@ def rough_bill_form(request: Request, session: Session = Depends(get_session)):
 
 @router.post("/print", response_class=HTMLResponse)
 async def print_rough_bill(request: Request, session: Session = Depends(get_session)):
-    """"Stateless print endpoint. Takes JSON, return HTML. No DB saving"""
+    """Stateless print endpoint. Takes JSON, return HTML. No DB saving"""
     data = await request.json()
 
     shop = session.exec(select(ShopSettings)).first()

@@ -89,10 +89,29 @@
             {% if opening_balance %}
             <div class="detail-kv">
                 <span class="detail-kv-label">Opening Balance</span>
-                <span class="detail-kv-value {{ 'text-danger' if opening_balance_type == 'debit' else 'text-success' }}">
+                <span class="detail-kv-value">
                     ₹{{ "%.2f"|format(opening_balance) }}
                     <small class="table-dim">({{ 'party owes us' if opening_balance_type == 'debit' else 'we owe party' }})</small>
                 </span>
+            </div>
+            <div class="detail-kv" id="obSettleRow">
+                <span class="detail-kv-label"></span>
+                <button class="btn btn-outline btn-sm" onclick="toggleOBForm()">Settle Opening Balance</button>
+            </div>
+            <div id="obSettleForm" style="display:none; margin-top:0.5rem;">
+                <div class="field-group field-group--inline" style="gap:0.5rem;flex-wrap:wrap;">
+                    <input type="date" id="obDate" value="{{ today if today else '' }}" class="field-input field-input--sm">
+                    <input type="number" id="obAmount" placeholder="Amount" max="{{ opening_balance }}" step="0.01" class="field-input field-input--sm" style="width:120px;">
+                    <select id="obMode" class="field-input field-input--sm">
+                        {% for m in ["cash","upi","cheque","card","neft","rtgs"] %}
+                        <option value="{{ m }}">{{ m | upper }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="text" id="obRef" placeholder="Ref No. (optional)" class="field-input field-input--sm">
+                    <button class="btn btn-gold btn-sm" onclick="submitOBSettle({{ party.id }})">Save</button>
+                    <button class="btn btn-outline btn-sm" onclick="toggleOBForm()">Cancel</button>
+                </div>
+                <div id="obError" style="color:var(--danger);font-size:0.85rem;margin-top:0.25rem;display:none;"></div>
             </div>
             {% endif %}
             <div class="detail-kv">
@@ -107,11 +126,23 @@
                 <span class="detail-kv-label">Amount Paid</span>
                 <span class="detail-kv-value">₹{{ "%.2f"|format(total_paid) }}</span>
             </div>
+            {% if money_to_receive > 0 %}
+            <div class="detail-kv">
+                <span class="detail-kv-label">Money to Receive</span>
+                <span class="detail-kv-value text-success">₹{{ "%.2f"|format(money_to_receive) }}</span>
+            </div>
+            {% endif %}
+            {% if money_to_pay > 0 %}
+            <div class="detail-kv">
+                <span class="detail-kv-label">Money to Pay</span>
+                <span class="detail-kv-value text-danger">₹{{ "%.2f"|format(money_to_pay) }}</span>
+            </div>
+            {% endif %}
             <div class="detail-kv detail-kv-total">
                 <span class="detail-kv-label">Net Balance</span>
-                <span class="detail-kv-value {{ 'text-danger' if net_balance_type == 'debit' else 'text-success' }}">
+                <span class="detail-kv-value">
                     ₹{{ "%.2f"|format(net_balance) }}
-                    <small class="table-dim" style="font-weight:normal; font-size: 0.85em; margin-left: 4px;">({{ 'Party owes us' if net_balance_type == 'debit' else 'We owe party' }})</small>
+                    <small class="table-dim" style="font-weight:normal; font-size: 0.85em; margin-left: 4px;">({{ 'Receivable' if net_balance_type == 'debit' else 'Payable' }})</small>
                 </span>
             </div>
         </div>
@@ -213,4 +244,34 @@
 </div>
 {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleOBForm() {
+    const f = document.getElementById('obSettleForm');
+    f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+async function submitOBSettle(partyId) {
+    const amount = parseFloat(document.getElementById('obAmount').value);
+    const mode   = document.getElementById('obMode').value;
+    const ref    = document.getElementById('obRef').value;
+    const dt     = document.getElementById('obDate').value;
+    const errEl  = document.getElementById('obError');
+    errEl.style.display = 'none';
+    if (!amount || amount <= 0) { errEl.textContent = 'Enter a valid amount.'; errEl.style.display = 'block'; return; }
+    try {
+        const res  = await fetch(`/parties/${partyId}/settle-opening-balance`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ amount, mode, reference_no: ref, settlement_date: dt }),
+        });
+        const data = await res.json();
+        if (data.success) location.reload();
+        else { errEl.textContent = data.error || 'Error saving.'; errEl.style.display = 'block'; }
+    } catch(_) {
+        errEl.textContent = 'Network error.'; errEl.style.display = 'block';
+    }
+}
+</script>
 {% endblock %}

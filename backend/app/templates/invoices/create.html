@@ -125,6 +125,7 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
       <span>Available advance balance: <strong id="advanceAmount">₹0</strong></span>
       <button type="button" onclick="applyAdvance()" class="btn btn-gold btn-sm">Apply to Bill</button>
+      <span id="advanceWarnMsg" style="display:none; color:var(--warning);">Please add items first before applying advance.</span>
     </div>
 
     <!-- Walk-in fields -->
@@ -139,7 +140,7 @@
       </div>
       <div class="field-group">
         <label class="field-label">Address (optional)</label>
-        <input class="field-input" type="text", id="walkinAddress", placeholder="e.g. Jaunpur">
+        <input class="field-input" type="text" id="walkinAddress" placeholder="e.g. Jaunpur">
       </div>
     </div>
   </div>
@@ -424,7 +425,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (item.rate_per_gram != null) row.querySelector('[name="rate_per_gram"]').value = item.rate_per_gram;
         if (item.making_charges != null) row.querySelector('[name="making_charges"]').value = item.making_charges;
         const gs = row.querySelector('[name="gst_rate"]');
-        if (gs) for (let o of gs.options) if (o.value === "3.0") { o.selected = true; break; }
+        if (gs) {
+          const targetRate = item.gst_rate !== undefined && item.gst_rate !== null ? parseFloat(item.gst_rate) : 3.0;
+          for (let o of gs.options) {
+            if (parseFloat(o.value) === targetRate) { o.selected = true; break; }
+          }
+        }
         calcRow(n);
       });
     }

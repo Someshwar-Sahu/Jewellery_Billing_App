@@ -32,6 +32,7 @@ class Invoice(SQLModel, table=True):
     round_off: float = 0.0
     grand_total: float = 0.0
     amount_paid: float = 0.0
+    advance_used: float = 0.0
     amount_due: float = 0.0
 
     payment_mode: Optional[str] = None
