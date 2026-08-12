@@ -7,6 +7,7 @@ from app.models.payments import Advance, CashAccount, AdvanceApplication
 from app.models.invoices import Invoice
 from collections import defaultdict
 from app.models.parties import Party
+from app.models.system import MonthLock
 from app.models.shop import FinancialYear
 from datetime import date
 
@@ -83,6 +84,15 @@ async def create_submit(request: Request, session: Session = Depends(get_session
             return JSONResponse(status_code=400, content={"success": False, "error": "No active financial year configured."})
         if not (active_fy.start_date <= adv_date <= active_fy.end_date):
             return JSONResponse(status_code=400, content={"success": False, "error": f"Date is outside active financial year {active_fy.label}."})
+
+        lock = session.exec(
+            select(MonthLock)
+            .where(MonthLock.year == adv_date.year)
+            .where(MonthLock.month == adv_date.month)
+            .where(MonthLock.is_locked == True)
+        ).first()
+        if lock:
+            return JSONResponse(status_code=400, content={"success": False, "error": f"{adv_date.strftime('%B %Y')} is locked for GST filing."})
 
         advance = Advance(
             party_id     = int(data["party_id"]),

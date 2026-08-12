@@ -12,7 +12,7 @@ from app.models.payments import Advance
 from app.models.inventory import StockLedger
 from app.models.products import Product
 from app.models.shop import FinancialYear
-from app.models.system import AppAlert
+from app.models.system import MonthLock, AppAlert
 
 router    = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 templates = Jinja2Templates(directory="app/templates")
@@ -127,6 +127,24 @@ def dashboard_home(request: Request, session: Session = Depends(get_session)):
             "count": len(mn_bills),
         })
 
+    lock_status = []
+    for i in range(2, -1, -1):
+        ref = (today.replace(day=1) - timedelta(days=i * 28)).replace(day=1)
+        y, m = ref.year, ref.month
+        lock = session.exec(
+            select(MonthLock)
+            .where(MonthLock.year  == y)
+            .where(MonthLock.month == m)
+        ).first()
+        lock_status.append({
+            "year":      y,
+            "month":     m,
+            "label":     _month_label(y, m),
+            "is_locked": lock.is_locked if lock else False,
+            "locked_at": lock.locked_at if lock else None,
+            "lock_id":   lock.id        if lock else None,
+        })
+
     from datetime import datetime
     now = datetime.utcnow()
     alerts = session.exec(
@@ -136,6 +154,19 @@ def dashboard_home(request: Request, session: Session = Depends(get_session)):
         .where(AppAlert.show_until >= now)
         .where(AppAlert.dismissed_at == None)
     ).all()
+
+    import calendar as _cal2
+    last_day_this_month = _cal2.monthrange(today.year, today.month)[1]
+    days_to_month_end   = last_day_this_month - today.day
+    show_lock_warning   = (days_to_month_end <= 5)
+
+    current_lock = session.exec(
+        select(MonthLock)
+        .where(MonthLock.year  == today.year)
+        .where(MonthLock.month == today.month)
+        .where(MonthLock.is_locked == True)
+    ).first()
+    show_lock_warning = show_lock_warning and not current_lock
 
     return templates.TemplateResponse(
         request=request,
@@ -154,11 +185,71 @@ def dashboard_home(request: Request, session: Session = Depends(get_session)):
             "advance_balance":    advance_balance,
             "low_stock_count":    low_stock_count,
             "trend":              trend,
+            "lock_status":        lock_status,
+            "show_lock_warning":  show_lock_warning,
+            "days_to_month_end":  days_to_month_end,
             "alerts":             alerts,
             "active_fy":          active_fy,
             "fy_label":           active_fy.label if active_fy else "—",
         },
     )
+
+
+# ── LOCK A MONTH (Supports both /lock-month and /month-lock) ───────────────────
+
+@router.post("/lock-month")
+@router.post("/month-lock")
+async def lock_month(request: Request, session: Session = Depends(get_session)):
+    data  = await request.json()
+    year  = int(data["year"])
+    month = int(data["month"])
+
+    existing = session.exec(
+        select(MonthLock)
+        .where(MonthLock.year  == year)
+        .where(MonthLock.month == month)
+    ).first()
+
+    from datetime import datetime
+    if existing:
+        existing.is_locked = True
+        existing.locked_at = datetime.utcnow()
+        session.add(existing)
+    else:
+        session.add(MonthLock(
+            year      = year,
+            month     = month,
+            is_locked = True,
+            locked_at = datetime.utcnow(),
+        ))
+
+    session.commit()
+    return {"success": True, "message": f"Month {_month_label(year, month)} is now locked."}
+
+
+# ── UNLOCK A MONTH (Supports both /unlock-month and /month-unlock) ─────────────
+
+@router.post("/unlock-month")
+@router.post("/month-unlock")
+async def unlock_month(request: Request, session: Session = Depends(get_session)):
+    data  = await request.json()
+    year  = int(data["year"])
+    month = int(data["month"])
+
+    lock = session.exec(
+        select(MonthLock)
+        .where(MonthLock.year  == year)
+        .where(MonthLock.month == month)
+    ).first()
+
+    if not lock:
+        raise HTTPException(status_code=404, detail="Lock not found")
+
+    lock.is_locked = False
+    lock.locked_at = None
+    session.add(lock)
+    session.commit()
+    return {"success": True, "message": f"Month {_month_label(year, month)} unlocked."}
 
 
 # ── DISMISS ALERT ─────────────────────────────────────────────────────────────

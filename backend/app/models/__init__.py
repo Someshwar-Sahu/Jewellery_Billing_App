@@ -5,4 +5,4 @@ from app.models.invoices import Invoice, InvoiceItem, InvoiceEditLog, InvoiceVer
 from app.models.payments import AdvanceApplication, PaymentEvent, Advance, CashAccount
 from app.models.expenses import Expense, ExpenseCategory
 from app.models.inventory import GoldRate, StockLedger
-from app.models.system import AppAlert
+from app.models.system import MonthLock, AppAlert
