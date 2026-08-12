@@ -25,7 +25,6 @@ from app.models.products import Product, ProductGroup
 from app.models.invoices import Invoice, InvoiceItem, InvoiceVersion, InvoiceEditLog
 from app.models.payments import CashAccount, PaymentEvent, Advance, AdvanceApplication
 from app.models.expenses import Expense, ExpenseCategory
-from app.models.system import MonthLock
 from app.services.invoice_service import (
     create_invoice, update_invoice, cancel_invoice, recover_invoice,
     calculate_item, _build_totals, _ensure_date_in_active_fy, _ensure_month_unlocked

@@ -6,7 +6,6 @@ from app.database import get_session
 from app.models.invoices import Invoice, InvoiceItem, InvoiceEditLog, InvoiceVersion
 from app.models.parties import Party, OldGoldExchange
 from app.models.inventory import GoldRate
-from app.models.system import MonthLock
 from app.models.payments import CashAccount, PaymentEvent, Advance
 from app.models.shop import FinancialYear
 from app.services.invoice_service import (

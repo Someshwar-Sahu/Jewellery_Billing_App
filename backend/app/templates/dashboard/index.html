@@ -9,24 +9,6 @@
 {# ══════════════════════════════════════════════════════
    LOCK WARNING BANNER
 ══════════════════════════════════════════════════════ #}
-{% if show_lock_warning %}
-<div class="dash-banner dash-banner--warn">
-  <div class="dash-banner__body">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-    <span>
-      <strong>{{ days_to_month_end }} day{{ 's' if days_to_month_end != 1 else '' }} left</strong>
-      in {{ today.strftime('%B %Y') }} — lock the month after GST filing to protect your records.
-    </span>
-  </div>
-  <button onclick="lockMonth({{ today.year }}, {{ today.month }})" class="btn btn-gold btn-sm">
-    Lock {{ today.strftime('%b %Y') }}
-  </button>
-</div>
-{% endif %}
-
-{# ══════════════════════════════════════════════════════
-   APP ALERTS
-══════════════════════════════════════════════════════ #}
 {% for alert in alerts %}
 <div class="dash-banner dash-banner--info" id="alert-{{ alert.id }}">
   <div class="dash-banner__body">
@@ -215,76 +197,10 @@
 {# ══════════════════════════════════════════════════════
    MONTH LOCK PANEL
 ══════════════════════════════════════════════════════ #}
-<div class="dash-card dash-card--full">
-  <div class="dash-card__header">
-    <span class="dash-card__title">Month Lock Status</span>
-    <span class="dash-card__meta">Lock months after GST filing to prevent edits</span>
-  </div>
-  <div class="dash-card__body">
-    <div class="lock-grid">
-      {% for ls in lock_status %}
-      <div class="lock-tile {% if ls.is_locked %}lock-tile--locked{% endif %}">
-        <div class="lock-tile__month">{{ ls.label }}</div>
-        {% if ls.is_locked %}
-          <div class="lock-tile__status lock-tile__status--locked">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            Locked{% if ls.locked_at %} · {{ ls.locked_at.strftime('%d %b') }}{% endif %}
-          </div>
-          <button onclick="unlockMonth({{ ls.year }}, {{ ls.month }})" class="btn btn-ghost btn-sm lock-tile__btn">
-            Unlock
-          </button>
-        {% else %}
-          <div class="lock-tile__status lock-tile__status--open">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>
-            Unlocked
-          </div>
-          <button onclick="lockMonth({{ ls.year }}, {{ ls.month }})" class="btn btn-outline btn-sm lock-tile__btn">
-            Lock
-          </button>
-        {% endif %}
-      </div>
-      {% endfor %}
-    </div>
-  </div>
-</div>
-
 {% endblock %}
 
 {% block scripts %}
 <script>
-/* ── All existing functions preserved exactly ── */
-async function lockMonth(year, month) {
-    if (!confirm(`Lock ${month}/${year}? Bills in this month cannot be edited or cancelled after locking.`)) return;
-    try {
-        const res  = await fetch("/dashboard/lock-month", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({year, month}),
-        });
-        const data = await res.json();
-        if (res.ok && data.success) location.reload();
-        else alert("Error: " + (data.detail || data.message || "Unable to lock month"));
-    } catch (_) {
-        alert("Network error while locking month.");
-    }
-}
-
-async function unlockMonth(year, month) {
-    if (!confirm(`Unlock ${month}/${year}? This allows editing bills in this period again.`)) return;
-    try {
-        const res  = await fetch("/dashboard/unlock-month", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({year, month}),
-        });
-        const data = await res.json();
-        if (res.ok && data.success) location.reload();
-        else alert("Error: " + (data.detail || data.message || "Unable to unlock month"));
-    } catch (_) {
-        alert("Network error while unlocking month.");
-    }
-}
-
 async function dismissAlert(id) {
     try {
         await fetch(`/dashboard/dismiss-alert/${id}`, {method: "POST"});

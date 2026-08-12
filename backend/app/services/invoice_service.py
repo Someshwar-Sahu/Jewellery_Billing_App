@@ -6,7 +6,6 @@ from app.models.inventory import StockLedger
 from datetime import datetime, date
 from fastapi import HTTPException
 import json
-from app.models.system import MonthLock
 from app.models.shop import FinancialYear, ShopSettings
 from decimal import Decimal, ROUND_HALF_UP
 from app.models.payments import Advance, CashAccount, AdvanceApplication, PaymentEvent
@@ -40,17 +39,7 @@ def _ensure_date_in_active_fy(session: Session, bill_date: date):
 
 
 def _ensure_month_unlocked(session: Session, bill_date: date, action: str):
-    lock = session.exec(
-        select(MonthLock)
-        .where(MonthLock.year == bill_date.year)
-        .where(MonthLock.month == bill_date.month)
-        .where(MonthLock.is_locked == True)
-    ).first()
-    if lock:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot {action}: {bill_date.strftime('%B %Y')} is locked for GST filing.",
-        )
+    pass
 
 def calculate_item(item_data) -> dict:
     """Calculate all amounts for one invoice line item."""
